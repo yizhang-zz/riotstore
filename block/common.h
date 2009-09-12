@@ -1,6 +1,8 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <stdint.h>
+
 /* Utilities for the NA value; taken from arithmetic.c from R src. */
 typedef union
 {
@@ -41,20 +43,20 @@ bool R_IsNA(double x);
 const int BLOCK_SIZE = 4096;
 enum BlockFormat { DENSE, SPARSE };
 enum BlockType { LEAF, INTERNAL, ROOT};
-typedef uint32_t key_t;
-typedef double datum_t;
-typedef uint32_t pgno_t; /* page number */
+typedef uint32_t Key;
+typedef double Datum;
+typedef uint32_t BlockNo; /* page number */
 
 typedef struct 
 {
-	key_t  	key;
-	datum_t 	datum;
+	Key  	key;
+	Datum 	datum;
 } Entry;
 
 typedef struct 
 {
-	key_t 	lowerBound;
-	key_t 	upperBound;
+	Key 	lowerBound;
+	Key 	upperBound;
 } Range;
 
 typedef struct 
@@ -64,39 +66,39 @@ typedef struct
 	Range 	range;
 	Datum 		default_value;
 	uint32_t entry_count;
-	pgno_t next; /* only for leaves */
+	BlockNo next; /* only for leaves */
 } BlockHeader;
 
-const int CAPACITY_DENSE  = ((BLOCK_SIZE - sizeof(BlockHeader))/sizeof(datum_t));
-const int CAPACITY_SPARSE = ((BLOCK_SIZE - sizeof(BlockHeader))/sizeof(datum_t+key_t));
+const int CAPACITY_DENSE  = ((BLOCK_SIZE - sizeof(BlockHeader))/sizeof(Datum));
+const int CAPACITY_SPARSE = ((BLOCK_SIZE - sizeof(BlockHeader))/(sizeof(Datum)+sizeof(Key)));
 
 /* Coding style: inline small functions (<= 10 lines of code) */
 
 /* Calculates the capacity of a block */
-inline int block_capacity(BlockHeader *hdr)
+inline int BlockCapacity(BlockHeader *hdr)
 {
 	return ((hdr->format == DENSE) ? CAPACITY_DENSE : CAPACITY_SPARSE);
 }
 
-inline void set_range(Range& range, key_t lower, key_t upper)
+inline void SetRange(Range& range, Key lower, Key upper)
 {
 	range.lowerBound = lower;
 	range.upperBound = upper;
 }
 
-inline void set_block_header(BlockHeader* blockHeader, int type, Range& range, pgno_t nextBlock, datum_t def=0, uint32_t nEntries=0)
+inline void SetBlockHeader(BlockHeader* blockHeader, BlockFormat format, Range& range, BlockNo nextBlock, Datum def=0, uint32_t nEntries=0)
 {
-	blockHeader->type = type;
+	blockHeader->format = format;
 	blockHeader->range = range;
 	blockHeader->next = nextBlock;
 	blockHeader->default_value = def;
 	blockHeader->entry_count = nEntries;
 }
 
-inline void set_entry(Entry& entry, key_t k, datum_t d)
+inline void SetEntry(Entry& entry, Key k, Datum d)
 {
    entry.key = k;
-   entry.data = d;
+   entry.datum = d;
 }
 
 #endif

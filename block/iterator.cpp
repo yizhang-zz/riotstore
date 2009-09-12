@@ -4,11 +4,11 @@
 current Iterator implementation for DenseBlock only
 */
 
-DenseBlockIterator::DenseBlockIterator(Range range, Data* initial) 
+DenseBlockIterator::DenseBlockIterator(Range range, Datum* initial) 
 {
 	/*
-	set key and current to correspond to Data before initial, so
-	after first hasNext() call the values correspond to initial Data
+	set key and current to correspond to Datum before initial, so
+	after first hasNext() call the values correspond to initial Datum
 	*/
 
 	key = range.lowerBound - 1;
@@ -27,14 +27,14 @@ Key DenseBlockIterator::getKey()
 	return key; 
 }
 
-Data DenseBlockIterator::getData() 
+Datum DenseBlockIterator::getDatum() 
 {
 	return *current;
 }
 
 EntryIterator::EntryIterator(unsigned numEntries, Entry* initial)
 {
-   current = 0; // inherited Data* unused
+   current = 0; // inherited Datum* unused
    cur = initial - 1;
    end = initial + numEntries - 1;
 }
@@ -49,9 +49,9 @@ Key EntryIterator::getKey()
    return cur->key;
 }
 
-Data EntryIterator::getData()
+Datum EntryIterator::getDatum()
 {
-   return cur->data;
+   return cur->datum;
 }
 
 Entry EntryIterator::getEntry()

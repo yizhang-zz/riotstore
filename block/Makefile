@@ -3,6 +3,8 @@
 
 CCFLAGS = -g
 CC = g++
+CXX = g++
+CXXFLAGS = -g
 
 DATA_O = ../bin/data.o
 BLOCK_O = ../bin/block.o
@@ -14,6 +16,17 @@ TEST_BLOCK_OUT = ../bin/test_block.out
 
 MAINDEPENDENCIES = block.cpp data.c iterator.cpp
 MAINOBJECTS = ${DATA_O} ${BLOCK_O} ${ITERATOR_O}
+
+objects := $(patsubst %.c,%.o, $(wildcard *.c)) $(patsubst %.cpp, %.o, $(wildcard *.cpp))
+
+.c.o:
+	$(CXX) $(CXXFLAGS) -c $<
+
+.cpp.o:
+	$(CXX) $(CXXFLAGS) -c $<
+
+all: $(objects)
+	@echo "test"
 
 test_block : test/test_block.cpp ${MAINDEPENDENCIES} util.cpp
 	${CC} ${CCFLAGS} -c test/test_block.cpp -o ${TEST_BLOCK_O}

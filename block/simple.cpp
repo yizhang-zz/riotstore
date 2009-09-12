@@ -1,12 +1,12 @@
-#include "simple.h"
 #include <cstdlib>
+#include "simple.h"
 using namespace std;
 
-SimpleManager::SimpleManager(const char* name, Data def)
+SimpleManager::SimpleManager(const char* name, Datum def)
 {
    fileName = name;
    defaultValue = def;
-   setRange(range, 0, -1);
+   SetRange(range, 0, -1);
    nBlocks = 0;
    buffer = malloc(BUFFER_SIZE);
    file = fopen(fileName, MODE_W);
@@ -17,11 +17,11 @@ SimpleManager::SimpleManager(const char* name, Data def)
 long SimpleManager::addBlock()
 {
    Range r;
-   setRange(r, range.upperBound + 1, range.upperBound + NUM_DENSE_ENTRIES);
-   DataBlock* block = new DenseBlock(r, ++nBlocks, defaultValue);
+   SetRange(r, range.upperBound + 1, range.upperBound + CAPACITY_DENSE);
+   Block* block = new DenseBlock(r, ++nBlocks, defaultValue);
    long size = block->write(file);
    delete block;
-   range.upperBound += NUM_DENSE_ENTRIES;
+   range.upperBound += CAPACITY_DENSE;
    nBlocks++;
    return size;
 }
@@ -31,25 +31,25 @@ inline bool SimpleManager::inRange(Key key)
    return (range.lowerBound <= key && key <= range.upperBound);
 }
 
-long SimpleManager::loadBlock(DataBlock* block, long offset)
+long SimpleManager::loadBlock(Block* block, long offset)
 {
    fseek(file, offset*BLOCK_SIZE, SEEK_SET);
-   long size = DataBlock::readBlock(file, buffer);
-   block = DataBlock::createBlock(buffer);
+   long size = Block::readBlock(file, buffer);
+   block = Block::createBlock(buffer);
    return size;
 }
 
-long SimpleManager::writeBlock(DataBlock* block, long offset)
+long SimpleManager::writeBlock(Block* block, long offset)
 {
    fseek(file, offset*BLOCK_SIZE, SEEK_SET);
    return block->write(file);
 }
 
-int SimpleManager::get(Key key, Data& value)
+int SimpleManager::get(Key key, Datum& value)
 {
    if (inRange(key))
    {
-      DataBlock* block;
+      Block* block;
       file = fopen(fileName, MODE_R);
       loadBlock(block, OFFSET(key));
       fclose(file);
@@ -63,13 +63,13 @@ Iterator* SimpleManager::getIterator(Range range)
    
 }
 
-int SimpleManager::put(Key key, Data value)
+int SimpleManager::put(Key key, Datum value)
 {
    while(!inRange(key))
    {
       addBlock();
    }
-   DataBlock* block;
+   Block* block;
    file = fopen(fileName, MODE_U);
    loadBlock(block, OFFSET(key));
    fflush(file);

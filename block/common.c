@@ -1,4 +1,5 @@
 #include "common.h"
+#include <math.h>
 
 bool R_IsNA(double x)
 {

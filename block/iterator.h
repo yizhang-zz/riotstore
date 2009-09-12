@@ -1,16 +1,16 @@
 #ifndef ITERATOR_H
 #define ITERATOR_H
 
-#include "data.h"
+#include "common.h"
 
 class Iterator {
 	protected:
-	Data* current;
+	Datum* current;
 
 	public:
 	virtual bool hasNext() =0;
 	virtual Key getKey() =0;
-	virtual Data getData() =0;
+	virtual Datum getDatum() =0;
 };
 
 class DenseBlockIterator: public Iterator {
@@ -20,12 +20,12 @@ class DenseBlockIterator: public Iterator {
 	public:
 	bool hasNext();
 	Key getKey();	
-	Data getData();
+	Datum getDatum();
 
 	private:
 	Key key;
-	Data* end;
-	DenseBlockIterator(Range range, Data* initial);
+	Datum* end;
+	DenseBlockIterator(Range range, Datum* initial);
 };
 
 class EntryIterator: public Iterator {
@@ -36,7 +36,7 @@ class EntryIterator: public Iterator {
 	public:
 	bool hasNext();
 	Key getKey();
-	Data getData();
+	Datum getDatum();
    Entry getEntry();
 
    private:

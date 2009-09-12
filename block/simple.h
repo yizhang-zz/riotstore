@@ -1,7 +1,7 @@
 #ifndef SIMPLE_H
 #define SIMPLE_H
 
-#include "data.h"
+#include "common.h"
 #include "iterator.h"
 #include "block.h"
 #include <cstdio>
@@ -15,31 +15,31 @@
 #define MODE_RW "wb+"
 #define MODE_RA "ab+"
 
-#define OFFSET(key) (key / NUM_DENSE_ENTRIES)
+#define OFFSET(key) (key / CAPACITY_DENSE)
 
 class SimpleManager
 {
    private:
       const char* fileName;
-      Data defaultValue;
+      Datum defaultValue;
       Range range;
       unsigned nBlocks;
       void* buffer;
       FILE* file;
 
    public:
-      SimpleManager(const char* name, Data def = 0);
+      SimpleManager(const char* name, Datum def = 0);
 
 	private:
       long addBlock();
       inline bool inRange(Key key);
-      long loadBlock(DataBlock* block, long offset);
-      long writeBlock(DataBlock* block, long offset);
+      long loadBlock(Block* block, long offset);
+      long writeBlock(Block* block, long offset);
 
 	public:
-      int get(Key key, Data& value);
+      int get(Key key, Datum& value);
       Iterator* getIterator(Range range);
-      int put(Key key, Data value); 
+      int put(Key key, Datum value); 
       int put(Iterator* iterator);	
 };
 
