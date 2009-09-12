@@ -1,7 +1,7 @@
 #ifndef BLOCK_H
 #define BLOCK_H
 
-#include "data.h"
+#include "common.h"
 #include "iterator.h"
 #include <cstdio>
 
@@ -25,10 +25,34 @@ class DataBlock {
 	/* pseudo code: switch(type) {case BLK_DENSE: return new DenseBlock(...);...} */
 	static long readBlock(FILE* file, void* target);
 
-	int getType();
-	unsigned getNumEntries();
-	Range getRange();
+	BlockType getType(); // leaf, internal, or root?
+	BlockFormat getFormat(); // dense or sparse
+	
+	pgno_t getSize();
 	Data getDefaultValue();
+	
+	DataBlock(int capacity, BlockType type);
+	virtual ~DataBlock();
+	
+	static int getBoundary(); // split point must be multiples of boundary
+	
+	void setRange(Key lower, Key upper);
+	Range getRange();
+	Key getLowerBound();
+	Key getUpperBound();
+	void setLowerBound(Key lower);
+	void setUpperBound(Key upper);
+	
+	BlockFormat getFormat();
+	
+	/* recursively search for an entry with key at leaf level */
+	SearchResult search(Key key);
+	/* searches for key in current block. return the index if found,
+	otherwise the index of key if it is to be inserted. */
+	int locate(Key key);
+	
+	/* Insert a child pointer to the current block; key is the lower bound key of child. */
+	virtual int put(pgno_t child, key_t key);
 	
 	virtual int get(Key key, Data& value) =0;
 	virtual Iterator* getIterator(Range range) =0;
@@ -47,14 +71,16 @@ class DenseBlock : public DataBlock {
 	public:
 	DenseBlock(void* block);
 	DenseBlock(BlockHeader* blockheader, Data* entries);
-   DenseBlock(Range r, unsigned nextBlock, Data def=0);
-   ~DenseBlock();
+    DenseBlock(Range r, unsigned nextBlock, Data def=0);
+    ~DenseBlock();
 
 	public:
 	int get(Key key, Data& value);
 	Iterator* getIterator(Range range);
 	int put(Key key, Data value); 
-	int put(Iterator* iterator);	
+	int put(Iterator* iterator);
+	int put(pgno_t child, key_t key);
+	
 	/* del functions equivalent to put(key, DEFAULT_VALUE) */
 	int del(Key key);
 	int del(Range range);
@@ -67,6 +93,7 @@ class DenseBlock : public DataBlock {
 	inline bool isDelData(Data* target, Data replacement);
 };
 
+/* Prefix compression seems not urgent right now... */
 class SparseBlock : public DataBlock {
 	private:
 	SparseHeader s_header;
@@ -82,6 +109,8 @@ class SparseBlock : public DataBlock {
 	Iterator* getIterator(Range range);
 	int put(Key key, Data value); 
 	int put(Iterator* iterator);
+	int put(pgno_t child, key_t key);
+	
 	/* del functions equivalent to put(key, DEFAULT_VALUE) */
 	int del(Key key);
 	int del(Range range);
