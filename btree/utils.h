@@ -1,27 +1,19 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-enum Status { NONE, FOUND};
-class Node;
+#include "../block/common.h"
 
-class Range {
-   public:
-      int start;
-      int end;
-
-   public:
-      Range(int s, int e);
-};
+enum SearchStatus { NONE, FOUND};
 
 class SearchResult {
     public:
-       Status status;
-       Node node;
-       int key;
-       double data;
+       SearchStatus status;
+       BlockNo blkno;
+       Key key;
+       Datum datum;
 
     public:
-       SearchResult(Status s, Node n, int k, double d);
+       SearchResult(SearchStatus s, BlockNo n, Key k, Datum d);
 };
 
 #endif

@@ -1,39 +1,32 @@
 #ifndef SPLITTER_H
 #define SPLITTER_H
 
+#include "../block/common.h"
+#include "../block/block.h"
+
 class Splitter {
    public:
-      virtual Node split(Node n, int pos, int key, double data) = 0;
+      virtual Block* split(Block *n, int pos, Key key, Datum data) = 0;
 };
 
 class BSplitter : public Splitter {
-      Node split(Node n, int pos, int key, double data);
-};
-
-class MDSplitter : public Splitter {
-      Node split(Node n, int pos, int key, double data);
+      Block* split(Block *n, int pos, Key key, Datum data);
 };
 
 class MSplitter : public Splitter {
-      Node split(Node n, int pos, int key, double data);
+      Block* split(Block *n, int pos, Key key, Datum data);
 };
 
 class RSplitter : public Splitter {
-      Node split(Node n, int pos, int key, double data);
+      Block* split(Block *n, int pos, Key key, Datum data);
 };
 
 class SSplitter : public Splitter {
-      Node split(Node n, int pos, int key, double data);
+      Block* split(Block *n, int pos, Key key, Datum data);
 };
 
-class TBSplitter : public Splitter {
-      Node split(Node n, int pos, int key, double data);
-};
 class TSplitter : public Splitter {
-      Node split(Node n, int pos, int key, double data);
-};
-class ZSplitter : public Splitter {
-      Node split(Node n, int pos, int key, double data);
+      Block* split(Block *n, int pos, Key key, Datum data);
 };
 
 #endif

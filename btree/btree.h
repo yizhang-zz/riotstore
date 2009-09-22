@@ -1,6 +1,10 @@
 #ifndef BTREE_H
 #define BTREE_H
 
+#include "../block/common.h"
+#include "../block/block.h"
+#include "utils.h"
+
 #define ROOT 1
 #define INTERNAL 2
 #define LEAF 4
@@ -11,22 +15,26 @@
 
 
 class BTree {
-   public:
-      int leaf_count;
-      pgno_t root;
-	  DataBlock *root;
-      int depth;
-      pgno_t first_leaf;
+    public:
+        uint_32 leaf_count;
+        int depth;
+        BlockNo root_no;
+        BlockNo first_leaf_no;
+        Block *root;
+        Block *first_leaf;
 
 
-   public:
-      BTree(int capacity, key_t start, key_t end);
-      int put(key_t key, datum_t data);
-	  int put(key_t[] key, datum_t[] data, int size);
-      SearchResult search(key_t key);
-	  int get(key_t key, datum_t *datum);
-	  int get(key_t begin, key_t end, datum_t *data);
-	  int get(key_t *keys, datum_t *data, int size);
+    public:
+        BTree(int capacity, Key start, Key end);
+        SearchResult search(Key key);
+
+        int put(Key key, Datum data);
+        int put(Key begin, Key end, Datum *data);
+        int put(Key *key, Datum *data, int size);
+
+        int get(Key key, Datum *datum);
+        int get(Key begin, Key end, Datum *data);
+        int get(Key *keys, Datum *data, int size);
 };
 
 #endif
