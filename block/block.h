@@ -1,7 +1,7 @@
 #ifndef BLOCK_H
 #define BLOCK_H
 
-#include "common.h"
+#include "../common/common.h"
 #include "iterator.h"
 #include "SearchResult.h"
 

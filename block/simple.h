@@ -1,7 +1,7 @@
 #ifndef SIMPLE_H
 #define SIMPLE_H
 
-#include "common.h"
+#include "../common/common.h"
 #include "iterator.h"
 #include "block.h"
 #include <cstdio>

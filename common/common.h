@@ -72,6 +72,37 @@ typedef struct
 const int CAPACITY_DENSE  = ((BLOCK_SIZE - sizeof(BlockHeader))/sizeof(Datum));
 const int CAPACITY_SPARSE = ((BLOCK_SIZE - sizeof(BlockHeader))/(sizeof(Datum)+sizeof(Key)));
 
+//////////////////////////////////////////////////////////////////////
+// A byte.
+
+typedef char byte_t;
+
+//////////////////////////////////////////////////////////////////////
+// Return code.
+
+typedef int rc_t;
+
+//////////////////////////////////////////////////////////////////////
+// Page id, which uniquely identifies a page within a paged file.
+
+typedef uint32_t pgid_t;
+
+#define PGID_INVALID UINT_MAX
+
+//////////////////////////////////////////////////////////////////////
+// In-memory image of a page.
+
+typedef byte_t PageImage[PAGE_SIZE];
+
+//////////////////////////////////////////////////////////////////////
+// A handle for a page buffered in memory.
+
+typedef struct {
+  pgid_t pgid;
+  PageImage *image;
+} PageHandle;
+
+
 /* Coding style: inline small functions (<= 10 lines of code) */
 
 /* Calculates the capacity of a block */

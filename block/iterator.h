@@ -1,7 +1,7 @@
 #ifndef ITERATOR_H
 #define ITERATOR_H
 
-#include "common.h"
+#include "../common/common.h"
 
 class Iterator {
 	protected:
