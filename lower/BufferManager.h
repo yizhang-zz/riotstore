@@ -11,10 +11,15 @@ class PageReplacer;
 // Provides memory-buffered access to a PagedStorageContainer.  This
 // is the interface that data structures such as BTree and
 // DirectlyMappedArray should use.  BTree would call allocatePage and
-// disposePage, but never allocatePageWithPid.  DirectlyMappedArray
-// would call allocatePageWithPid, but never allocatePage or
+// disposePage, but never allocatePageWithPID.  DirectlyMappedArray
+// would call allocatePageWithPID, but never allocatePage or
 // disposePage.
+//
+// A BufferManager always uses a PageReplacer to implement the
+// algorithm for selecting a page to be replaced when the entire
+// buffer is full and a new page has to be brought into the buffer.
 
+template <typename PageReplacer = LRUPageReplacer>
 class BufferManager {
 
 private:
@@ -43,7 +48,7 @@ private:
 
   // An array of pids for the corresponding pages in the images buffer
   // (valid only for slots in use).
-  pgid_t *pids;
+  PID_t *pids;
 
   // A hash table that allows one to map a pid to an index into the
   // images buffer (if the page is buffered).
@@ -66,40 +71,40 @@ public:
 
   // Creates a new page in buffer (with unintialized content), pins
   // it, marks it dirty, and returns the handle.
-  rc_t allocatePage(PageHandle &ph);
+  RC_t allocatePage(PageHandle &ph);
 
   // Creates a new page with given pid in buffer (with unintialized
   // content), pins it, marks it dirty, and returns the handle.  This
   // method only works if the implementation of PagedStorageContainer
-  // supports allocatePageWithPid.
-  rc_t allocatePageWithPid(pgid_t pid, PageHandle &ph);
+  // supports allocatePageWithPID.
+  RC_t allocatePageWithPID(PID_t pid, PageHandle &ph);
 
   // Disposes a buffered page.  It will be removed from both the
   // buffer and the disk storage.  Dirty bit is ignored.
-  rc_t disposePage(const PageHandle &ph);
+  RC_t disposePage(const PageHandle &ph);
 
   // Reads a page into buffer (if it is not already in), pins it, and
   // returns the handle.
-  rc_t readPage(pgid_t pid, PageHandle &ph);
+  RC_t readPage(PID_t pid, PageHandle &ph);
 
   // Marks a pinned page as dirty (i.e., modified).
-  rc_t markPageDirty(const PageHandle &ph);
+  RC_t markPageDirty(const PageHandle &ph);
 
   // Pins a page.  As long as a page has at least one pin, it cannot
   // be discarded from the buffer.
-  rc_t pinPage(const PageHandle &ph);
+  RC_t pinPage(const PageHandle &ph);
 
   // Unpins a page.  If a page has no pin left, it can be discarded
   // from the buffer, in which case the handle will become invalid.
-  rc_t unpinPage(const PageHandle &ph);
+  RC_t unpinPage(const PageHandle &ph);
 
   // Flushes a pinned page to disk, if it is dirty.  A page's dirty
   // bit is unset after flushing.
-  rc_t flushPage(const PageHandle &ph);
+  RC_t flushPage(const PageHandle &ph);
 
   // Flushes all dirty pages in the buffer to disk.  Pages' dirty bits
   // are unset after flushing.
-  rc_t flushAllPages();
+  RC_t flushAllPages();
 
 };
 

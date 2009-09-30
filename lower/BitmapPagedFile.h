@@ -21,7 +21,7 @@ private:
 
   FILE *file;
   uint32_t numContentPages;
-  byte_t header[PAGE_SIZE];
+  Byte_t header[PAGE_SIZE];
 
 public:
 
@@ -33,19 +33,19 @@ public:
   // Creates a BitmapPagedFile over a disk file of a given name.  If
   // the file doesn't exist yet, an empty paged file will be created
   // with the file header.
-  static rc_t createPagedFile(const char *fileName, BitmapPagedFile *&pf);
+  static RC_t createPagedFile(const char *fileName, BitmapPagedFile *&pf);
 
   // The underlying file may expand if needed.
-  virtual rc_t allocatePage(pgid_t &pid);
+  virtual RC_t allocatePage(PID_t &pid);
 
   // The underlying file may expand if needed.
-  virtual rc_t allocatePageWithPid(pgid_t pid);
+  virtual RC_t allocatePageWithPid(PID_t pid);
 
-  virtual rc_t disposePage(pgid_t pid);
+  virtual RC_t disposePage(PID_t pid);
 
-  virtual rc_t readPage(PageHandle &ph);
+  virtual RC_t readPage(PageHandle &ph);
 
-  virtual rc_t writePage(const PageHandle &ph);
+  virtual RC_t writePage(const PageHandle &ph);
 
 };
 

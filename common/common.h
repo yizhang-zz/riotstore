@@ -75,30 +75,30 @@ const int CAPACITY_SPARSE = ((BLOCK_SIZE - sizeof(BlockHeader))/(sizeof(Datum)+s
 //////////////////////////////////////////////////////////////////////
 // A byte.
 
-typedef char byte_t;
+typedef char Byte_t;
 
 //////////////////////////////////////////////////////////////////////
 // Return code.
 
-typedef int rc_t;
+typedef int RC_t;
 
 //////////////////////////////////////////////////////////////////////
 // Page id, which uniquely identifies a page within a paged file.
 
-typedef uint32_t pgid_t;
+typedef uint32_t PID_t;
 
 #define PGID_INVALID UINT_MAX
 
 //////////////////////////////////////////////////////////////////////
 // In-memory image of a page.
 
-typedef byte_t PageImage[PAGE_SIZE];
+typedef Byte_t PageImage[PAGE_SIZE];
 
 //////////////////////////////////////////////////////////////////////
 // A handle for a page buffered in memory.
 
 typedef struct {
-  pgid_t pgid;
+  PID_t pid;
   PageImage *image;
 } PageHandle;
 

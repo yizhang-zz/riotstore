@@ -5,36 +5,44 @@
 #include "BufferManager.h"
 
 //////////////////////////////////////////////////////////////////////
-// When the buffer manager has no space for a new page, this class is
-// used to decide which existing buffered page should be evicted.
-// Various algorithms can be implemented, e.g., LRU.
+// The interface for a BufferManager helper that decides which
+// existing buffered page should be evicted when there is no space
+// left.  Note that this class does not implement
+// selectToReplace(...), touch(...), and reset(...).  Various
+// policies, e.g., LRU, implemented as subclasses of this one, which
+// provide actual implementation for these methods.
 
 class PageReplacer {
 
-private:
+  friend class BufferManager;
+
+protected:
 
   // A handle to the buffer manager that this replacer works for
   BufferManager *bufferManager;
 
-  // TODO : some data structure in subclass will be needed to implement the
-  // page replacement policy like LRU or CLOCK.
-
-public:
-
   PageReplacer(BufferManager *bm);
+  ~PageReplacer();
 
-  // Remember to destruct any class-specific data structures.
-  virtual ~PageReplacer();
+  // Allows subclasses to access BufferManager's protected/private
+  // members that may be useful.
+  const bool *getUsedBits() const;
+  const bool *getDirtyBits() const;
+  const uint32_t *getPinCounts() const;
 
-  // Called by buffer manager when deciding which page to be replaced.
-  // Does not perform the actual replacement.
-  virtual rc_t replace(uint32_t &indexOfPageToBeReplaced);
+  // Returns the index (into BufferManager::images) of the recommended
+  // page to be replaced when called by BufferManager.  All pages in
+  // the buffer should be in use at this point.  Does not perform the
+  // actual replacement.
+  RC_t selectToReplace(uint32_t &indexOfPageToBeReplaced) const;
 
-  // Called by buffer manager when a page is accessed.
-  virtual rc_t accessed(uint32_t indexOfPage);
+  // Called by BufferManager when accessing a page.  indexOfPage is
+  // the index into BufferManager::images.
+  void touch(uint32_t indexOfPage);
 
-  // Called by buffer manager when a page is allocated.
-  virtual rc_t allocated(uint32_t indexOfPage);
+  // Called by BufferManager to reset statistics about a page.
+  // indexOfPage is the index into BufferManager::images.
+  void reset(uint32_t indexOfPage);
 };
 
 #endif
