@@ -22,6 +22,7 @@ private:
   FILE *file;
   uint32_t numContentPages;
   Byte_t header[PAGE_SIZE];
+  //bitset<8*PAGE_SIZE> header;
 
 public:
 
@@ -47,8 +48,27 @@ public:
 
   virtual RC_t writePage(const PageHandle &ph);
 
+private:
+
+  void setBit(int bytePos, int bitPos);
+
+  void clearBit(int bytePos, int bitPos);
+
+  int getBit(int bytePos, int bitPos);
+
 };
 
+inline void BitmapPagedFile::setBit(int bytePos, int bitPos) {
+    header[bytePos] |= (1 << bitPos);
+}
+
+inline void BitmapPagedFile::clearBit(int bytePos, int bitPos) {
+    header[bytePos] &= ~(1 << bitPos);
+}
+
+inline int BitmapPagedFile::getBit(int bytePos, int bitPos) {
+    return (header[bytePos] & (1 << bitPos)) >> bitPos;
+}
 //////////////////////////////////////////////////////////////////////
 // Another possible implementation of PagedStorageContainer would be
 // IndexedPagedFile, where the header page stores, instead of a
