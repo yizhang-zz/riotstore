@@ -50,24 +50,27 @@ public:
 
 private:
 
-  void setBit(int bytePos, int bitPos);
+  // sets bit in header that maps to pid
+  void allocate(PID_t pid);
 
-  void clearBit(int bytePos, int bitPos);
+  // clears bit in header that maps to pid
+  void deallocate(PID_t pid);
 
-  int getBit(int bytePos, int bitPos);
+  // returns value of bit in header that maps to pid
+  bool isAllocated(PID_t pid);
 
 };
 
-inline void BitmapPagedFile::setBit(int bytePos, int bitPos) {
-    header[bytePos] |= (1 << bitPos);
+inline void BitmapPagedFile::allocate(PID_t pid) {
+    header[pid/8] |= (1 << (pid%8));
 }
 
-inline void BitmapPagedFile::clearBit(int bytePos, int bitPos) {
-    header[bytePos] &= ~(1 << bitPos);
+inline void BitmapPagedFile::deallocate(PID_t pid) {
+    header[pid/8] &= ~(1 << (pid%8));
 }
 
-inline int BitmapPagedFile::getBit(int bytePos, int bitPos) {
-    return (header[bytePos] & (1 << bitPos)) >> bitPos;
+inline bool BitmapPagedFile::isAllocated(PID_t pid) {
+    return (header[pid/8] & (1 << (pid%8))) >> (pid%8);
 }
 //////////////////////////////////////////////////////////////////////
 // Another possible implementation of PagedStorageContainer would be
