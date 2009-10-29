@@ -22,7 +22,7 @@ public:
   // Creates a new page with given pid in the storage.  The content
   // remains unintialized until the first write.  This request may or
   // may not be supported by an implementation.
-  virtual RC_t allocatePageWithPID(PID_t pid) = 0;
+  virtual RC_t allocatePageWithPid(PID_t pid) = 0;
 
   // Disposes the page with given pid from the file (so that its space
   // could be allocated later).

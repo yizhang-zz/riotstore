@@ -1,6 +1,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "BitmapPagedFile.h"
 using namespace std;
 
@@ -19,8 +20,8 @@ using namespace std;
    allocate another, next 8 bits are cleared).
 */
 
-BitmapPagedFile::BitmapPagedFile(FILE *file) {
-   this.file = file;
+BitmapPagedFile::BitmapPagedFile(FILE *f) {
+   file = f;
    header = (Byte_t*) malloc(sizeof(PAGE_SIZE));
    fseek(file, 0, SEEK_END);
    if((numContentPages = ftell(file)/PAGE_SIZE - 1) >= 0) { // header exists
@@ -30,6 +31,8 @@ BitmapPagedFile::BitmapPagedFile(FILE *file) {
    else { /* new file with nothing allocated: 0 content pages, header
             uninitialized */
       numContentPages = 0;
+      memset(header, 0, PAGE_SIZE); /* clears header page, prevents potential
+                                       page access problems in future */
    }
 }
 
@@ -37,7 +40,7 @@ BitmapPagedFile::BitmapPagedFile(FILE *file) {
 BitmapPagedFile::~BitmapPagedFile() {
    // make sure number of pages in file is consistent with numContentPages
    fseek(file, 0, SEEK_END);
-   Byte_t filler = Byte_t[PAGE_SIZE];
+   Byte_t *filler = header; // use header as filler page
    while(numContentPages > ftell(file)/PAGE_SIZE - 1) {
       fwrite(filler, PAGE_SIZE, 1, file);
    }
@@ -53,8 +56,8 @@ BitmapPagedFile::~BitmapPagedFile() {
    */
 RC_t BitmapPagedFile::createPagedFile(const char *fileName, BitmapPagedFile
       *&pf) {
-   if((file = fopen(fileName, "r+")) == 0) { // check if file does not exist
-      file = fopen(fileName, "w+");    // create new file for read/write
+   if((file = fopen(fileName, "rb+")) == 0) { // check if file does not exist
+      file = fopen(fileName, "wb+");    // create new file for read/write
    }
    pf = new BitmapPagedFile(file);
    return SUCCESS;
@@ -76,16 +79,16 @@ RC_t BitmapPagedFile::allocatePage(PID_t &pid) {
       }
       k++;
    }
-
+/*
    if(numContentPages%8 != 0) { // still unused bits in last used byte
       pid = numContentPages;
       numContentPages++;
       allocate(pid);
       return SUCCESS;
    }
-
+*/
    if(numContentPages < 8*PAGE_SIZE - 1) { // still unused bytes in header
-      header[numberContentPages/8] = 0;
+      //header[numberContentPages/8] = 0;
       pid = numContentPages;
       numContentPages++;
       allocate(pid);
@@ -114,12 +117,13 @@ RC_t BitmapPagedFile::allocatePageWithPid(PID_t pid) {
    }
 
    // pid not in current page ranges, but within maximum page bounds
-   int bytes = (pid - numContentPages)/8;
+   /*int bytes = (pid - numContentPages)/8;
    for(; numContentPages < pid; numContentPages++) { // check this
       if(numContentPages%8 == 0) {
          header[numContentPages/8] = 0;
       }
    }
+   */
    allocate(pid);
    return SUCCESS;
 }
@@ -159,9 +163,9 @@ RC_t BitmapPagedFile::writePage(const PageHandle &ph) {
 
    /* make sure numContentPages covers up to pid,
       insert filler pages if necessary */
-   Byte_t filler = Byte_t[PAGE_SIZE];
+   Byte_t *filler = header;
    fseek(file, 0, SEEK_END);
-   while(numContentPages < pid) {
+   while(numContentPages < ph.pid) {
       fwrite(filler, PAGE_SIZE, 1, file);
       numContentPages++;
    }

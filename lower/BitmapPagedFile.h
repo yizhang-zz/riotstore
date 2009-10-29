@@ -21,12 +21,12 @@ private:
 
   FILE *file;
   uint32_t numContentPages;
-  Byte_t header[PAGE_SIZE];
+  Byte_t *header; // sizeof(PAGE_SIZE)
   //bitset<8*PAGE_SIZE> header;
 
 public:
 
-  BitmapPagedFile(FILE *file);
+  BitmapPagedFile(FILE *f);
 
   // Remember to write the header back!
   virtual ~BitmapPagedFile();
