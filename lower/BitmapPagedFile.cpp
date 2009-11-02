@@ -56,11 +56,11 @@ BitmapPagedFile::~BitmapPagedFile() {
    */
 RC_t BitmapPagedFile::createPagedFile(const char *fileName, BitmapPagedFile
       *&pf) {
-   FILE *f;
-   if((f = fopen(fileName, "rb+")) == 0) { // check if file does not exist
-      f = fopen(fileName, "wb+");    // create new file for read/write
+   FILE *file;
+   if((file = fopen(fileName, "rb+")) == 0) { // check if file does not exist
+      file = fopen(fileName, "wb+");    // create new file for read/write
    }
-   pf = new BitmapPagedFile(f);
+   pf = new BitmapPagedFile(file);
    return SUCCESS;
 }
 
