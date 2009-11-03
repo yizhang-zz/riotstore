@@ -41,6 +41,7 @@ bool R_IsNA(double x);
 
 /* Block level definitions. */
 const int BLOCK_SIZE = 4096;
+const int PAGE_SIZE = BLOCK_SIZE;
 enum BlockFormat { DENSE, SPARSE };
 enum BlockType { LEAF, INTERNAL, ROOT};
 typedef uint32_t Key;
@@ -81,6 +82,8 @@ typedef char Byte_t;
 // Return code.
 
 typedef int RC_t;
+#define RC_SUCCESS 0
+#define RC_FAILURE 1
 
 //////////////////////////////////////////////////////////////////////
 // Page id, which uniquely identifies a page within a paged file.

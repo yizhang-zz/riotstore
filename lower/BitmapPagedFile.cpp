@@ -61,7 +61,7 @@ RC_t BitmapPagedFile::createPagedFile(const char *fileName, BitmapPagedFile
       file = fopen(fileName, "wb+");    // create new file for read/write
    }
    pf = new BitmapPagedFile(file);
-   return SUCCESS;
+   return RC_SUCCESS;
 }
 
 /* only mark bit in header as allocated, defer writing until later */
@@ -76,7 +76,7 @@ RC_t BitmapPagedFile::allocatePage(PID_t &pid) {
       if(!isAllocated(k)) { // found empty slot
          pid = k;
          allocate(pid);
-         return SUCCESS;
+         return RC_SUCCESS;
       }
       k++;
    }
@@ -85,7 +85,7 @@ RC_t BitmapPagedFile::allocatePage(PID_t &pid) {
       pid = numContentPages;
       numContentPages++;
       allocate(pid);
-      return SUCCESS;
+      return RC_SUCCESS;
    }
 */
    if(numContentPages < 8*PAGE_SIZE - 1) { // still unused bytes in header
@@ -93,28 +93,28 @@ RC_t BitmapPagedFile::allocatePage(PID_t &pid) {
       pid = numContentPages;
       numContentPages++;
       allocate(pid);
-      return SUCCESS;
+      return RC_SUCCESS;
    }
 
-   return FAILURE; // header filled 
+   return RC_FAILURE; // header filled 
 }
 
 /* tries to allocate new page with input pid. if pid is available, bitmask flag
  * is made. otherwise returns failure. The page is not only allocated in memory
  * and not written until later call
  */
-RC_t BitmapPagedFile::allocatePageWithPid(PID_t pid) {
+RC_t BitmapPagedFile::allocatePageWithPID(PID_t pid) {
    if(pid > 8*PAGE_SIZE - 2) { // pid outside valid range
-      return FAILURE;
+      return RC_FAILURE;
    }
 
    // if pid is within range of current allocated pages
    if(pid < numContentPages) {
       if(isAllocated(pid)) { // pid already allocated
-         return FAILURE;
+         return RC_FAILURE;
       }
       allocate(pid);
-      return SUCCESS;
+      return RC_SUCCESS;
    }
 
    // pid not in current page ranges, but within maximum page bounds
@@ -126,32 +126,32 @@ RC_t BitmapPagedFile::allocatePageWithPid(PID_t pid) {
    }
    */
    allocate(pid);
-   return SUCCESS;
+   return RC_SUCCESS;
 }
 
 RC_t BitmapPagedFile::disposePage(PID_t pid) {
    if(pid > numContentPages) {
-      return FAILURE; /* pid not within allocated pid range, nothing is done */
+      return RC_FAILURE; /* pid not within allocated pid range, nothing is done */
    }
 
    deallocate(pid); /* deallocates mapped bit in header, defers actual
                          physical disposal of data until later */
-   return SUCCESS;
+   return RC_SUCCESS;
 }
 
 RC_t BitmapPagedFile::readPage(PageHandle &ph) {
    if(!isAllocated(ph.pid)) { // check if page is allocated
-      return FAILURE; // no page data is stored with given pid
+      return RC_FAILURE; // no page data is stored with given pid
    }
 
    fseek(file, (ph.pid+1)*PAGE_SIZE, SEEK_SET); // +1 for header page
    fread(ph.image, PAGE_SIZE, 1, file);
-   return SUCCESS;
+   return RC_SUCCESS;
 }
 
 RC_t BitmapPagedFile::writePage(const PageHandle &ph) {
    if(ph.pid > 8*PAGE_SIZE - 2) {
-      return FAILURE;
+      return RC_FAILURE;
    }
 
    // pid already has corresponding content page
@@ -159,7 +159,7 @@ RC_t BitmapPagedFile::writePage(const PageHandle &ph) {
       fseek(file, (ph.pid+1)*PAGE_SIZE, SEEK_SET);
       fwrite(ph.image, PAGE_SIZE, 1, file);
       fflush(file);
-      return SUCCESS;
+      return RC_SUCCESS;
    }
 
    /* make sure numContentPages covers up to pid,
@@ -173,6 +173,6 @@ RC_t BitmapPagedFile::writePage(const PageHandle &ph) {
    fwrite(ph.image, PAGE_SIZE, 1, file);
    numContentPages++;
    fflush(file);
-   return SUCCESS;
+   return RC_SUCCESS;
 }
 
