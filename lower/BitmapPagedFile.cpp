@@ -140,7 +140,7 @@ RC_t BitmapPagedFile::disposePage(PID_t pid) {
 }
 
 RC_t BitmapPagedFile::readPage(PageHandle &ph) {
-   if(!isAllocated(ph.pid)) { // check if page is allocated
+   if(ph.pid >= numContentPages && !isAllocated(ph.pid)) { // check if page is allocated
       return FAILURE; // no page data is stored with given pid
    }
 
