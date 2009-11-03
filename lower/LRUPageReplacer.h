@@ -4,16 +4,22 @@
 #include "../common/common.h"
 #include "PageReplacer.h"
 
+struct BufferHeader;
+
 class LRUPageReplacer: public PageReplacer {
 protected:
-  // TODO: Some data structure (likely an array holding statistics for
-  // pages in BufferManager::images) will be needed here.
+  /*
+		Organize all retired, unpinned pages in a list.  The list is
+		sorted in increasing last-access time. Head of the list is the
+		least recently accessed.
+	*/
+	BufferHeader *head, *tail;
 protected:
-  LRUPageReplacer(BufferManager &bufferManager);
+  LRUPageReplacer(/*BufferManager &bufferManager*/);
   ~LRUPageReplacer();
-  RC_t selectToReplace(uint32_t &indexOfPageToBeReplaced) const;
-  void touch(uint32_t indexOfPage);
-  void reset(uint32_t indexOfPage);
+  RC_t selectToReplace(BufferHeader **bh);
+  void add(BufferHeader *bh);
+  void remove(BufferHeader *bh);
 };
 
 #endif
