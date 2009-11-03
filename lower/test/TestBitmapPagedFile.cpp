@@ -1,5 +1,5 @@
-
-#include "BitmapPagedFile.h"
+#include "../../common/common.h"
+#include "../BitmapPagedFile.h"
 #include <assert.h>
 
 void test_constructor() {
@@ -10,7 +10,7 @@ void test_desctructor() {
 
 void test_createPagedFile() {
    BitmapPagedFile* bpf;
-   assert(createPagedFile("test1.bin", &bpf) == SUCCESS);
+   assert(BitmapPagedFile::createPagedFile("test1.bin", bpf) == RC_SUCCESS);
 }
 
 void test_allocatePage() {
@@ -39,6 +39,5 @@ void test_isAllocated() {
 
 int main() {
    test_createPagedFile();
-   test_BitmapPagedFile();
    return 0;
 }
