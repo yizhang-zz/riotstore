@@ -86,8 +86,6 @@ typedef int RC_t;
 #define RC_SUCCESS 0
 #define RC_FAILURE 1
 
-enum ReturnCode { SUCCESS, FAILURE };
-
 //////////////////////////////////////////////////////////////////////
 // Page id, which uniquely identifies a page within a paged file.
 

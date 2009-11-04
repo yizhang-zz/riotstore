@@ -1,5 +1,5 @@
-
-#include "BitmapPagedFile.h"
+#include "../../common/common.h"
+#include "../BitmapPagedFile.h"
 #include <assert.h>
 using namespace std;
 
@@ -11,7 +11,7 @@ void test_desctructor() {
 
 void test_createPagedFile() {
    BitmapPagedFile* bpf;
-   assert(BitmapPagedFile::createPagedFile("test1.bin", bpf) == SUCCESS);
+   assert(BitmapPagedFile::createPagedFile("test1.bin", bpf) == RC_SUCCESS);
 }
 
 void test_allocatePage() {

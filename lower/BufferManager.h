@@ -1,11 +1,32 @@
 #ifndef BUFFER_MANAGER_H
 #define BUFFER_MANAGER_H
 
+#include <stdio.h>
+#include <assert.h>
+#include <unordered_map>
 #include "../common/common.h"
 #include "PagedStorageContainer.h"
 
 // forward declaration
 class PageReplacer;
+class LRUPageReplacer;
+
+struct BufferHeader {
+	BufferHeader *prev;
+	BufferHeader *next;
+	PID_t pid;
+	bool dirty;
+	uint32_t pinCount;
+	PageImage *image;
+};
+ 
+void InitBufferHeader(BufferHeader *bh)
+{
+	bh->prev = bh->next = NULL;
+	bh->pid = 0;
+	bh->dirty = 0;
+	bh->pinCount = 0;
+}
 
 //////////////////////////////////////////////////////////////////////
 // Provides memory-buffered access to a PagedStorageContainer.  This
@@ -19,11 +40,13 @@ class PageReplacer;
 // algorithm for selecting a page to be replaced when the entire
 // buffer is full and a new page has to be brought into the buffer.
 
-template <typename PageReplacer = LRUPageReplacer>
+template <typename T = LRUPageReplacer>
 class BufferManager {
 
 private:
 
+	typedef std::unordered_map<PID_t, BufferHeader*> PageHashMap;
+	
   // The underlying storage.
   PagedStorageContainer *storage;
 
@@ -34,32 +57,49 @@ private:
   // numSlots.
   PageImage *images;
 
+	// A header for each image
+	BufferHeader *headers;
+
   // An array of bits indicating whether the corresponding slots in
   // the images buffer are in use.
-  bool *usedBits;
+  //bool *usedBits;
 
   // An array of bits indicating whether the corresponding pages are
   // dirty (valid only for slots in use).
-  bool *dirtyBits;
+  //bool *dirtyBits;
 
   // An array of counts indicating the number of pins for each page
   // (valid only for slots in use).
-  uint32_t *pinCounts;
+  //uint32_t *pinCounts;
 
   // An array of pids for the corresponding pages in the images buffer
   // (valid only for slots in use).
-  PID_t *pids;
+  //PID_t *pids;
 
+	/* We maintain three lists for the page images. A list for all
+		 pinned pages, a list for all the reclaimable pages (unpinned),
+		 and a list for all free pages (not mapped to a disk page). The
+		 first list is conceptual and does not have to be represented by
+		 any actual data structure. The first two lists are hash indexed
+		 for quick lookup by PID. The second list is maintained by the
+		 PageReplacer class because the PageReplacer gets to choose which
+		 page to be swapped out upon a page miss when the free list is
+		 empty.
+	*/
+
+	BufferHeader *freelist; // singly-linked list
   // A hash table that allows one to map a pid to an index into the
   // images buffer (if the page is buffered).
-  HashTable *pidToIndexIntoPages;
-
+	PageHashMap *pageHash;
+	
   // A page replacer implements algorithms for selecting a page to be
   // replaced when the entire buffer is full and a new page has to be
   // brought into the buffer
   friend class PageReplacer;
-  PageReplacer *pageReplacer;
+  T *pageReplacer;
 
+private:
+	RC_t replacePage(BufferHeader **bh);
 public:
 
   // Constructs a BufferManager for a paged storage container with a
@@ -85,7 +125,7 @@ public:
 
   // Reads a page into buffer (if it is not already in), pins it, and
   // returns the handle.
-  RC_t readPage(PID_t pid, PageHandle &ph);
+  RC_t readPage(PageHandle &ph);
 
   // Marks a pinned page as dirty (i.e., modified).
   RC_t markPageDirty(const PageHandle &ph);

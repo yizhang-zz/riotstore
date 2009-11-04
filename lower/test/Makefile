@@ -10,8 +10,8 @@ objects := $(patsubst %.c,%.o, $(wildcard *.c)) $(patsubst %.cpp, %.o, $(wildcar
 .cpp.o:
 	$(CXX) $(CXXFLAGS) -c $<
 
-all: $(objects)
-	@echo "test"
+all: $(objects) ../BitmapPagedFile.o
+	$(CXX) -o test1 $^
 
 clean : 
 	rm -f *.o
