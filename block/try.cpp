@@ -8,7 +8,17 @@ void test(){}
 
 int main()
 {
-   FILE* file = fopen("blah.bin", "r+b");
+   FILE* file = fopen("blah.bin", "wb+");
+   int array[4];
+   array[2] = 100;
+   for(int k = 0; k < 4; k++)
+      cout << array[k] << endl;
+   fwrite(array, sizeof(int), 4, file);
+   fclose(file);
+   file = fopen("blah.bin", "wb+");
+   fread(array, sizeof(int), 4, file);
+   for(int k = 0; k < 4; k++)
+      cout << array[k] << endl;
    fpos_t position;
    fgetpos(file, &position);
    int number[] = {1, 2, 3, 4, 5};

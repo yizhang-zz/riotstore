@@ -40,7 +40,7 @@ public:
   virtual RC_t allocatePage(PID_t &pid);
 
   // The underlying file may expand if needed.
-  virtual RC_t allocatePageWithPid(PID_t pid);
+  virtual RC_t allocatePageWithPID(PID_t pid);
 
   virtual RC_t disposePage(PID_t pid);
 
