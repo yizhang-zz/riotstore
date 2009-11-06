@@ -1,8 +1,8 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "../common/common.h"
-#include "BitmapPagedFile.h"
+#include "../../common/common.h"
+#include "../BitmapPagedFile.h"
 #include <assert.h>
 #include <iostream>
 using namespace std;
