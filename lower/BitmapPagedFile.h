@@ -17,11 +17,12 @@
 
 class BitmapPagedFile : public PagedStorageContainer {
 
-private:
+// private:
+    public:
 
   FILE *file;
   uint32_t numContentPages;
-  Byte_t *header; // sizeof(PAGE_SIZE)
+  Byte_t header[PAGE_SIZE]; // sizeof(PAGE_SIZE)
   //bitset<8*PAGE_SIZE> header;
 
 public:
@@ -48,7 +49,8 @@ public:
 
   virtual RC_t writePage(const PageHandle &ph);
 
-private:
+// private:
+public:
 
   // sets bit in header that maps to pid
   void allocate(PID_t pid);
@@ -62,15 +64,22 @@ private:
 };
 
 inline void BitmapPagedFile::allocate(PID_t pid) {
-    header[pid/8] |= (1 << (pid%8));
+    if(pid < 8*PAGE_SIZE) {
+        header[pid/8] |= (1 << (pid%8));
+    }
 }
 
 inline void BitmapPagedFile::deallocate(PID_t pid) {
-    header[pid/8] &= ~(1 << (pid%8));
+    if(pid < 8*PAGE_SIZE) {
+        header[pid/8] &= ~(1 << (pid%8));
+    }
 }
 
 inline bool BitmapPagedFile::isAllocated(PID_t pid) {
-    return (header[pid/8] & (1 << (pid%8))) >> (pid%8);
+    if(pid < 8*PAGE_SIZE) {
+        return (header[pid/8] & (1 << (pid%8))) >> (pid%8);
+    }
+    return false;
 }
 //////////////////////////////////////////////////////////////////////
 // Another possible implementation of PagedStorageContainer would be
