@@ -79,27 +79,16 @@ RC_t BitmapPagedFile::allocatePage(PID_t &pid) {
     // check for empty slot in allocated header space
     for(int k = 0; k < numContentPages; k+=8) { // check 1 byte at a time
         if((header[k/8] & 255) != 255) { // found empty slot in header[k/8]
-            int target = header[k/8];
-            int mask = 1;
-            for(int i = 0; i < 8; i++) {
-                if((target & mask) == mask) { // bit is 1
-                    mask *= 2;
-                }
-                else {
-                    pid = k + i;
-                    allocate(pid);
-                    return RC_SUCCESS;
-                }
-            }
-            /*
-            for(int i = 0; i < 8; i++) {
-                if(!isAllocated(k + i)) {
-                    pid = k + i;
-                    allocate(pid);
-                    return RC_SUCCESS;
-                }
-            }
-            */
+            Byte_t target = header[k/8];
+            Byte_t mask = 1;
+			int i = 0;
+			while (target & mask) {
+				mask <<= 1;
+				i++;
+			}
+			pid = k + i;
+			allocate(pid);
+			return RC_SUCCESS;
         }
     }
 
