@@ -39,13 +39,14 @@ BitmapPagedFile::BitmapPagedFile(FILE *f) {
 // Remember to write the header back!
 BitmapPagedFile::~BitmapPagedFile() {
     // make sure number of pages in file is consistent with numContentPages
-    fflush(file);
     fseek(file, 0, SEEK_END);
-    Byte_t *filler = header; // use header as filler page
-    int pagesToAdd = 1 + numContentPages - ftell(file)/PAGE_SIZE;
-    for(int k = 0; k < pagesToAdd; k++) {
+    Byte_t *filler = header;
+    if(1 + numContentPages > ftell(file)/PAGE_SIZE) {
+        fseek(file, (numContentPages)*PAGE_SIZE, SEEK_SET);
         fwrite(filler, PAGE_SIZE, 1, file);
+        fflush(file);
     }
+    // write header
     rewind(file);
     fwrite(header, PAGE_SIZE, 1, file);
     fclose(file);
@@ -67,36 +68,42 @@ RC_t BitmapPagedFile::createPagedFile(const char *fileName, BitmapPagedFile
 
 /* only mark bit in header as allocated, defer writing until later */
 RC_t BitmapPagedFile::allocatePage(PID_t &pid) {
-    // first check for empty slot in allocated header space
-    for(int k = 0; k < numContentPages; k++) {
-        if(k%8 == 0 && (header[k/8] & 255) == 255) { // check 1 byte at a time
-            k += 7;  /* advance 1 byte (k will be incremented at end of pass to
-                        account for all 8 bits */
-            continue;
-        }
-        if(!isAllocated(k)) { // found empty slot
-            pid = k;
-            allocate(pid);
-            return RC_SUCCESS;
-        }
-    }
-    /*
-       if(numContentPages%8 != 0) { // still unused bits in last used byte
-       pid = numContentPages;
-       numContentPages++;
-       allocate(pid);
-       return RC_SUCCESS;
-       }
-     */
-    if(numContentPages < 8*PAGE_SIZE) { // still unused bytes in header
-        //header[numberContentPages/8] = 0;
+    // first check if next bit beyond currently allocated ones is available
+    if(numContentPages < 8*PAGE_SIZE) { // still unused bits in header
         pid = numContentPages;
-        numContentPages++;
         allocate(pid);
+        numContentPages++;
         return RC_SUCCESS;
     }
 
-    return RC_FAILURE; // header filled 
+    // check for empty slot in allocated header space
+    for(int k = 0; k < numContentPages; k+=8) { // check 1 byte at a time
+        if((header[k/8] & 255) != 255) { // found empty slot in header[k/8]
+            int target = header[k/8];
+            int mask = 1;
+            for(int i = 0; i < 8; i++) {
+                if((target & mask) == mask) { // bit is 1
+                    mask *= 2;
+                }
+                else {
+                    pid = k + i;
+                    allocate(pid);
+                    return RC_SUCCESS;
+                }
+            }
+            /*
+            for(int i = 0; i < 8; i++) {
+                if(!isAllocated(k + i)) {
+                    pid = k + i;
+                    allocate(pid);
+                    return RC_SUCCESS;
+                }
+            }
+            */
+        }
+    }
+
+    return RC_FAILURE; // header filled
 }
 
 /* tries to allocate new page with input pid. if pid is available, bitmask flag
@@ -161,6 +168,7 @@ RC_t BitmapPagedFile::writePage(const PageHandle &ph) {
         return RC_FAILURE;
     }
 
+    /*
     fseek(file, 0, SEEK_END);
     int numContentPagesOnFile = ftell(file)/PAGE_SIZE - 1;
     if(ph.pid >= numContentPagesOnFile) { // need to add page padding
@@ -171,7 +179,9 @@ RC_t BitmapPagedFile::writePage(const PageHandle &ph) {
             fwrite(filler, PAGE_SIZE, 1, file);
         }
     }
+    */
     fseek(file, (1 + ph.pid)*PAGE_SIZE, SEEK_SET); // +1 for header page
     fwrite(ph.image, PAGE_SIZE, 1, file);
+    fflush(file);
     return RC_SUCCESS;
 }

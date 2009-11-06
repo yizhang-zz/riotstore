@@ -22,8 +22,7 @@ class BitmapPagedFile : public PagedStorageContainer {
 
   FILE *file;
   uint32_t numContentPages;
-  Byte_t header[PAGE_SIZE]; // sizeof(PAGE_SIZE)
-  //bitset<8*PAGE_SIZE> header;
+  Byte_t header[PAGE_SIZE]; 
 
 public:
 
