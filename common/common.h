@@ -43,21 +43,21 @@ bool R_IsNA(double x);
 const int BLOCK_SIZE = 4096;
 const int PAGE_SIZE = BLOCK_SIZE;
 enum BlockFormat { DENSE, SPARSE };
-enum BlockType { LEAF, INTERNAL, ROOT};
-typedef uint32_t Key;
-typedef double Datum;
+enum BlockType { LEAF, INTERNAL};
+typedef uint32_t Key_t;
+typedef double Datum_t;
 typedef uint32_t BlockNo; /* page number */
 
 typedef struct 
 {
-	Key  	key;
-	Datum 	datum;
+	Key_t  	key;
+	Datum_t 	datum;
 } Entry;
 
 typedef struct 
 {
-	Key 	lowerBound;
-	Key 	upperBound;
+	Key_t 	lowerBound;
+	Key_t 	upperBound;
 } Range;
 
 typedef struct 
@@ -65,13 +65,13 @@ typedef struct
 	BlockType		type;
 	BlockFormat format;
 	Range 	range;
-	Datum 		default_value;
+	Datum_t 		default_value;
 	uint32_t entry_count;
 	BlockNo next; /* only for leaves */
 } BlockHeader;
 
-const int CAPACITY_DENSE  = ((BLOCK_SIZE - sizeof(BlockHeader))/sizeof(Datum));
-const int CAPACITY_SPARSE = ((BLOCK_SIZE - sizeof(BlockHeader))/(sizeof(Datum)+sizeof(Key)));
+const int CAPACITY_DENSE  = ((BLOCK_SIZE - sizeof(BlockHeader))/sizeof(Datum_t));
+const int CAPACITY_SPARSE = ((BLOCK_SIZE - sizeof(BlockHeader))/(sizeof(Datum_t)+sizeof(Key_t)));
 
 // const int PAGE_SIZE = 4096;
 //////////////////////////////////////////////////////////////////////
@@ -115,13 +115,13 @@ inline int BlockCapacity(BlockHeader *hdr)
 	return ((hdr->format == DENSE) ? CAPACITY_DENSE : CAPACITY_SPARSE);
 }
 
-inline void SetRange(Range& range, Key lower, Key upper)
+inline void SetRange(Range& range, Key_t lower, Key_t upper)
 {
 	range.lowerBound = lower;
 	range.upperBound = upper;
 }
 
-inline void SetBlockHeader(BlockHeader* blockHeader, BlockFormat format, Range& range, BlockNo nextBlock, Datum def=0, uint32_t nEntries=0)
+inline void SetBlockHeader(BlockHeader* blockHeader, BlockFormat format, Range& range, BlockNo nextBlock, Datum_t def=0, uint32_t nEntries=0)
 {
 	blockHeader->format = format;
 	blockHeader->range = range;
@@ -130,7 +130,7 @@ inline void SetBlockHeader(BlockHeader* blockHeader, BlockFormat format, Range& 
 	blockHeader->entry_count = nEntries;
 }
 
-inline void SetEntry(Entry& entry, Key k, Datum d)
+inline void SetEntry(Entry& entry, Key_t k, Datum_t d)
 {
    entry.key = k;
    entry.datum = d;
