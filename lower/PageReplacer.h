@@ -18,19 +18,19 @@ class PageReplacer {
 
 //  friend class BufferManager;
 
-protected:
+public:
 
   // A handle to the buffer manager that this replacer works for
-//  BufferManager *bufferManager;
+  // BufferManager *bufferManager;
 
-  PageReplacer(/*BufferManager *bm*/);
-  ~PageReplacer();
+  PageReplacer() {}
+  virtual ~PageReplacer() {}
 
   // Allows subclasses to access BufferManager's protected/private
   // members that may be useful.
-  const bool *getUsedBits() const;
-  const bool *getDirtyBits() const;
-  const uint32_t *getPinCounts() const;
+  /* const bool *getUsedBits() const; */
+  /* const bool *getDirtyBits() const; */
+  /* const uint32_t *getPinCounts() const; */
 
   // Returns the index (into BufferManager::images) of the recommended
   // page to be replaced when called by BufferManager.  All pages in

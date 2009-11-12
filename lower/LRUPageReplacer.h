@@ -7,14 +7,14 @@
 struct BufferHeader;
 
 class LRUPageReplacer: public PageReplacer {
-protected:
+private:
   /*
 		Organize all retired, unpinned pages in a list.  The list is
 		sorted in increasing last-access time. Head of the list is the
 		least recently accessed.
 	*/
 	BufferHeader *head, *tail;
-protected:
+public:
   LRUPageReplacer(/*BufferManager &bufferManager*/);
   ~LRUPageReplacer();
   RC_t selectToReplace(BufferHeader **bh);
