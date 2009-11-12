@@ -40,6 +40,9 @@ public:
 	void setLowerBound(_K lower);
 	void setUpperBound(_K upper);
 	
+	PID_t getPID() {
+		return ph->pid;
+	}
 	//virtual Iterator* getIterator(Range range) = 0;
 };
 

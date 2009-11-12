@@ -2,6 +2,8 @@
 #define COMMON_H
 
 #include <stdint.h>
+#include <typeinfo>
+#include <assert.h>
 
 /* Utilities for the NA value; taken from arithmetic.c from R src. */
 typedef union
@@ -38,6 +40,36 @@ static double R_ValueOfNA()
    return x.value;
 };
 bool R_IsNA(double x);
+
+/* Array level definitions. */
+enum DataType { INT, DOUBLE, COMPLEX };
+
+template<class T>
+inline bool IsSameDataType(T x, DataType t) {
+	switch(t) {
+case INT:
+	return typeid(x)==typeid(int);
+case DOUBLE:
+	return typeid(x)==typeid(double);
+case COMPLEX:
+	// to be implemented
+	break;
+default:
+	return false;
+	}
+	return false;
+}
+
+template<class T>
+inline DataType GetDataType(T x) {
+	if (typeid(x) == typeid(int))
+		return INT;
+	if (typeid(x) == typeid(double))
+		return DOUBLE;
+	// to add complex type
+	
+	assert(false);
+}
 
 /* Block level definitions. */
 const int BLOCK_SIZE = 4096;

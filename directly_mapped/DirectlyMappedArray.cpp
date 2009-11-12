@@ -32,20 +32,46 @@ void DenseArrayBlock<Datum_t>::put(Key_t key, Datum_t datum) {
     *(data + key - this->lowerBound) = datum;
 }
 
-// If the file exists, initialize from the file;
-// otherwise create a new one.
+
 template<class Key_t, class Datum_t>
 DirectlyMappedArray<Key_t, Datum_t>::DirectlyMappedArray(const char* fileName, 
-        uint32_t numElements) { // where does numElements come from?
-    BitmapPagedFile::createPagedFile(fileName, file); // should this be stored?
-    this->numElements = numElements;
-    buffer = new BufferManager<>(file, BUFFER_SIZE); 
+        uint32_t numElements) {
+	if (numElements > 0) {		// new array to be created
+		remove(fileName);
+		BitmapPagedFile::createPagedFile(fileName, file);
+		buffer = new BufferManager<>(file, BUFFER_SIZE); 
+		this->numElements = numElements;
+		PageHandle ph;
+		assert(RC_SUCCESS == buffer->allocatePageWithPID(0, ph));
+		// page is already marked dirty
+		DirectlyMappedArrayHeader* header = (DirectlyMappedArrayHeader*) ph.image;
+		header->numElements = numElements;
+		Datum_t x;
+		header->dataType = GetDataType(x);
+		buffer->unpinPage(ph);
+	}
+	else {						// existing array
+		if (access(fileName, F_OK) != 0)
+			throw std::string("File for array does not exist.");
+		BitmapPagedFile::createPagedFile(fileName, file);
+		buffer = new BufferManager<>(file, BUFFER_SIZE); 
+		PageHandle ph;
+		ph.pid = 0; 			// first page is header
+		buffer->readPage(ph);
+		DirectlyMappedArrayHeader header = *((DirectlyMappedArrayHeader*) ph.image);
+		buffer->unpinPage(ph);
+		this->numElements = header.numElements;
+		Datum_t x;
+		assert(IsSameDataType(x, header.dataType));
+	}
 }
 
 template<class Key_t, class Datum_t>
 DirectlyMappedArray<Key_t, Datum_t>::~DirectlyMappedArray() {
-    delete file;
+	// should delete buffer first, because flushAll() is called in
+	// buffer's destructor, at which time file is updated.
     delete buffer;
+    delete file;
 }
 
 /**
@@ -60,11 +86,12 @@ Datum_t DirectlyMappedArray<Key_t, Datum_t>::get(Key_t key) const {
     }
 
     PageHandle ph;
-    ph.pid = (PID_t)key/PAGE_SIZE;
+	findPage(key, &ph.pid);
     buffer->readPage(ph);
     DenseArrayBlock<Datum_t> *dab = new DenseArrayBlock<Datum_t>(ph, 
             key - key%PAGE_SIZE, key - key%PAGE_SIZE + PAGE_SIZE);
     Datum_t result = dab->get(key);
+	buffer->unpinPage(ph);
     delete dab;
     return result;
 }
@@ -78,14 +105,16 @@ Datum_t DirectlyMappedArray<Key_t, Datum_t>::get(Key_t key) const {
 template<class Key_t, class Datum_t>
 void DirectlyMappedArray<Key_t, Datum_t>::put(Key_t key, Datum_t datum) {
     PageHandle ph;
-    PID_t pid = (PID_t)key/PAGE_SIZE;
-    if (buffer->allocatePageWithPID(pid, ph) != RC_SUCCESS) { /* page containing
+	findPage(key, &ph.pid);
+    if (buffer->allocatePageWithPID(ph.pid, ph) != RC_SUCCESS) { /* page containing
        pid already exists */
        buffer->readPage(ph);
     }
     DenseArrayBlock<Datum_t> *dab = new DenseArrayBlock<Datum_t>(ph, 
         key - key%PAGE_SIZE, key - key%PAGE_SIZE + PAGE_SIZE);
-    dab->put(pid, datum);
+    dab->put(key, datum);
     buffer->flushPage(ph);
+	buffer->unpinPage(ph);
     delete dab;
 }
+
