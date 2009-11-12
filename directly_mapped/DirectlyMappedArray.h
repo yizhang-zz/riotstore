@@ -8,6 +8,8 @@
 #include "../lower/BitmapPagedFile.h"
 #include "../lower/BufferManager.h"
 
+const int BUFFER_SIZE = 100;
+
 template <class _Tp>
 class DenseArrayBlockIterator {
 	typedef DenseArrayBlockIterator<_Tp> _Self;
@@ -127,9 +129,10 @@ public:
 	// If the file exists, initialize from the file;
 	// otherwise create a new one.
 	DirectlyMappedArray(const char* fileName, uint32_t numElements);
+   ~DirectlyMappedArray();
 
 	Datum_t get(Key_t key) const;
-	Datum_t put(Key_t key, Datum_t datum);
+	void put(Key_t key, Datum_t datum);
 };
 
 #endif
