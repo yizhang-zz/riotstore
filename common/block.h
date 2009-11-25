@@ -18,29 +18,47 @@ protected:
 	
 public:
 
-	Block();
-	virtual ~Block();
+    // TODO: implement these?
+	Block() {}
+	virtual ~Block() {}
 	
 	// Factory method for creating a proper subclass of Block.
-	static Block* initFromPage(PageHandle *ph, _K begin, _K end, _D defaultValue);
-	virtual void flush();
+	static Block<_K, _D>* initFromPage(PageHandle *ph, _K begin, _K end, _D
+            defaultValue) {}
+	virtual void flush() {}
 
-	BlockType getType() const; // leaf or internal
-	BlockFormat getFormat() const; // dense or sparse
-	uint32_t getEntryCount() const;
-	_D getDefaultValue() const;
+    // TODO: implement these?
+	BlockType getType() const {} // leaf or internal
+	BlockFormat getFormat() const {} // dense or sparse
+	uint32_t getEntryCount() const {}
+	_D getDefaultValue() const {}
 
 	// Tests whether this block is full such that a new key/value pair
 	// (where the value is non-default) cannot be accomodated.
 	virtual bool isFull() const = 0;
 	
-	void setRange(_K lower, _K upper);
-	_K getLowerBound() const;
-	_K getUpperBound() const;
-	void setLowerBound(_K lower);
-	void setUpperBound(_K upper);
+	void setRange(_K lower, _K upper) {
+        lowerBound = lower;
+        upperBound = upper;
+    }
+
+	_K getLowerBound() const {
+        return lowerBound;
+    }
+
+	_K getUpperBound() const {
+        return upperBound;
+    }
 	
-	PID_t getPID() {
+    void setLowerBound(_K lower) {
+        lowerBound = lower;
+    }
+
+	void setUpperBound(_K upper) {
+        upperBound = upper;
+    }
+	
+	PID_t getPID() const {
 		return ph->pid;
 	}
 	//virtual Iterator* getIterator(Range range) = 0;

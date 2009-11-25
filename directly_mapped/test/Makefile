@@ -1,0 +1,31 @@
+CXX = g++
+CXXFLAGS = -g -std=c++0x
+
+.PHONY: all clean 
+
+objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp))
+
+.c.o:
+	$(CXX) $(CXXFLAGS) -c $<
+
+.cpp.o:
+	$(CXX) $(CXXFLAGS) -c $<
+
+all: DMA
+	@echo "testing"
+	./test
+
+%.d: %.cpp
+	$(SHELL) -ec '$(CXX) -M $(CXXFLAGS) $< | sed "s/$*.o/& $@/g" > $@'
+
+include $(objects:.o=.d)
+
+DMA: TestDMA.o
+	$(CXX) -o test $< ../../lower/BitmapPagedFile.o ../../lower/LRUPageReplacer.o
+
+clean : 
+	rm -f *.o
+	rm -f *.d
+	rm -f ../*.o
+	rm -f ../*.d
+
