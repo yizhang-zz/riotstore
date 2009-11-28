@@ -1,6 +1,6 @@
 
 CXX = g++
-CXXFLAGS = -g -std=c++0x
+CXXFLAGS = -g 
 
 objects := $(patsubst %.c,%.o, $(wildcard *.c)) $(patsubst %.cpp, %.o, $(wildcard *.cpp))
 

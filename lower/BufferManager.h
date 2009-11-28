@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include <unordered_map>
+#include <tr1/unordered_map>
 #include "../common/common.h"
 #include "PagedStorageContainer.h"
 
@@ -45,8 +45,8 @@ class BufferManager {
 
 private:
 
-	typedef std::unordered_map<PID_t, BufferHeader*> PageHashMap;
-	
+  typedef std::tr1::unordered_map<PID_t, BufferHeader*> PageHashMap;
+
   // The underlying storage.
   PagedStorageContainer *storage;
 
