@@ -84,12 +84,38 @@ void testDenseArrayBlock() {
 
 void testDirectlyMappedArray() {
     DirectlyMappedArray<Key_t, Datum_t> *dma = new DirectlyMappedArray<Key_t,
-        Datum_t>("test.bin", 0);
+        Datum_t>("test.bin", 3*PAGE_SIZE);
+/*    for(int k=0; k<4*PAGE_SIZE; k++) {
+        dma->put(k, (double)k/PAGE_SIZE);
+    }
+    for(int k=0; k<4*PAGE_SIZE; k++) {
+        assert(dma->get(k) == (double)k/PAGE_SIZE);
+    }
+  */
+    dma->put(3, 10.2);
+    dma->put(PAGE_SIZE+10, 123);
+    dma->put(2*PAGE_SIZE, -123.456);
+    assert(dma->get(3) == 10.2);
+    assert(dma->get(PAGE_SIZE+10) == 123);
+    assert(dma->get(2*PAGE_SIZE) == -123.456);
+    assert(R_IsNA(dma->get(-1)));
+    assert(R_IsNA(dma->get(3*PAGE_SIZE)));
+    for(unsigned k = 0; k<3*PAGE_SIZE; k++) {
+        if(dma->get(k) != 0) {
+            cout << "non-zero value at: " << endl;
+            cout << k<< "\t"<<(dma->get(k)) << endl;
+        }
+    }
+
+//    DirectlyMappedArrayIterator<Key_t, Datum_t> it = dma->getIterator(0,
+  //          4*PAGE_SIZE);
+
+    cout << "Directly Mapped Array test cases passed" << endl;
 }
 
 int main() {
-
-    testDenseArrayBlock();
-    // testDirectlyMappedArray();
+    remove("test.bin");
+//    testDenseArrayBlock();
+    testDirectlyMappedArray();
     return 0;
 }

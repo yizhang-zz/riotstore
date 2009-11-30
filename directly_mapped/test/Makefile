@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -g -std=c++0x
+CXXFLAGS = -g 
 
 .PHONY: all clean 
 
@@ -21,7 +21,7 @@ all: DMA
 include $(objects:.o=.d)
 
 DMA: TestDMA.o
-	$(CXX) -o test $< ../../lower/BitmapPagedFile.o ../../lower/LRUPageReplacer.o
+	$(CXX) -o test $< ../../lower/BitmapPagedFile.o ../../lower/LRUPageReplacer.o ../../common/common.o
 
 clean : 
 	rm -f *.o
