@@ -107,7 +107,7 @@ void testDirectlyMappedArray() {
         }
     }
 
-//    DirectlyMappedArrayIterator<Key_t, Datum_t> it = dma->getIterator(0,
+//    DirectlyMappedArrayIterator<Key_t, Datum_t> *it = dma->getIterator(0,
   //          4*PAGE_SIZE);
 
     cout << "Directly Mapped Array test cases passed" << endl;

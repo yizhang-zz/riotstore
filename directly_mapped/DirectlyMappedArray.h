@@ -173,7 +173,7 @@ class DirectlyMappedArrayIterator {
             throw std::string("Iterator range out of array range.");
 
         PID_t pid;
-        array->findPage(beginsAt, pid);
+        array->findPage(beginsAt, &pid);
         array->loadBlock(pid, &block);
         _K upper = endsBy;
         atLastBlock = true;
@@ -298,7 +298,7 @@ class DirectlyMappedArray {
         }
 
         PageHandle ph;
-        findPage(key, ph.pid);
+        findPage(key, &(ph.pid));
         buffer->readPage(ph);
         DenseArrayBlock<Datum_t> *dab = new DenseArrayBlock<Datum_t>(&ph, 
                 (key/PAGE_SIZE)*PAGE_SIZE, (key/PAGE_SIZE+1)*PAGE_SIZE);
@@ -310,7 +310,7 @@ class DirectlyMappedArray {
 
     void put(Key_t key, Datum_t datum) {
         PageHandle ph;
-        findPage(key, ph.pid);
+        findPage(key, &(ph.pid));
         if (buffer->allocatePageWithPID(ph.pid, ph) != RC_SUCCESS) { /* page containing
                                                                         pid already exists */
             buffer->readPage(ph);
@@ -323,8 +323,8 @@ class DirectlyMappedArray {
         delete dab;
     }
 
-    void findPage(Key_t key, PID_t &pid) {
-        pid = key/PAGE_SIZE + 1;
+    void findPage(Key_t key, PID_t *pid) {
+        *pid = key/PAGE_SIZE + 1;
     }
 
     RC_t loadBlock(PID_t pid, DenseArrayBlock<Datum_t>** block) {
@@ -340,8 +340,8 @@ class DirectlyMappedArray {
         return buffer->unpinPage(block->ph);
     }
 
-    iterator getIterator(Key_t beginsAt, Key_t endsBy) {
-        return iterator(beginsAt, endsBy, this);
+    iterator *getIterator(Key_t beginsAt, Key_t endsBy) {
+        return new iterator(beginsAt, endsBy, this);
     }
 
 };
