@@ -74,6 +74,7 @@ inline DataType GetDataType(T x) {
 /* Block level definitions. */
 const int BLOCK_SIZE = 4096;
 const int PAGE_SIZE = BLOCK_SIZE;
+#define PAGE_DENSE_CAP(x) (PAGE_SIZE/sizeof(x))
 enum BlockFormat { DENSE, SPARSE };
 enum BlockType { LEAF, INTERNAL};
 typedef uint32_t Key_t;

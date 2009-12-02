@@ -4,13 +4,12 @@
 
 #include "../common/common.h"
 
-enum ReturnStatus { NORMAL, OUT_OF_RANGE, OVERFLOW, IMPROPER_RANGE };
+enum ReturnStatus { RS_NORMAL, RS_OUT_OF_RANGE, RS_OVERFLOW, RS_IMPROPER_RANGE };
 
 template<class _K, class _D>
 class Block {
 	
 protected:
-	PageHandle* ph; // contains PID and a pointer to the in-memory image
 
 	// [lowerBound, upperBound) specifies the key range of this block
 	_K lowerBound;
@@ -18,6 +17,7 @@ protected:
 	
 public:
 
+	PageHandle ph; // contains PID and a pointer to the in-memory image
     // TODO: implement these?
 	Block() {}
 	virtual ~Block() {}
@@ -59,7 +59,7 @@ public:
     }
 	
 	PID_t getPID() const {
-		return ph->pid;
+		return ph.pid;
 	}
 	//virtual Iterator* getIterator(Range range) = 0;
 };
