@@ -148,7 +148,7 @@ public:
   // it, marks it dirty, and returns the handle.
   RC_t allocatePage(PageHandle &ph) {
 		BufferHeader *bh;
-		if ( storage->allocatePage(ph.pid) != RC_SUCCESS) {
+		if (storage->allocatePage(ph.pid) != RC_SUCCESS) {
 			printf("Physical storage cannot allocate page.\n");
 			return RC_FAILURE;
 		}
@@ -178,7 +178,7 @@ public:
   RC_t allocatePageWithPID(PID_t pid, PageHandle &ph) {
 		BufferHeader *bh;
 		if (storage->allocatePageWithPID(pid) != RC_SUCCESS) {
-			printf("Physical storage cannot allocate page.\n");
+			// printf("Physical storage cannot allocate page.\n");
 			return RC_FAILURE;
 		}
 		ph.pid = pid;

@@ -1,4 +1,5 @@
 
+#include <math.h>
 #include <iostream>
 #include <string.h>
 #include <assert.h>
@@ -11,7 +12,7 @@ Byte_t buffer[PAGE_SIZE];
 
 void testDenseArrayBlock() {
     pHandle.pid = 123;
-    for(int k=0; k<PAGE_SIZE; k+=8) {
+    for (int k=0; k<PAGE_SIZE; k+=8) {
         *((Datum_t*)(buffer+k)) = k;
     }
     pHandle.image = &buffer;
@@ -44,78 +45,143 @@ void testDenseArrayBlock() {
     
     // test iterator
     dab->put(PAGE_SIZE+124, 124*8);
-    DenseArrayBlockIterator<Datum_t> it= dab->getIterator();
+    DenseArrayBlockIterator<Datum_t> *it= dab->getIterator();
     Datum_t x = 0;
-    while(it.next()) {
-        assert(*it == 8*x);
-        it++;
+    do {
+        assert(**it == 8*x);
         x++;
-    }
+    } while (it->next());
+    delete it;
 
     it = dab->getIterator(PAGE_SIZE+10, PAGE_SIZE+PAGE_SIZE/8-10);
     x = 10;
-    while(it.next()) {
-        assert(*it == 8*x);
-        ++it;
+    do {
+        assert(**it == 8*x);
         x++;
-    }
+    } while (it->next());
+    delete it;
 
+    // comparison operators
     it = dab->getIterator(PAGE_SIZE+10, PAGE_SIZE+PAGE_SIZE/8-10);
-    DenseArrayBlockIterator<Datum_t> another = DenseArrayBlockIterator<Datum_t>(it);
+    DenseArrayBlockIterator<Datum_t> *another =
+        new DenseArrayBlockIterator<Datum_t>(*it);
     x = 0;
-    while(another.next()) {
-        if(x < 10) {
-            assert(another != it);
+    do {
+        if (x < 256) {
+            assert(*another == *it);
+            it->next();
         }
-        else if (x < PAGE_SIZE/8-10) {
-            assert(another == it);
-        }
+        else if (x == 256)
+            assert(*another == *it);
         else {
-            assert(another != it);
+            assert(*another != *it);
         }
         x++;
-        it++;
-    }
+    } while(another->next());
+    delete it;
+    delete another;
 
+    // using comparison and increment method
+    it = dab->getIterator(PAGE_SIZE+10, PAGE_SIZE+10);
+    another = dab->getIterator(PAGE_SIZE+PAGE_SIZE/8-10,
+            PAGE_SIZE+PAGE_SIZE/8-10);
+    for (x = 10; (*it) != (*another); ++(*it), x++) {
+        assert(**it == 8*x);
+    }
+    delete it;
+    delete another;
+
+    another = dab->getIterator(PAGE_SIZE+10, PAGE_SIZE+PAGE_SIZE/8-10);
+    for (x = 10; another->hasNext(); (*another)++, x++) {
+        assert(**another == 8*x);
+    }
+    delete another;
 
     delete dab;
     cout << "dense array block test cases passed" << endl;
 }
 
 void testDirectlyMappedArray() {
+    int cap = PAGE_DENSE_CAP(Datum_t);
+    assert(cap == 512);
     DirectlyMappedArray<Key_t, Datum_t> *dma = new DirectlyMappedArray<Key_t,
-        Datum_t>("test.bin", 3*PAGE_SIZE);
-/*    for(int k=0; k<4*PAGE_SIZE; k++) {
-        dma->put(k, (double)k/PAGE_SIZE);
+        Datum_t>("test.bin", 3*cap);
+    for (int k=0; k<3*cap; k++) {
+        dma->put(k, 0);
     }
-    for(int k=0; k<4*PAGE_SIZE; k++) {
-        assert(dma->get(k) == (double)k/PAGE_SIZE);
-    }
-  */
+ 
+    // test put/get
     dma->put(3, 10.2);
-    dma->put(PAGE_SIZE+10, 123);
-    dma->put(2*PAGE_SIZE, -123.456);
+    dma->put(cap+10, 123);
+    dma->put(2*cap, -123.456);
     assert(dma->get(3) == 10.2);
-    assert(dma->get(PAGE_SIZE+10) == 123);
-    assert(dma->get(2*PAGE_SIZE) == -123.456);
+    assert(dma->get(cap+10) == 123);
+    assert(dma->get(2*cap) == -123.456);
     assert(R_IsNA(dma->get(-1)));
-    assert(R_IsNA(dma->get(3*PAGE_SIZE)));
-    for(unsigned k = 0; k<3*PAGE_SIZE; k++) {
-        if(dma->get(k) != 0) {
-            cout << "non-zero value at: " << endl;
-            cout << k<< "\t"<<(dma->get(k)) << endl;
+    assert(R_IsNA(dma->get(3*cap)));
+    for (int k = 0; k<3*cap; k++) {
+        if (k != 3 && k!= cap+10 && k != 2*cap) {
+            assert(dma->get(k) == 0);
         }
     }
 
-//    DirectlyMappedArrayIterator<Key_t, Datum_t> *it = dma->getIterator(0,
-  //          4*PAGE_SIZE);
+    // delete and retrieve
+    delete dma;
+    dma = new DirectlyMappedArray<Key_t, Datum_t>("test.bin", 0);
 
+    // test iterator
+    assert(dma->get(3)==10.2);
+    assert(dma->get(cap+10) == 123);
+    assert(dma->get(2*cap) == -123.456);
+    DirectlyMappedArrayIterator<Key_t, Datum_t> *it = dma->getIterator(1,
+            2*cap+2);
+    int x = 1;
+    do {
+        if (x == 3)
+            assert(**it == 10.2);
+        else if (x == cap+10)
+            assert(**it == 123);
+        else if (x == 2*cap)
+            assert(**it == -123.456);
+        else {
+            assert(**it == 0);
+        }
+        x++; 
+    } while (it->next());
+    delete it;
+
+
+/*
+    DirectlyMappedArrayIterator<Key_t, Datum_t> *another = dma->getIterator(10, 11);
+    *it = dma->getIterator(1, 10);
+    assert( (*it) != (*another));
+    delete it;
+    it = dma->getIterator(10, 12);
+    ++(*it);
+    assert((*it) == (*another));
+*
+    it = dma->getIterator(1, 20);
+    (*it)++;
+    for(x = 1;it->hasNext(); (*it)++, x++) {
+        if(x == 3)
+            assert(**it == 10.2);
+        else if(x == cap+10)
+            assert(**it == 123);
+        else if(x == 2*cap)
+            assert(**it == -123.456);
+        else 
+            assert(**it == 0);
+    }
+    delete it;
+    delete another;
+*/
+    delete dma;
     cout << "Directly Mapped Array test cases passed" << endl;
 }
 
 int main() {
-    remove("test.bin");
-//    testDenseArrayBlock();
+    testDenseArrayBlock();
     testDirectlyMappedArray();
+    remove("test.bin");
     return 0;
 }

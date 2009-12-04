@@ -33,14 +33,18 @@ class DenseArrayBlockIterator {
 
     DenseArrayBlockIterator(const _Self& obj) {
         cur = obj.cur;
-        end = obj.cur;
+        end = obj.end;
     }
 
-    bool next() const {
-        if (cur == end)
-            return false;
-        // cur++;
-        return true;
+    // checks if next element exists by incrementing cur, then comparing with
+    // end
+    bool next() {
+        cur++;
+        return cur != end;
+    }
+
+    bool hasNext() {
+        return cur != end;
     }
 
     reference operator*() const {
@@ -65,7 +69,7 @@ class DenseArrayBlockIterator {
     }
 
     bool operator!=(const _Self& x) const {
-        return cur != x.cur;
+        return !(cur == x.cur);
     }
 };
 
@@ -98,7 +102,7 @@ class DenseArrayBlock : public Block<Key_t, Datum_t> {
     // know the exact index range that this page is responsible for.
     // The default data value will also be supplied by the caller.
     DenseArrayBlock(PageHandle *ph, Key_t lower, Key_t upper) {
-        this->ph = ph;
+        this->ph = *ph;
         this->lowerBound = lower;
         this->upperBound = upper;
         this->data = (Datum_t *) ph->image;
@@ -110,19 +114,19 @@ class DenseArrayBlock : public Block<Key_t, Datum_t> {
     bool isFull() const {}
 
     Datum_t get(Key_t key) const { // assume key is within range
-        return *(data + key - this->lowerBound);
+        return *(data + (key - this->lowerBound));
     }
 
     void put(Key_t key, Datum_t datum) { // assume key is within range
-        *(data + key - this->lowerBound) = datum;
+        *(data + (key - this->lowerBound)) = datum;
     }
 
-    iterator getIterator(Key_t beginsAt, Key_t endsBy) {
-        return iterator(data+(beginsAt-this->lowerBound), data+(endsBy-this->lowerBound));
+    iterator* getIterator(Key_t beginsAt, Key_t endsBy) {
+        return new iterator(data + (beginsAt - this->lowerBound), data + (endsBy - this->lowerBound));
     }
 
-    iterator getIterator() {
-        return iterator(data, data+this->upperBound-this->lowerBound);
+    iterator* getIterator() {
+        return new iterator(data, data + (this->upperBound - this->lowerBound));
     }
 };
 
@@ -139,7 +143,7 @@ class DirectlyMappedArrayIterator {
     private:
     DirectlyMappedArray<_K,_D>* array;
     DenseArrayBlock<_D>* block;
-    DenseArrayBlockIterator<_D> iter;
+    DenseArrayBlockIterator<_D>* iter;
     _K endsBy;
     bool atLastBlock;
 
@@ -156,10 +160,12 @@ class DirectlyMappedArrayIterator {
         }
         if (block->getUpperBound() < endsBy) {
             atLastBlock = false;
+            delete iter;
             iter = block->getIterator();
         }
         else {
             atLastBlock = true;
+            delete iter;
             iter = block->getIterator(block->getLowerBound(), endsBy);
         }
         return true;
@@ -172,6 +178,7 @@ class DirectlyMappedArrayIterator {
         if (array->getLowerBound() > beginsAt || array->getUpperBound() < endsBy)
             throw std::string("Iterator range out of array range.");
 
+        this->endsBy = endsBy;
         PID_t pid;
         array->findPage(beginsAt, &pid);
         array->loadBlock(pid, &block);
@@ -187,22 +194,26 @@ class DirectlyMappedArrayIterator {
     ~DirectlyMappedArrayIterator() {
         array->releaseBlock(block);
         delete block;
+        delete iter;
     }
 
     bool next() {
         if (iter->next())
             return true;
-        else {
-            if (nextBlockIterator())
-                return iter->next();
-            return false;
-        }
+        return nextBlockIterator();
+    }
+
+    bool hasNext() {
+        if (iter->hasNext())
+            return true;
+        return !atLastBlock;
     }
 
     reference operator*() const {
-        return *iter;
+        return **iter;
     }
 
+    /*
     // the prefix ++ operator: ++x
     _Self& operator++() {
         next();
@@ -212,18 +223,21 @@ class DirectlyMappedArrayIterator {
     // the postfix ++ operator: x++
     _Self operator++(int) {
         _Self tmp = *this;
-        next();
+        //next();
         return tmp;
     }
 
     bool operator==(const _Self& x) const {
-        return array == x.array && block->getPID() == x.block->getPID() && iter == x.iter;
+        return iter == x.iter;
+        //return array == x.array && block->getPID() == x.block->getPID() && iter == x.iter;
     }
 
     bool operator!=(const _Self& x) const {
-        return ! this==x;
+        // return !(this == x);
+        return array != x.array || block->getPID() != x.block->getPID() || iter
+            != x.iter;
     }
-
+    */
 };
 
 
@@ -249,12 +263,14 @@ class DirectlyMappedArray {
     BitmapPagedFile *file;
     BufferManager<> *buffer;
 
+    uint32_t pageCap;
     uint32_t numElements;
 
     public:
     // If numElements > 0, create a new array; otherwise read from disk.
     // Whether file exists is ignored.
     DirectlyMappedArray(const char* fileName, uint32_t numElements) {
+        pageCap = PAGE_DENSE_CAP(Datum_t);
         if (numElements > 0) {		// new array to be created
             remove(fileName);
             BitmapPagedFile::createPagedFile(fileName, file);
@@ -301,7 +317,7 @@ class DirectlyMappedArray {
         findPage(key, &(ph.pid));
         buffer->readPage(ph);
         DenseArrayBlock<Datum_t> *dab = new DenseArrayBlock<Datum_t>(&ph, 
-                (key/PAGE_SIZE)*PAGE_SIZE, (key/PAGE_SIZE+1)*PAGE_SIZE);
+                (key/pageCap)*pageCap, (key/pageCap+1)*pageCap);
         Datum_t result = dab->get(key);
         buffer->unpinPage(ph);
         delete dab;
@@ -316,15 +332,15 @@ class DirectlyMappedArray {
             buffer->readPage(ph);
         }
         DenseArrayBlock<Datum_t> *dab = new DenseArrayBlock<Datum_t>(&ph, 
-                (key/PAGE_SIZE)*PAGE_SIZE, (key/PAGE_SIZE+1)*PAGE_SIZE);
+                (key/pageCap)*pageCap, (key/pageCap+1)*pageCap);
         dab->put(key, datum);
-        buffer->flushPage(ph);
+        buffer->markPageDirty(ph);
         buffer->unpinPage(ph);
         delete dab;
     }
 
     void findPage(Key_t key, PID_t *pid) {
-        *pid = key/PAGE_SIZE + 1;
+        *pid = key/pageCap + 1;
     }
 
     RC_t loadBlock(PID_t pid, DenseArrayBlock<Datum_t>** block) {
@@ -332,16 +348,24 @@ class DirectlyMappedArray {
         ph.pid = pid;
         if (buffer->readPage(ph) == RC_FAILURE)
             return RC_FAILURE;
-        *block = new DenseArrayBlock<Datum_t>(ph, PAGE_SIZE*(pid-1), PAGE_SIZE*pid);
+        *block = new DenseArrayBlock<Datum_t>(&ph, pageCap*(pid-1), pageCap*pid);
         return RC_SUCCESS;
     }
 
     RC_t releaseBlock(DenseArrayBlock<Datum_t>* block) {
-        return buffer->unpinPage(block->ph);
+        return buffer->unpinPage((block->ph));
     }
 
-    iterator *getIterator(Key_t beginsAt, Key_t endsBy) {
+    iterator* getIterator(Key_t beginsAt, Key_t endsBy) {
         return new iterator(beginsAt, endsBy, this);
+    }
+
+    uint32_t getLowerBound() {
+        return 0;
+    }
+
+    uint32_t getUpperBound() {
+        return numElements;
     }
 
 };
