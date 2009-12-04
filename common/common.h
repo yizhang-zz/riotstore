@@ -76,6 +76,11 @@ const int BLOCK_SIZE = 4096;
 const int PAGE_SIZE = BLOCK_SIZE;
 enum BlockFormat { DENSE, SPARSE };
 enum BlockType { LEAF, INTERNAL};
+
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+
 typedef uint32_t Key_t;
 typedef double Datum_t;
 typedef uint32_t BlockNo; /* page number */
