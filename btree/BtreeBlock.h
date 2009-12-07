@@ -2,6 +2,14 @@
 #define BTREE_BLOCK_H
 
 #include "../common/common.h"
+#include <string.h>
+
+#define BT_OK 0
+#define BT_OVERWRITE 1
+#define BT_OVERFLOW 2
+
+#define BT_FOUND 0
+#define BT_NOT_FOUND 1
 
 /*
  * Structure of a Btree block: 
@@ -45,7 +53,19 @@ public:
 	PID_t	*rightChild;
 	PageHandle	ph;
 
-	const static u16	headerSize=7;	/* offset of data section */
+	struct OverflowEntry {
+		// insert this entry before the idx-th non-overflow entry
+		u16 idx;
+		// body of the overflown entry
+		u8 data[8];
+	} overflowEntries[2];
+
+	const static u16 headerSize=8;	/* should be 7 but 8 makes alignment
+									   easier */
+	/* If a key is not found in a dense leaf block, it has a default value
+	 * and is omitted. */
+	const static Datum_t defaultValue = 0.0;
+
 	static u16		denseCap;
 	static u16		sparseCap;
 	static u16		internalCap;
@@ -55,7 +75,11 @@ public:
 			bool isDense, bool isRoot=false);
 	// ~BtreeBlock();
 
-	int search(Key_t key, int *idx);
+	int search(Key_t key, u16 *idx);
+
+	int put(Key_t key, void *p);
+
+	int get(Key_t key, void *p);
 };
 
 #endif

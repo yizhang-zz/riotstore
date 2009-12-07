@@ -30,16 +30,13 @@ static CONST int hw = 1;
 static CONST int lw = 0;
 #endif /* WORDS_BIGENDIAN */
 
-static double R_ValueOfNA()
-{
-   /* The gcc shipping with RedHat 9 gets this wrong without
-    * the volatile declaration. Thanks to Marc Schwartz. */
-   volatile ieee_double x;
-   x.word[hw] = 0x7ff00000;
-   x.word[lw] = 1954;
-   return x.value;
-};
+extern double	NA_DOUBLE;
+extern int		NA_INT;
+
+// double R_ValueOfNA();
+
 bool R_IsNA(double x);
+#define ISNA(x) R_IsNA(x)
 
 /* Array level definitions. */
 enum DataType { INT, DOUBLE, COMPLEX };
