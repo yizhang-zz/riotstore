@@ -28,6 +28,30 @@ TEST(BtreeBlock, DenseLeaf_CreateEmpty)
 	}
 }
 
+TEST(BtreeBlock, DenseLeaf_InitExisting)
+{
+	PageImage image;
+	PageHandle ph;
+	ph.image = &image;
+	ph.pid = 0;
+
+	Key_t endsBy = BtreeBlock::denseCap;
+
+	BtreeBlock block(&ph, 0, endsBy, true, true);
+	Datum_t datum = 1.0;
+	block.put(1, &datum);
+	block.put(46, &datum);
+	block.syncHeader();
+
+	// init another block with existing data
+	BtreeBlock block1(&ph, 0, endsBy);
+	ASSERT_EQ(block1.nEntries, 2);
+	ASSERT_EQ(block1.lower, 0);
+	ASSERT_EQ(block1.upper, endsBy);
+	ASSERT_EQ(block1.isLeaf, block.isLeaf);
+	ASSERT_EQ(block1.isDense, block.isDense);
+}
+
 TEST(BtreeBlock, DenseLeaf_PutGet)
 {
 	PageImage image;

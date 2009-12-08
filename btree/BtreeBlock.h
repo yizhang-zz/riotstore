@@ -48,9 +48,12 @@ public:
 	Key_t	upper;		/* all keys < upper */
 	bool	isLeaf;
 	bool	isDense;
-	PID_t	*nextLeaf;
-	PID_t	*rightChild;
 	PageHandle	ph;
+
+	union ExtraPtr {
+		PID_t nextLeaf;
+		PID_t rightChild;
+	} ptr;
 
 	struct OverflowEntry {
 		// insert this entry before the idx-th non-overflow entry
@@ -74,6 +77,8 @@ public:
 	BtreeBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy, bool isLeaf,
 			bool isDense, bool isRoot=false);
 	// ~BtreeBlock();
+
+	void syncHeader();
 
 	int search(Key_t key, u16 *idx);
 

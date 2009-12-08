@@ -27,11 +27,12 @@ BtreeBlock::BtreeBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy)
 	isLeaf = flags & 0x1;
 	isDense = flags & 0x10;
 	nEntries = *((u16*)(pData + 1));
+
 	if (isLeaf) {
-		nextLeaf = (PID_t*)(pData+3);
+		ptr.nextLeaf = *(PID_t*)(pData+3);
 	}
 	else {
-		rightChild = (PID_t*)(pData+3);
+		ptr.rightChild = *(PID_t*)(pData+3);
 	}
 }
 
@@ -67,6 +68,26 @@ BtreeBlock::BtreeBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy, bool
 		}
 	}
 }
+
+/*
+ * Updates the block header in the page image.
+ */
+void BtreeBlock::syncHeader()
+{
+	u8 *pData = *ph.image;
+	*pData |= isLeaf;
+	*pData |= isDense;
+
+	*((u16*)(pData + 1)) = nEntries;
+
+	if (isLeaf) {
+		*((PID_t*)(pData+3)) = ptr.nextLeaf;
+	}
+	else {
+		*((PID_t*)(pData+3)) = ptr.rightChild;
+	}
+}
+
 
 /*
  * Searches the block for a particular key. If found, index of the entry is
