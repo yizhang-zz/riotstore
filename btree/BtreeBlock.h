@@ -8,7 +8,6 @@
 #define BT_OVERWRITE 1
 #define BT_OVERFLOW 2
 
-#define BT_FOUND 0
 #define BT_NOT_FOUND 1
 
 /*
@@ -65,6 +64,7 @@ public:
 	/* If a key is not found in a dense leaf block, it has a default value
 	 * and is omitted. */
 	const static Datum_t defaultValue = 0.0;
+	static inline bool IS_DEFAULT(Datum_t x) { return x == defaultValue; }
 
 	static u16		denseCap;
 	static u16		sparseCap;
@@ -80,6 +80,8 @@ public:
 	int put(Key_t key, void *p);
 
 	int get(Key_t key, void *p);
+
+	int del(Key_t key);
 };
 
 #endif

@@ -12,7 +12,7 @@ static double R_ValueOfNA()
 }
 
 double NA_DOUBLE = R_ValueOfNA();
-int NA_INT = INT32_MIN;
+// int NA_INT = INT32_MIN;
 
 bool R_IsNA(double x)
 {

@@ -58,12 +58,12 @@ BtreeBlock::BtreeBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy, bool
 	u16 *x = (u16*) pData;
 	*x = nEntries;		// initializes to 0
 
-	// Initialize payload to NA for dense leaf block
+	// Initialize payload to defaultValue for dense leaf block
 	if (isLeaf && isDense) {
 		int i = 0;
 		Datum_t *p = (Datum_t*) (*ph.image + headerSize);
 		for (; i < denseCap; i++) {
-			p[i] = NA_DOUBLE;
+			p[i] = defaultValue;
 		}
 	}
 }
@@ -79,12 +79,12 @@ int BtreeBlock::search(Key_t key, u16 *idx)
 
 	if (isDense) {
 		*idx = key - lower;
-		return 0;
+		return BT_OK;
 	}
 
 	if (nEntries == 0) {
 		*idx = 0;
-		return 1;
+		return BT_NOT_FOUND;
 	}
 
 	// binary search on the keys
@@ -102,16 +102,19 @@ int BtreeBlock::search(Key_t key, u16 *idx)
 
 	if (pKeys[mid] == key) {
 		*idx = mid;
-		return 0;
+		return BT_OK;
 	}
 
 	*idx = p;
-	return 1;
+	return BT_NOT_FOUND;
 }
 
 /* 
  * Puts an entry into the block. The same key may already exist in the
- * block. 
+ * block.
+ *
+ * If the data to be inserted is defaultValue for leaf blocks, it is
+ * equivalent to a delete. BT_OK is returned. 
  * 
  * Returns BT_OK if successfully inserted without overwriting or
  * overflowing, BT_OVERWRITE if a value exists and is overwritten,
@@ -120,13 +123,17 @@ int BtreeBlock::search(Key_t key, u16 *idx)
 int BtreeBlock::put(Key_t key, void *pDatum)
 {
 	Datum_t datum = *(Datum_t*)pDatum;
+	if (isLeaf && IS_DEFAULT(datum)) {
+		del(key);
+		return BT_OK;
+	}		
 
 	// If dense leaf block:
 	// no danger of overflow.
 	if (isLeaf && isDense) {
 		Datum_t *p = (Datum_t*) ((*ph.image)+headerSize);
 		u16 offset = key - lower;
-		if (ISNA(p[offset])) {
+		if (IS_DEFAULT(p[offset])) {
 			p[offset] = datum;
 			nEntries++;
 			return BT_OK;
@@ -141,7 +148,7 @@ int BtreeBlock::put(Key_t key, void *pDatum)
 
 	u16 idx;
 	int res = search(key, &idx);
-	if (res == BT_FOUND) { // an overwrite
+	if (res == BT_OK) { // an overwrite
 		if (isLeaf) { // sparse leaf
 			memcpy(pD-idx, pDatum, sizeof(Datum_t));
 		}
@@ -187,7 +194,11 @@ int BtreeBlock::put(Key_t key, void *pDatum)
 }
 
 /*
- * Gets an entry with the specified key. Returns BT_OK if found.
+ * Gets an entry with the specified key. Returns BT_OK if found,
+ * BT_NOT_FOUND otherwise. For dense leaf blocks, BT_OK is always returned.
+ * For sparse leaf blocks, BT_OK is returned even if the key does not exist,
+ * because we know it's a default value and is not stored explicitly. For an
+ * internal node, BT_NOT_FOUND is returned if the key cannot be found.
  */
 
 int BtreeBlock::get(Key_t key, void *pRes)
@@ -206,7 +217,7 @@ int BtreeBlock::get(Key_t key, void *pRes)
 
 	u16 idx;
 	int res = search(key, &idx);
-	if (res == BT_FOUND) { // an overwrite
+	if (res == BT_OK) { // an overwrite
 		if (isLeaf) 
 			memcpy(pRes, pD-idx, sizeof(Datum_t));
 		else
@@ -222,4 +233,61 @@ int BtreeBlock::get(Key_t key, void *pRes)
 		else
 			return BT_NOT_FOUND;
 	}
+}
+
+/*
+ * Deletes an entry with the specified key. If such a key is not stored,
+ * just return BT_OK for leaf blocks, or BT_NOT_FOUND for internal blocks. 
+ */
+
+int BtreeBlock::del(Key_t key)
+{
+	if (isLeaf && isDense) {
+		Datum_t *p = (Datum_t*) (*ph.image+headerSize);
+		u16 offset = key - lower;
+		if (!IS_DEFAULT(p[offset])) {
+			p[offset] = defaultValue;
+			nEntries--;
+		}
+		return BT_OK;
+	}
+
+	Key_t *pK = (Key_t*) ((*ph.image)+headerSize);
+	Datum_t *pD = (Datum_t*) (*ph.image + PAGE_SIZE) - 1;
+	PID_t *pP = (PID_t*) (*ph.image + PAGE_SIZE) - 1;
+
+	if (isLeaf && !isDense) {
+		/* Shift all entries with keys in (key, upper) to the left. A more
+		 * efficient implementation is to allow "holes", but that
+		 * complicates searching and insertion.
+		 */
+		u16 idx;
+		if (search(key, &idx) == BT_OK) {
+			int i;
+			for (i = idx; i < nEntries-1; i++)
+				pK[i] = pK[i+1];
+			for (i = idx; i < nEntries-1; i++)
+				pD[-i] = pD[-i-1];
+			nEntries--;
+		}
+		return BT_OK;
+	}
+
+	/*
+	 * Internal blocks: if key has index idx, then both key and the idx-th
+	 * child pointer are removed. Remember that keys[idx-1] <= p[idx] <
+	 * keys[idx].
+	 */
+	u16 idx;
+	if (search(key, &idx) == BT_OK) {
+		int i;
+		for (i = idx; i < nEntries-1; i++)
+			pK[i] = pK[i+1];
+		for (i = idx; i < nEntries-1; i++)
+			pP[-i] = pP[-i-1];
+		nEntries--;
+		return BT_OK;
+	}
+	else
+		return BT_NOT_FOUND;
 }
