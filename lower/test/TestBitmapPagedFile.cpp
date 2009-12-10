@@ -1,10 +1,11 @@
-
 #include <stdlib.h>
 #include <string.h>
 #include "../../common/common.h"
 #include "../BitmapPagedFile.h"
 #include <assert.h>
 #include <iostream>
+#include <fcntl.h>
+#include <sys/stat.h>
 using namespace std;
 
 BitmapPagedFile* bpf;
@@ -16,7 +17,7 @@ PageHandle ph;
 
 void test_constructor() {
     // create new file
-    rc = BitmapPagedFile::createPagedFile("test1.bin", bpf);
+    bpf = new BitmapPagedFile("test1.bin", BitmapPagedFile::F_CREATE);
     assert(rc == RC_SUCCESS);
     for(int k=0; k<PAGE_SIZE; k++) {
         assert(!bpf->isAllocated(k));
@@ -29,8 +30,8 @@ void test_constructor() {
     delete bpf;
 
     // open same file
-    rc = BitmapPagedFile::createPagedFile("test1.bin", bpf);
-    assert(rc == RC_SUCCESS);
+    bpf = new BitmapPagedFile("test1.bin", BitmapPagedFile::F_NO_CREATE);
+    assert(bpf);
     assert(bpf->isAllocated(0));
     assert(bpf->header[0] == 1);
     assert(bpf->numContentPages == 0);
@@ -40,8 +41,8 @@ void test_constructor() {
     delete bpf;
 
     // open some other file
-    rc = BitmapPagedFile::createPagedFile("test2.bin", bpf);
-    assert(rc == RC_SUCCESS);
+    bpf = new BitmapPagedFile("test2.bin", BitmapPagedFile::F_CREATE);
+    assert(bpf);
     for(int k=0; k<PAGE_SIZE; k++) {
         assert(!bpf->isAllocated(k));
     }
@@ -51,8 +52,8 @@ void test_constructor() {
 }
 
 void test_allocatePage() {
-    rc = BitmapPagedFile::createPagedFile("test1.bin", bpf);
-    assert(rc == RC_SUCCESS);
+    bpf = new BitmapPagedFile("test1.bin", BitmapPagedFile::F_CREATE);
+    assert(bpf);
 
     // allocate each bit sequentially in header
     for(int k=0; k<8*PAGE_SIZE; k++) {
@@ -87,8 +88,8 @@ void test_allocatePage() {
 }
 
 void test_allocatePageWithPID() {
-    rc = BitmapPagedFile::createPagedFile("test1.bin", bpf);
-    assert(rc == RC_SUCCESS);
+    bpf = new BitmapPagedFile("test1.bin", BitmapPagedFile::F_CREATE);
+    assert(bpf);
 
     // allocate each PID once
     for(int k=0; k<8*PAGE_SIZE; k++) {
@@ -102,23 +103,28 @@ void test_allocatePageWithPID() {
     delete bpf;
 
     // header and contentPages written and retrieved
-    BitmapPagedFile::createPagedFile("test1.bin", bpf);
-    fseek(bpf->file, 0, SEEK_END);
+    bpf = new BitmapPagedFile("test1.bin", BitmapPagedFile::F_NO_CREATE);
+    assert(bpf);
+    //fseek(bpf->file, 0, SEEK_END);
     assert(bpf->numContentPages == 8*PAGE_SIZE);
-    assert(ftell(bpf->file) == (8*PAGE_SIZE+1)*PAGE_SIZE);
+	struct stat s;
+	fstat(bpf->fd, &s);
+    assert(s.st_size == (8*PAGE_SIZE+1)*PAGE_SIZE);
     for(int k=0; k<PAGE_SIZE; k++) {
         assert(bpf->header[k] == 255);
     }
     delete bpf;
 
-    BitmapPagedFile::createPagedFile("test2.bin", bpf);
+    bpf = new BitmapPagedFile("test2.bin", BitmapPagedFile::F_CREATE);
+    assert(bpf);
     assert(bpf->allocatePageWithPID(202) == RC_SUCCESS);
     delete bpf;
 
-    BitmapPagedFile::createPagedFile("test2.bin", bpf);
+    bpf = new BitmapPagedFile("test2.bin", BitmapPagedFile::F_NO_CREATE);
+    assert(bpf);
     assert(bpf->numContentPages == 203);
-    fseek(bpf->file, 0, SEEK_END);
-    assert(ftell(bpf->file) == (204)*PAGE_SIZE);
+	fstat(bpf->fd, &s);
+    assert(s.st_size == (204)*PAGE_SIZE);
     for(int k=0; k<PAGE_SIZE; k++) {
         if(k==25) {
             assert(bpf->header[k] == 4);
@@ -132,8 +138,8 @@ void test_allocatePageWithPID() {
 }
 
 void test_disposePage() {
-    rc = BitmapPagedFile::createPagedFile("test1.bin", bpf);
-    assert(rc == RC_SUCCESS);
+    bpf = new BitmapPagedFile("test1.bin", BitmapPagedFile::F_CREATE);
+    assert(bpf);
 
     bpf->header[4] = 130; // 10000010
     bpf->header[1543] = 47; // 00101111
@@ -161,8 +167,8 @@ void test_disposePage() {
 }
 
 void test_writePage_readPage() {
-    rc = BitmapPagedFile::createPagedFile("test1.bin", bpf);
-    assert(rc == RC_SUCCESS);
+    bpf = new BitmapPagedFile("test1.bin", BitmapPagedFile::F_CREATE);
+    assert(bpf);
 
     for(int k=0; k<PAGE_SIZE; k++) {
         memset(filler+k, k%256, 1);
@@ -180,9 +186,10 @@ void test_writePage_readPage() {
     // pad contentPages on file
     bpf->numContentPages = 30;
     assert(bpf->writePage(ph) == RC_SUCCESS);
-    fflush(bpf->file);
-    fseek(bpf->file, 0, SEEK_END);\
-        assert(ftell(bpf->file) == 22*PAGE_SIZE);
+    // fflush(bpf->file);
+	struct stat s;
+	fstat(bpf->fd, &s);
+	assert(s.st_size == 22*PAGE_SIZE);
 
     // write to one of contentPages
     bpf->header[1] = 1; // 00000001
@@ -193,9 +200,8 @@ void test_writePage_readPage() {
     bpf->header[3] = 32; // 00100000
     ph.pid = 29;
     assert(bpf->writePage(ph) == RC_SUCCESS);
-    fflush(bpf->file);
-    fseek(bpf->file, 0, SEEK_END);
-    assert(ftell(bpf->file) == 31*PAGE_SIZE);
+	fstat(bpf->fd, &s);
+    assert(s.st_size == 31*PAGE_SIZE);
 
     // overwrite contentPage
     for(int k=0; k<PAGE_SIZE; k++) {
@@ -208,8 +214,8 @@ void test_writePage_readPage() {
     delete bpf;
 
     // read back, make sure all data is correct
-    rc = BitmapPagedFile::createPagedFile("test1.bin", bpf);
-    assert(rc == RC_SUCCESS);
+    bpf = new BitmapPagedFile("test1.bin", BitmapPagedFile::F_NO_CREATE);
+    assert(bpf);
     for(int k=0; k<8*PAGE_SIZE; k++) {
         if(k == 20) {
             ph.pid = 20;
@@ -243,8 +249,8 @@ void test_writePage_readPage() {
 }
 
 void test_allocate() {
-    rc = BitmapPagedFile::createPagedFile("test1.bin", bpf);
-    assert(rc == RC_SUCCESS);
+    bpf = new BitmapPagedFile("test1.bin", BitmapPagedFile::F_CREATE);
+    assert(bpf);
 
     bpf->allocate(6);
     for(int k=0; k<PAGE_SIZE; k++) {
@@ -331,8 +337,8 @@ void test_allocate() {
 }
 
 void test_deallocate() {
-    rc = BitmapPagedFile::createPagedFile("test1.bin", bpf);
-    assert(rc == RC_SUCCESS);
+    bpf = new BitmapPagedFile("test1.bin", BitmapPagedFile::F_CREATE);
+    assert(bpf);
     memset(bpf->header, 255, PAGE_SIZE);
     for(int k=0; k<PAGE_SIZE; k++) {
         assert((int)bpf->header[k] == 255);
@@ -400,8 +406,8 @@ void test_deallocate() {
 }
 
 void test_isAllocated() {
-    rc = BitmapPagedFile::createPagedFile("test1.bin", bpf);
-    assert(rc == RC_SUCCESS);
+    bpf = new BitmapPagedFile("test1.bin", BitmapPagedFile::F_CREATE);
+    assert(bpf);
     memset(bpf->header, 255, PAGE_SIZE);
 
     for(int k=0; k<8*PAGE_SIZE; k++) {
@@ -421,11 +427,8 @@ void test_isAllocated() {
 }
 
 void clear_files() {
-    f = fopen("test1.bin", "wb+");
-    fclose(f);
-    f = fopen("test2.bin", "wb+");
-    fclose(f);
-
+	remove("test1.bin");
+	remove("test2.bin");
 }
 
 int main() {
@@ -452,8 +455,8 @@ int main() {
     clear_files();
     test_writePage_readPage();
 
-    remove("test1.bin");
-    remove("test2.bin");
+//    remove("test1.bin");
+ //   remove("test2.bin");
 
     return 0;
 }

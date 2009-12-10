@@ -1,5 +1,3 @@
-// -*- mode: c++ -*-
-
 #ifndef DIRECTLY_MAPPED_ARRAY_H
 #define DIRECTLY_MAPPED_ARRAY_H
 
@@ -273,7 +271,7 @@ class DirectlyMappedArray {
         pageCap = PAGE_DENSE_CAP(Datum_t);
         if (numElements > 0) {		// new array to be created
             remove(fileName);
-            BitmapPagedFile::createPagedFile(fileName, file);
+            file = new BitmapPagedFile(fileName, BitmapPagedFile::F_CREATE);
             buffer = new BufferManager<>(file, BUFFER_SIZE); 
             this->numElements = numElements;
             PageHandle ph;
@@ -287,8 +285,8 @@ class DirectlyMappedArray {
         }
         else {						// existing array
             if (access(fileName, F_OK) != 0)
-                throw std::string("File for array does not exist.");
-            BitmapPagedFile::createPagedFile(fileName, file);
+                throw ("File for array does not exist.");
+            file = new BitmapPagedFile(fileName, BitmapPagedFile::F_NO_CREATE);
             buffer = new BufferManager<>(file, BUFFER_SIZE); 
             PageHandle ph;
             ph.pid = 0; 			// first page is header
@@ -310,7 +308,7 @@ class DirectlyMappedArray {
 
     Datum_t get(Key_t key) {
         if (key < 0 || numElements <= key) {
-            return R_ValueOfNA(); // key out of range
+            return NA_DOUBLE; // key out of range
         }
 
         PageHandle ph;

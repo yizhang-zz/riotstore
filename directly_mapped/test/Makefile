@@ -20,8 +20,8 @@ all: DMA
 
 include $(objects:.o=.d)
 
-DMA: TestDMA.o
-	$(CXX) -o test $< ../../lower/BitmapPagedFile.o ../../lower/LRUPageReplacer.o ../../common/common.o
+DMA: TestDMA.o ../../lower/BitmapPagedFile.o ../../lower/LRUPageReplacer.o ../../common/common.o
+	$(CXX) -o test $^
 
 clean : 
 	rm -f *.o

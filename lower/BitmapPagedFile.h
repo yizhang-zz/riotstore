@@ -1,7 +1,6 @@
 #ifndef BITMAP_PAGED_FILE_H
 #define BITMAP_PAGED_FILE_H
 
-#include <stdio.h>
 #include "../common/common.h"
 #include "PagedStorageContainer.h"
 
@@ -20,13 +19,13 @@ class BitmapPagedFile : public PagedStorageContainer {
 // private:
     public:
 
-  FILE *file;
+  int fd;	// file descriptor
   uint32_t numContentPages;
   Byte_t header[PAGE_SIZE]; 
 
 public:
 
-  BitmapPagedFile(FILE *f);
+  BitmapPagedFile(const char *pathname, int flag);
 
   // Remember to write the header back!
   virtual ~BitmapPagedFile();
@@ -34,7 +33,7 @@ public:
   // Creates a BitmapPagedFile over a disk file of a given name.  If
   // the file doesn't exist yet, an empty paged file will be created
   // with the file header.
-  static RC_t createPagedFile(const char *fileName, BitmapPagedFile *&pf);
+  // static RC_t create(const char *fileName, BitmapPagedFile *&pf);
 
   // The underlying file may expand if needed.
   virtual RC_t allocatePage(PID_t &pid);

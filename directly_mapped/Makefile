@@ -10,7 +10,7 @@ objects := $(patsubst %.c,%.o, $(wildcard *.c)) $(patsubst %.cpp, %.o, $(wildcar
 	$(CXX) $(CXXFLAGS) -c $<
 
 all: $(objects)
-	@echo "test"
+	@echo "nothing to be done"
 
 clean : 
 	rm -f *.o

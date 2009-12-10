@@ -1,6 +1,28 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+/* Direct I/O, no caching by the OS */
+#if defined(linux)||defined(BSD)
+/* Linux & BSD support O_DIRECT in open(2) for direct I/O */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#include <fcntl.h>
+#define open_direct(file, flag) open(file,(flag)|O_DIRECT, 0660)
+
+#elif defined(sun)
+/* Solaris has directio(3C) for the same purpose */
+#include <fcntl.h>
+int open_direct_sol(const char *pathname, int flags)
+{
+	int fd = open(pathname, flags, 0660);
+	if (fd < 0)
+		return fd;
+	return directio(fd, DIRECTIO_ON);
+}
+#define open_direct(file, flag) open_direct_sol(file, flag)
+#endif
+
 #include <stdint.h>
 #include <typeinfo>
 #include <assert.h>
@@ -8,8 +30,8 @@
 /* Utilities for the NA value; taken from arithmetic.c from R src. */
 typedef union
 {
-   double value;
-   unsigned word[2];
+	double value;
+	unsigned word[2];
 } ieee_double;
 
 /* gcc had problems with static const on AIX and Solaris
