@@ -1,25 +1,30 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+void riot_error(const char *s, ...);
+
 /* Direct I/O, no caching by the OS */
-#if defined(linux)||defined(BSD)
-/* Linux & BSD support O_DIRECT in open(2) for direct I/O */
+#if defined(linux)
+#define RIOT_LINUX
+/* Linux supports O_DIRECT in open(2) for direct I/O */
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
 #include <fcntl.h>
 #define open_direct(file, flag) open(file,(flag)|O_DIRECT, 0660)
 
+#elif defined(BSD)||defined(__APPLE__)
+#define RIOT_BSD
+/* BSD & Mac OS support F_NOCACHE for direct I/O */
+#include <fcntl.h>
+int open_direct_bsd(const char *pathname, int flags);
+#define open_direct(file, flag) open_direct_bsd(file, flag)
+
 #elif defined(sun)
+#define RIOT_SUN
 /* Solaris has directio(3C) for the same purpose */
 #include <fcntl.h>
-int open_direct_sol(const char *pathname, int flags)
-{
-	int fd = open(pathname, flags, 0660);
-	if (fd < 0)
-		return fd;
-	return directio(fd, DIRECTIO_ON);
-}
+int open_direct_sol(const char *pathname, int flags);
 #define open_direct(file, flag) open_direct_sol(file, flag)
 #endif
 

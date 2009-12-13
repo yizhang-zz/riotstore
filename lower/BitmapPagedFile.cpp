@@ -1,9 +1,6 @@
-#include <stdio.h>
-#include <iostream>
-#include <stdlib.h>
+#include <sys/stat.h>
 #include <string.h>
 #include "BitmapPagedFile.h"
-using namespace std;
 
 /* Creates a BitmapPagedFile over a disk file of a given name. If flag has
  * F_CREATE set, then a new file is created; otherwise the file is assumed

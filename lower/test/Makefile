@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -g -std=c++0x
+CXXFLAGS = -g 
 
 .PHONY: all clean lower
 
@@ -23,8 +23,8 @@ include $(objects:.o=.d)
 lower:
 	cd .. ; $(MAKE)
 
-BitmapPagedFile: TestBitmapPagedFile.o
-	$(CXX) -o test $< ../BitmapPagedFile.o
+BitmapPagedFile: ../../common/common.o ../BitmapPagedFile.o TestBitmapPagedFile.o
+	$(CXX) -o test $^
 
 bf: TestBufferManager.o
 	$(CXX) -o testbf $< ../BitmapPagedFile.o ../LRUPageReplacer.o
@@ -33,3 +33,4 @@ bf: TestBufferManager.o
 clean : 
 	rm -f *.o
 	rm -f *.out
+	rm -f *.d
