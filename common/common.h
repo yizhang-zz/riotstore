@@ -1,6 +1,9 @@
+/** @file common.h */
+
 #ifndef COMMON_H
 #define COMMON_H
 
+/// Print error message like printf.
 void riot_error(const char *s, ...);
 
 /* Direct I/O, no caching by the OS */
@@ -11,6 +14,7 @@ void riot_error(const char *s, ...);
 #define _GNU_SOURCE
 #endif
 #include <fcntl.h>
+/// Open file in direct I/O mode.
 #define open_direct(file, flag) open(file,(flag)|O_DIRECT, 0660)
 
 #elif defined(BSD)||defined(__APPLE__)
@@ -18,6 +22,7 @@ void riot_error(const char *s, ...);
 /* BSD & Mac OS support F_NOCACHE for direct I/O */
 #include <fcntl.h>
 int open_direct_bsd(const char *pathname, int flags);
+/// Open file in direct I/O mode.
 #define open_direct(file, flag) open_direct_bsd(file, flag)
 
 #elif defined(sun)
@@ -25,6 +30,7 @@ int open_direct_bsd(const char *pathname, int flags);
 /* Solaris has directio(3C) for the same purpose */
 #include <fcntl.h>
 int open_direct_sol(const char *pathname, int flags);
+/// Open file in direct I/O mode.
 #define open_direct(file, flag) open_direct_sol(file, flag)
 #endif
 
@@ -32,7 +38,7 @@ int open_direct_sol(const char *pathname, int flags);
 #include <typeinfo>
 #include <assert.h>
 
-/* Utilities for the NA value; taken from arithmetic.c from R src. */
+/* Utilities for the NA value. Taken from arithmetic.c from R src. */
 typedef union
 {
 	double value;
@@ -57,48 +63,20 @@ static CONST int hw = 1;
 static CONST int lw = 0;
 #endif /* WORDS_BIGENDIAN */
 
+/// A special value representing NA of double type.
 extern double	NA_DOUBLE;
+/// A special value representing NA of int type.
 extern int		NA_INT;
 
-// double R_ValueOfNA();
-
-bool R_IsNA(double x);
+static bool R_IsNA(double x);
+/// Tests if a double value is NA.
 #define ISNA(x) R_IsNA(x)
 
-/* Array level definitions. */
-enum DataType { INT, DOUBLE, COMPLEX };
-
-template<class T>
-inline bool IsSameDataType(T x, DataType t) {
-	switch(t) {
-case INT:
-	return typeid(x)==typeid(int);
-case DOUBLE:
-	return typeid(x)==typeid(double);
-case COMPLEX:
-	// to be implemented
-	break;
-default:
-	return false;
-	}
-	return false;
-}
-
-template<class T>
-inline DataType GetDataType(T x) {
-	if (typeid(x) == typeid(int))
-		return INT;
-	if (typeid(x) == typeid(double))
-		return DOUBLE;
-	// to add complex type
-	
-	assert(false);
-}
-
-/* Block level definitions. */
+/// Size of a disk block/page in bytes.
 const int BLOCK_SIZE = 4096;
+/// Size of a disk block/page in bytes.
 const int PAGE_SIZE = BLOCK_SIZE;
-#define PAGE_DENSE_CAP(x) (PAGE_SIZE/sizeof(x))
+
 enum BlockFormat { DENSE, SPARSE };
 enum BlockType { LEAF, INTERNAL};
 
@@ -106,9 +84,15 @@ typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
 
+/// Key type.
 typedef uint32_t Key_t;
+/// Datum type.
 typedef double Datum_t;
-typedef uint32_t BlockNo; /* page number */
+
+/// A byte.
+typedef uint8_t Byte_t;
+/// A 32-bit integer used as page ID to uniquely identify a page in a file.
+typedef uint32_t PID_t;
 
 typedef struct 
 {
@@ -122,6 +106,7 @@ typedef struct
 	Key_t 	upperBound;
 } Range;
 
+/*
 typedef struct 
 {
 	BlockType		type;
@@ -129,31 +114,20 @@ typedef struct
 	Range 	range;
 	Datum_t 		default_value;
 	uint32_t entry_count;
-	BlockNo next; /* only for leaves */
+	BlockNo next;
 } BlockHeader;
 
 const int CAPACITY_DENSE  = ((BLOCK_SIZE - sizeof(BlockHeader))/sizeof(Datum_t));
 const int CAPACITY_SPARSE = ((BLOCK_SIZE - sizeof(BlockHeader))/(sizeof(Datum_t)+sizeof(Key_t)));
+*/
 
-// const int PAGE_SIZE = 4096;
-//////////////////////////////////////////////////////////////////////
-// A byte.
 
-typedef uint8_t Byte_t;
-
-//////////////////////////////////////////////////////////////////////
-// Return code.
-
+/// Return code type.
 typedef int RC_t;
 #define RC_SUCCESS 0
 #define RC_FAILURE 1
 
-//////////////////////////////////////////////////////////////////////
-// Page id, which uniquely identifies a page within a paged file.
-
-typedef uint32_t PID_t;
-
-#define PGID_INVALID UINT_MAX
+// #define PGID_INVALID UINT_MAX
 
 //////////////////////////////////////////////////////////////////////
 // In-memory image of a page.
@@ -172,10 +146,12 @@ typedef struct {
 /* Coding style: inline small functions (<= 10 lines of code) */
 
 /* Calculates the capacity of a block */
+/*
 inline int BlockCapacity(BlockHeader *hdr)
 {
 	return ((hdr->format == DENSE) ? CAPACITY_DENSE : CAPACITY_SPARSE);
 }
+*/
 
 inline void SetRange(Range& range, Key_t lower, Key_t upper)
 {
@@ -183,6 +159,7 @@ inline void SetRange(Range& range, Key_t lower, Key_t upper)
 	range.upperBound = upper;
 }
 
+/*
 inline void SetBlockHeader(BlockHeader* blockHeader, BlockFormat format, Range& range, BlockNo nextBlock, Datum_t def=0, uint32_t nEntries=0)
 {
 	blockHeader->format = format;
@@ -191,6 +168,7 @@ inline void SetBlockHeader(BlockHeader* blockHeader, BlockFormat format, Range& 
 	blockHeader->default_value = def;
 	blockHeader->entry_count = nEntries;
 }
+*/
 
 inline void SetEntry(Entry& entry, Key_t k, Datum_t d)
 {
@@ -198,4 +176,43 @@ inline void SetEntry(Entry& entry, Key_t k, Datum_t d)
    entry.datum = d;
 }
 
+enum DataType { INT, DOUBLE, COMPLEX };
+
+/**
+ * Tests if a value is of given type.
+ * @param x a value.
+ * @param t an enum value specifying the type.
+ * @return true if x is of type t.
+ */
+template<class T>
+inline bool IsSameDataType(T x, DataType t) {
+	switch(t) {
+case INT:
+	return typeid(x)==typeid(int);
+case DOUBLE:
+	return typeid(x)==typeid(double);
+case COMPLEX:
+	// to be implemented
+	break;
+default:
+	return false;
+	}
+	return false;
+}
+
+/**
+ * Gets the data type of a given value.
+ * @param x a value of type T.
+ * @return an enum specifying the type of x.
+ */
+template<class T>
+inline DataType GetDataType(T x) {
+	if (typeid(x) == typeid(int))
+		return INT;
+	if (typeid(x) == typeid(double))
+		return DOUBLE;
+	// to add complex type
+	
+	assert(false);
+}
 #endif
