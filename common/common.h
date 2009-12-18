@@ -80,12 +80,26 @@ const int PAGE_SIZE = BLOCK_SIZE;
 enum BlockFormat { DENSE, SPARSE };
 enum BlockType { LEAF, INTERNAL};
 
+/// \name Unsigned integers
+//@{
 typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
+typedef uint64_t u64;
+//@}
+
+/// \name Signed integers
+//@{
+typedef int8_t i8;
+typedef int16_t i16;
+typedef int32_t i32;
+typedef int64_t i64;
+//@}
 
 /// Key type.
 typedef uint32_t Key_t;
+/// Key difference type.
+typedef int32_t KeyDiff_t;
 /// Datum type.
 typedef double Datum_t;
 
@@ -215,4 +229,13 @@ inline DataType GetDataType(T x) {
 	
 	assert(false);
 }
+
+/**
+ * Code returned from methods that access elements of an array.
+ */
+enum AccessCode {
+    OK = 0,
+    OutOfRange
+};
+
 #endif
