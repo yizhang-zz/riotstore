@@ -12,17 +12,17 @@ TEST(BtreeBlock, DenseLeaf_CreateEmpty)
 	ph.image = &image;
 	ph.pid = 0;
 
-	Key_t endsBy = BtreeBlock::denseCap;
-
-	BtreeBlock block(&ph, 0, endsBy, true, true);
+    BtreeDLeafBlock block(&ph, 0);
+    Key_t lower = block.getLowerBound();
+    Key_t upper = block.getUpperBound();
 	
-	ASSERT_EQ(block.nEntries, 0);
-	ASSERT_EQ(block.lower, 0);
-	ASSERT_EQ(block.upper, endsBy);
+	ASSERT_EQ(block.getSize(), 0);
+	ASSERT_EQ(lower, 0);
+	ASSERT_EQ(upper, block.getCapacity());
 	
 	Datum_t datum;
 
-	for (int i=block.lower; i < block.upper; i++) {
+	for (int i=lower; i < upper; i++) {
 		ASSERT_EQ(block.get(i, &datum), BT_OK);
 		ASSERT_TRUE(BtreeBlock::IS_DEFAULT(datum));
 	}
@@ -35,21 +35,20 @@ TEST(BtreeBlock, DenseLeaf_InitExisting)
 	ph.image = &image;
 	ph.pid = 0;
 
-	Key_t endsBy = BtreeBlock::denseCap;
-
-	BtreeBlock block(&ph, 0, endsBy, true, true);
+	BtreeDLeafBlock block(&ph, 0);
 	Datum_t datum = 1.0;
 	block.put(1, &datum);
 	block.put(46, &datum);
-	block.syncHeader();
+
+    Key_t endsBy = block.getCapacity();
 
 	// init another block with existing data
-	BtreeBlock block1(&ph, 0, endsBy);
-	ASSERT_EQ(block1.nEntries, 2);
-	ASSERT_EQ(block1.lower, 0);
-	ASSERT_EQ(block1.upper, endsBy);
-	ASSERT_EQ(block1.isLeaf, block.isLeaf);
-	ASSERT_EQ(block1.isDense, block.isDense);
+	BtreeBlock *block1 = BtreeBlock::load(&ph, 0, endsBy);
+	ASSERT_EQ(block1->getSize(), 2);
+	ASSERT_EQ(block1->getLowerBound(), 0);
+	ASSERT_EQ(block1->getUpperBound(), block1->getCapacity());
+	ASSERT_TRUE(dynamic_cast<BtreeDLeafBlock*>(block1));
+    delete block1;
 }
 
 TEST(BtreeBlock, DenseLeaf_PutGet)
@@ -59,9 +58,8 @@ TEST(BtreeBlock, DenseLeaf_PutGet)
 	ph.image = &image;
 	ph.pid = 0;
 
-	Key_t endsBy = BtreeBlock::denseCap;
-
-	BtreeBlock block(&ph, 0, endsBy, true, true);
+	BtreeDLeafBlock block(&ph, 0);
+	Key_t endsBy = block.getCapacity();
 
 	// 5 pairs of key,datum to be inserted
 	const int num = 5;
@@ -72,13 +70,13 @@ TEST(BtreeBlock, DenseLeaf_PutGet)
 		data1[i] = data[i] + 1.0;
 
 	// non-overwrite put
-	for (int i=0; i<5; i++)
-		ASSERT_TRUE(block.put(idx[i], data+i)==BT_OK);
+	for (int i=0; i<num; i++)
+		ASSERT_TRUE(block.put(idx[i], &data[i])==BT_OK);
 	
 	// read back
 	Datum_t datum;
 	int k = 0;
-	for (int i=block.lower; i < block.upper; i++) {
+	for (int i=block.getLowerBound(); i < block.getUpperBound(); i++) {
 		if (idx[k] > i) {
 			ASSERT_TRUE(block.get(i, &datum)==BT_OK);
 			ASSERT_TRUE(BtreeBlock::IS_DEFAULT(datum))<<" @ "<<i;
@@ -91,12 +89,12 @@ TEST(BtreeBlock, DenseLeaf_PutGet)
 	}
 
 	// overwrite put
-	for (int i=0; i<5; i++)
-		ASSERT_TRUE(block.put(idx[i], data1+i)==BT_OVERWRITE);
+	for (int i=0; i<num; i++)
+		ASSERT_TRUE(block.put(idx[i], &data1[i])==BT_OVERWRITE);
 	
 	// read back
 	k = 0;
-	for (int i=block.lower; i < block.upper; i++) {
+	for (int i=block.getLowerBound(); i < block.getUpperBound(); i++) {
 		if (idx[k] > i) {
 			ASSERT_TRUE(block.get(i, &datum)==BT_OK);
 			ASSERT_TRUE(BtreeBlock::IS_DEFAULT(datum))<<" @ "<<i;
@@ -116,31 +114,33 @@ TEST(BtreeBlock, DenseLeaf_Delete)
 	ph.image = &image;
 	ph.pid = 0;
 
-	Key_t endsBy = BtreeBlock::denseCap;
-	BtreeBlock block(&ph, 0, endsBy, true, true);
+	BtreeDLeafBlock block(&ph, 0);
+	Key_t endsBy = block.getCapacity();
 
 	// delete non-existent entries
 	ASSERT_EQ(block.del(0), BT_OK);
 	ASSERT_EQ(block.del(endsBy-1), BT_OK);
-	ASSERT_EQ(block.nEntries, 0);
+	ASSERT_EQ(block.getSize(), 0);
 
 	// put and get back
 	Datum_t x = 1.0, y;
 	ASSERT_EQ(block.put(1, &x), BT_OK);
-	ASSERT_EQ(block.nEntries, 1);
+	ASSERT_EQ(block.getSize(), 1);
 	ASSERT_EQ(block.get(1, &y), BT_OK);
 	ASSERT_DOUBLE_EQ(y, x);
 
 	// delete and get back
 	ASSERT_EQ(block.del(1), BT_OK);
-	ASSERT_EQ(block.nEntries, 0);
+	ASSERT_EQ(block.getSize(), 0);
 	ASSERT_EQ(block.get(1, &y), BT_OK);
-	ASSERT_DOUBLE_EQ(y, BtreeBlock::defaultValue);
+	ASSERT_TRUE(BtreeBlock::IS_DEFAULT(y));
 }
+
 
 /************************************************
  * Sparse leaf block tests.
  */
+
 
 TEST(BtreeBlock, SparseLeaf_CreateEmpty)
 {
@@ -149,19 +149,17 @@ TEST(BtreeBlock, SparseLeaf_CreateEmpty)
 	ph.image = &image;
 	ph.pid = 0;
 
-	Key_t endsBy = BtreeBlock::sparseCap;
-
-	BtreeBlock block(&ph, 0, endsBy, true, false);
+	BtreeSLeafBlock block(&ph, 0, 1000);
+    // Key_t endsBy = block.getCapacity();
 	
-	ASSERT_EQ(block.nEntries, 0);
-	ASSERT_EQ(block.lower, 0);
-	ASSERT_EQ(block.upper, endsBy);
+	ASSERT_EQ(block.getSize(), 0);
+	ASSERT_EQ(block.getLowerBound(), 0);
+	ASSERT_EQ(block.getUpperBound(), 1000);
 	
 	Datum_t datum;
 
-	for (int i=block.lower; i < block.upper; i++) {
-		ASSERT_EQ(block.get(i, &datum), BT_OK);
-		ASSERT_DOUBLE_EQ(datum, 0.0);
+	for (int i=block.getLowerBound(); i < block.getUpperBound(); i++) {
+		ASSERT_EQ(block.get(i, &datum), BT_NOT_FOUND);
 	}
 }
 
@@ -172,9 +170,9 @@ TEST(BtreeBlock, SparseLeaf_PutGet)
 	ph.image = &image;
 	ph.pid = 0;
 
-	Key_t endsBy = BtreeBlock::sparseCap;
+	Key_t endsBy = 500;
 
-	BtreeBlock block(&ph, 0, endsBy, true, false);
+	BtreeSLeafBlock block(&ph, 0, endsBy);
 
 	// 5 pairs of key,datum to be inserted
 	const int num = 5;
@@ -185,16 +183,15 @@ TEST(BtreeBlock, SparseLeaf_PutGet)
 		data1[i] = data[i] + 1.0;
 
 	// non-overwrite put
-	for (int i=0; i<5; i++)
+	for (int i=0; i<num; i++)
 		ASSERT_TRUE(block.put(idx[i], data+i)==BT_OK);
 	
 	// read back
 	Datum_t datum;
 	int k = 0;
-	for (int i=block.lower; i < block.upper; i++) {
+	for (int i=block.getLowerBound(); i < block.getUpperBound(); i++) {
 		if (idx[k] > i) {
-			ASSERT_TRUE(block.get(i, &datum)==BT_OK);
-			ASSERT_DOUBLE_EQ(datum, 0.0)<<" @ "<<i;
+			ASSERT_TRUE(block.get(i, &datum)==BT_NOT_FOUND);
 		}
 		else {
 			ASSERT_TRUE(block.get(i, &datum)==BT_OK);
@@ -209,10 +206,9 @@ TEST(BtreeBlock, SparseLeaf_PutGet)
 	
 	// read back
 	k = 0;
-	for (int i=block.lower; i < block.upper; i++) {
+	for (int i=block.getLowerBound(); i < block.getUpperBound(); i++) {
 		if (idx[k] > i) {
-			ASSERT_TRUE(block.get(i, &datum)==BT_OK);
-			ASSERT_DOUBLE_EQ(datum, 0.0)<<" @ "<<i;
+			ASSERT_TRUE(block.get(i, &datum)==BT_NOT_FOUND);
 		}
 		else {
 			ASSERT_TRUE(block.get(i, &datum)==BT_OK);
@@ -230,33 +226,34 @@ TEST(BtreeBlock, SparseLeaf_Overflow)
 	ph.image = &image;
 	ph.pid = 0;
 
-	Key_t endsBy = BtreeBlock::sparseCap;
+	Key_t endsBy = 500;
 
 	// range is sparseCap + 3
-	BtreeBlock block(&ph, 0, endsBy+3, true, false);
+	BtreeSLeafBlock block(&ph, 0, endsBy);
+    key_t cap = block.getCapacity();
 
 	// fill the block to make it look like:
 	// oxoxxx...xo (o: empty slots)
 	Datum_t x = 1.0;
 	ASSERT_TRUE(block.put(1, &x) == BT_OK);
-	for (int i=3; i<endsBy+2; i++) {
+	for (int i=3; i<cap+2; i++) {
 		x = i;
 		ASSERT_TRUE(block.put(i, &x)==BT_OK);
 	}
 
-	Key_t key1 = endsBy + 2;
+	Key_t key1 = cap + 2;
 	Key_t key2 = 0;
 	Key_t key3 = 2;
 
 	// insert to the end to cause overflow
 	ASSERT_TRUE(block.put(key1, &x)==BT_OVERFLOW);
 
-	BtreeBlock::OverflowEntry &e = block.overflowEntries[0];
-	ASSERT_TRUE(e.idx == endsBy)<<e.idx<<key1;
+	BtreeSparseBlock::OverflowEntry &e = block.overflowEntries[0];
+	ASSERT_TRUE(e.idx == cap)<<e.idx<<key1;
 	ASSERT_DOUBLE_EQ(*((Datum_t*)e.data), x);
 
 	// clear last insert
-	block.nEntries--;
+	block.getSize()--;
 
 	// insert to the front to cause overflow
 	ASSERT_TRUE(block.put(key2, &x)==BT_OVERFLOW);
@@ -266,7 +263,7 @@ TEST(BtreeBlock, SparseLeaf_Overflow)
 	ASSERT_DOUBLE_EQ(*((Datum_t*)e.data), x);
 
 	// clear last insert
-	block.nEntries--;
+	block.getSize()--;
 
 	// insert in the middle to cause overflow
 	ASSERT_TRUE(block.put(key3, &x)==BT_OVERFLOW);
@@ -284,28 +281,27 @@ TEST(BtreeBlock, SparseLeaf_Delete)
 	ph.image = &image;
 	ph.pid = 0;
 
-	Key_t endsBy = BtreeBlock::sparseCap;
+	Key_t endsBy = 500;
 
 	// range is sparseCap 
-	BtreeBlock block(&ph, 0, endsBy, true, false);
+	BtreeSLeafBlock block(&ph, 0, endsBy);
+    Key_t cap = block.getCapacity();
 
 	Datum_t x = 1.0, y;
 	// put and get back
 	ASSERT_TRUE(block.put(1, &x) == BT_OK);
-	ASSERT_EQ(block.nEntries, 1);
+	ASSERT_EQ(block.getSize(), 1);
 	block.get(1, &y);
 	ASSERT_DOUBLE_EQ(y, x);
 	// delete
 	ASSERT_TRUE(block.del(1) == BT_OK);
-	ASSERT_EQ(block.nEntries, 0);
-	// read back; should be the default value
-	ASSERT_TRUE(block.get(1, &y) == BT_OK);
-	ASSERT_DOUBLE_EQ(y, BtreeBlock::defaultValue);
+	ASSERT_EQ(block.getSize(), 0);
+	// read back
+	ASSERT_TRUE(block.get(1, &y) == BT_NOT_FOUND);
 
 	// delete non-existent value
-	ASSERT_TRUE(block.del(2) == BT_OK);
-	ASSERT_TRUE(block.get(2, &y) == BT_OK);
-	ASSERT_DOUBLE_EQ(y, BtreeBlock::defaultValue);
+	ASSERT_TRUE(block.del(2) == BT_NOT_FOUND);
+	ASSERT_TRUE(block.get(2, &y) == BT_NOT_FOUND);
 }
 
 /************************************************
@@ -319,17 +315,20 @@ TEST(BtreeBlock, Internal_CreateEmpty)
 	ph.image = &image;
 	ph.pid = 0;
 
-	Key_t endsBy = BtreeBlock::internalCap * 2;
+	Key_t endsBy = 800;
 
-	BtreeBlock block(&ph, 0, endsBy, false, false);
+	BtreeIntBlock block(&ph, 0, endsBy);
+	Key_t cap = block.getCapacity();
+	Key_t lower = block.getLowerBound();
+	Key_t upper = block.getUpperBound();
 	
-	ASSERT_EQ(block.nEntries, 0);
-	ASSERT_EQ(block.lower, 0);
-	ASSERT_EQ(block.upper, endsBy);
+	ASSERT_EQ(block.getSize(), 0);
+	ASSERT_EQ(block.getLowerBound(), 0);
+	ASSERT_EQ(block.getUpperBound(), endsBy);
 	
 	Datum_t datum;
 
-	for (int i=block.lower; i < block.upper; i++) {
+	for (int i=lower; i < upper; i++) {
 		ASSERT_EQ(block.get(0, &datum), BT_NOT_FOUND);
 	}
 }
@@ -341,9 +340,11 @@ TEST(BtreeBlock, Internal_PutGet)
 	ph.image = &image;
 	ph.pid = 0;
 
-	Key_t endsBy = BtreeBlock::internalCap * 2;
+	Key_t endsBy = 800;
 
-	BtreeBlock block(&ph, 0, endsBy, false, false);
+	BtreeIntBlock block(&ph, 0, endsBy);
+	Key_t lower = block.getLowerBound();
+	Key_t upper = block.getUpperBound();
 
 	// 5 pairs of key,datum to be inserted
 	const int num = 5;
@@ -356,17 +357,17 @@ TEST(BtreeBlock, Internal_PutGet)
 
 	// non-overwrite put
 	for (int i=0; i<5; i++)
-		ASSERT_TRUE(block.put(idx[order[i]], data+order[i])==BT_OK);
+		ASSERT_EQ(block.put(idx[order[i]], data+order[i]), BT_OK);
 	
 	// read back
 	PID_t datum;
 	int k = 0;
-	for (int i=block.lower; i < block.upper; i++) {
+	for (int i=lower; i < upper; i++) {
 		if (idx[k] > i) {
-			ASSERT_TRUE(block.get(i, &datum)==BT_NOT_FOUND);
+			ASSERT_EQ(block.get(i, &datum), BT_NOT_FOUND);
 		}
 		else {
-			ASSERT_TRUE(block.get(i, &datum)==BT_OK);
+			ASSERT_EQ(block.get(i, &datum), BT_OK);
 			ASSERT_EQ(datum, data[k])<<" @ "<<i;
 			k++;
 		}
@@ -375,16 +376,16 @@ TEST(BtreeBlock, Internal_PutGet)
 	// overwriting child pointers does not make practical sense, but is
 	// tested anyway.
 	for (int i=0; i<5; i++)
-		ASSERT_TRUE(block.put(idx[i], data1+i)==BT_OVERWRITE);
+		ASSERT_EQ(block.put(idx[i], data1+i), BT_OVERWRITE);
 	
 	// read back
 	k = 0;
-	for (int i=block.lower; i < block.upper; i++) {
+	for (int i=lower; i < upper; i++) {
 		if (idx[k] > i) {
-			ASSERT_TRUE(block.get(i, &datum)==BT_NOT_FOUND);
+			ASSERT_EQ(block.get(i, &datum), BT_NOT_FOUND);
 		}
 		else {
-			ASSERT_TRUE(block.get(i, &datum)==BT_OK);
+			ASSERT_EQ(block.get(i, &datum), BT_OK);
 			ASSERT_EQ(datum, data1[k])<<" @ "<<i;
 			k++;
 		}
@@ -399,33 +400,34 @@ TEST(BtreeBlock, Internal_Overflow)
 	ph.image = &image;
 	ph.pid = 0;
 
-	Key_t endsBy = BtreeBlock::internalCap;
+	Key_t endsBy = 1000;
 
 	// range is sparseCap + 3
-	BtreeBlock block(&ph, 0, endsBy+3, false, false);
+	BtreeIntBlock block(&ph, 0, endsBy);
+	Key_t cap = block.getCapacity();
 
 	// fill the block to make it look like:
 	// oxoxxx...xo (o: empty slots)
 	PID_t x = 1;
 	ASSERT_TRUE(block.put(1, &x) == BT_OK);
-	for (int i=3; i<endsBy+2; i++) {
+	for (int i=3; i<cap+2; i++) {
 		x = i;
 		ASSERT_TRUE(block.put(i, &x)==BT_OK);
 	}
 
-	Key_t key1 = endsBy + 2;
+	Key_t key1 = cap + 2;
 	Key_t key2 = 0;
 	Key_t key3 = 2;
 
 	// insert to the end to cause overflow
 	ASSERT_TRUE(block.put(key1, &x)==BT_OVERFLOW);
 
-	BtreeBlock::OverflowEntry &e = block.overflowEntries[0];
-	ASSERT_TRUE(e.idx == endsBy)<<e.idx<<key1;
+	BtreeSparseBlock::OverflowEntry &e = block.overflowEntries[0];
+	ASSERT_TRUE(e.idx == cap)<<e.idx<<key1;
 	ASSERT_EQ(*((PID_t*)e.data), x);
 
 	// clear last insert
-	block.nEntries--;
+	block.getSize()--;
 
 	// insert to the front to cause overflow
 	ASSERT_TRUE(block.put(key2, &x)==BT_OVERFLOW);
@@ -435,7 +437,7 @@ TEST(BtreeBlock, Internal_Overflow)
 	ASSERT_EQ(*((PID_t*)e.data), x);
 
 	// clear last insert
-	block.nEntries--;
+	block.getSize()--;
 
 	// insert in the middle to cause overflow
 	ASSERT_TRUE(block.put(key3, &x)==BT_OVERFLOW);
@@ -453,19 +455,19 @@ TEST(BtreeBlock, Internal_Delete)
 	ph.image = &image;
 	ph.pid = 0;
 
-	Key_t endsBy = BtreeBlock::internalCap;
+	Key_t endsBy = 1000;
 
-	BtreeBlock block(&ph, 0, endsBy, false, false);
+	BtreeIntBlock block(&ph, 0, endsBy);
 
 	PID_t x = 1, y;
 	// put and get back
 	ASSERT_TRUE(block.put(1, &x) == BT_OK);
-	ASSERT_EQ(block.nEntries, 1);
+	ASSERT_EQ(block.getSize(), 1);
 	block.get(1, &y);
 	ASSERT_EQ(y, x);
 	// delete
 	ASSERT_TRUE(block.del(1) == BT_OK);
-	ASSERT_EQ(block.nEntries, 0);
+	ASSERT_EQ(block.getSize(), 0);
 	// read back; should be the default value
 	ASSERT_TRUE(block.get(1, &y) == BT_NOT_FOUND);
 

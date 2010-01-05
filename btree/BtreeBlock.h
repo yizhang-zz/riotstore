@@ -10,7 +10,7 @@
 
 #define BT_NOT_FOUND 1
 
-/*
+/**
  * Structure of a Btree block: 
  * OFFSET	SIZE	DESC
  * 0		1		Flags. bit 1: is leaf, bit 2: is dense. 
@@ -42,51 +42,144 @@
  */
 
 class BtreeBlock {
-public:
-	u16		nEntries;	/* how many entries */
+protected:
+	u16		*nEntries;	/* how many entries */
 	Key_t	lower;		/* all keys >= lower */
 	Key_t	upper;		/* all keys < upper */
-	bool	isLeaf;
-	bool	isDense;
+	//bool	isLeaf;
+	//bool	isDense;
 	PageHandle	ph;
 
-	union ExtraPtr {
-		PID_t nextLeaf;
-		PID_t rightChild;
-	} ptr;
+    const static u16 headerSize=8;	/* should be 7 but 8 makes alignment
+									   easier */
 
-	struct OverflowEntry {
+	static u16		denseCap;
+	static u16		sparseCap;
+	static u16		internalCap;
+
+    BtreeBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
+               bool create=false);
+
+public:
+	/* If a key is not found in a dense leaf block, it has a default value
+	 * and is omitted. */
+	const static Datum_t defaultValue = 0.0;
+	static inline bool IS_DEFAULT(Datum_t x) { return x == defaultValue; }
+
+    static BtreeBlock *load(PageHandle *pPh, Key_t beginsAt, Key_t endsBy);
+    //static BtreeBlock *create(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
+    //                          bool isLeaf, bool isDense, bool isRoot=false);
+
+    
+    virtual ~BtreeBlock() {}
+
+	void syncHeader();
+
+	virtual int search(Key_t key, u16 *index) = 0;
+
+	virtual int put(Key_t key, void *p) = 0;
+
+	virtual int get(Key_t key, void *p) = 0;
+
+	virtual int del(Key_t key) = 0;
+
+    virtual u16 getCapacity() = 0;
+
+    Key_t getLowerBound() { return lower; }
+    Key_t getUpperBound() { return upper; }
+    u16 & getSize() { return *nEntries; }
+
+    /*
+    char *getPayload()
+    {
+        return *ph.image;
+    }
+
+    PID_t getPID()
+    {
+        return ph.pid;
+    }
+    */
+};
+
+class BtreeDLeafBlock : public BtreeBlock
+{
+public:
+    virtual int search(Key_t key, u16 *index);
+    virtual int put(Key_t key, void *p);
+    virtual int get(Key_t key, void *p);
+	virtual int del(Key_t key);
+
+protected:
+    PID_t *nextLeaf;
+    static const u16 capacity = ((PAGE_SIZE)-headerSize)/sizeof(Datum_t);
+
+public:
+    BtreeDLeafBlock(PageHandle *pPh, Key_t beginsAt,
+                    bool create=true);
+    
+    virtual u16 getCapacity()
+    {
+        return capacity;
+    }
+};
+
+class BtreeSparseBlock: public BtreeBlock
+{
+public:
+    struct OverflowEntry {
 		// insert this entry before the idx-th non-overflow entry
 		u16 idx;
 		// body of the overflown entry
 		u8 data[8];
 	} overflowEntries[2];
 
-	const static u16 headerSize=8;	/* should be 7 but 8 makes alignment
-									   easier */
-	/* If a key is not found in a dense leaf block, it has a default value
-	 * and is omitted. */
-	const static Datum_t defaultValue = 0.0;
-	static inline bool IS_DEFAULT(Datum_t x) { return x == defaultValue; }
+    BtreeSparseBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
+                     bool create=true)
+        : BtreeBlock(pPh, beginsAt, endsBy, create)
+    {
+    }
+    
+    virtual int search(Key_t key, u16 *index);
+    virtual int put(Key_t key, void *p);
+    virtual int get(Key_t key, void *p);
+	virtual int del(Key_t key);
 
-	static u16		denseCap;
-	static u16		sparseCap;
-	static u16		internalCap;
+    virtual int getDatumSize() = 0;
+};
 
-	BtreeBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy);
-	BtreeBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy, bool isLeaf,
-			bool isDense, bool isRoot=false);
-	// ~BtreeBlock();
+class BtreeIntBlock : public BtreeSparseBlock
+{
+protected:
+    PID_t *rightChild;
+    static const u16 capacity = ((PAGE_SIZE)-headerSize)/
+        (sizeof(Key_t)+sizeof(PID_t));
+    
+public:
+    BtreeIntBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
+                    bool create=true);
+    virtual int getDatumSize()
+    {
+        return sizeof(PID_t);
+    }
 
-	void syncHeader();
+    virtual u16 getCapacity() { return capacity; }
+};
 
-	int search(Key_t key, u16 *idx);
+class BtreeSLeafBlock : public BtreeSparseBlock
+{
+protected:
+    PID_t *nextLeaf;
+    static const u16 capacity = ((PAGE_SIZE)-headerSize)/
+        (sizeof(Key_t)+sizeof(Datum_t));
+    
+public:
+    BtreeSLeafBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
+                    bool create=true);
+    virtual int getDatumSize() { return sizeof(Datum_t); }
 
-	int put(Key_t key, void *p);
+    virtual u16 getCapacity() { return capacity; }
 
-	int get(Key_t key, void *p);
-
-	int del(Key_t key);
 };
 
 #endif
