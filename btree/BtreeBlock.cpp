@@ -1,5 +1,9 @@
+
+#include "Btree.h"
+
 #include "../common/common.h"
 #include "BtreeBlock.h"
+#include <iostream>
 
 /* 
  * Initialize static members.
@@ -55,7 +59,7 @@ BtreeIntBlock::BtreeIntBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
     : BtreeSparseBlock(pPh, beginsAt, endsBy, create)
 {
     u8 *pData = *ph.image;
-    rightChild = (PID_t*) (pData+3);
+    // rightChild = (PID_t*) (pData+3);
 
     if (create) {
         u8 *flag = *ph.image;
@@ -156,6 +160,8 @@ int BtreeSparseBlock::search(Key_t key, u16 *index)
 	}
 
 	*index = p;
+    if (*index == *nEntries)
+        (*index)--;
 	return BT_NOT_FOUND;
 }
 
@@ -205,9 +211,9 @@ int BtreeSparseBlock::put(Key_t key, void *pDatum)
 	else { // an insertion
 		if (n >= getCapacity()) { // overflow
 			OverflowEntry &e = overflowEntries[n-getCapacity()];
-			e.idx = idx;
-			// sizeof(Datum_t) is safe to cover PID_t
-			memcpy(e.data, pDatum, size);
+			e.index = idx;
+            e.entry.key = key;
+			memcpy(&e.entry.value, pDatum, size);
 		}
 		else {	// non-overflow
 			// NOTE: unsigned type cannot be used for i because
@@ -335,4 +341,203 @@ int BtreeSparseBlock::del(Key_t key)
       else
       return BT_NOT_FOUND;
     */
+}
+
+void BtreeSparseBlock::getKey(int index, Key_t &key)
+{
+    assert(index >= 0);
+    if (index >= *nEntries) {
+        key = upper;
+        return;
+    }
+    
+    Key_t *pK = (Key_t*) (*ph.image + headerSize);
+    // check overflow
+    if (*nEntries > getCapacity()) {
+        OverflowEntry &e = overflowEntries[0];
+        if (index == e.index) {
+            key = e.entry.key;
+        }
+        else if (index < e.index) {
+            key = pK[index];
+        }
+        else {
+            key = pK[index-1];
+        }
+    }
+    else {
+        key = pK[index];
+    }
+}
+
+void BtreeSparseBlock::getValue(int index, Value &val)
+{
+    assert(index >= 0 && index < *nEntries);
+    u8* p = *ph.image + PAGE_SIZE - getDatumSize();
+    size_t size = getDatumSize();
+    // check overflow
+    if (*nEntries > getCapacity()) {
+        OverflowEntry &e = overflowEntries[0];
+        if (index == e.index)
+            memcpy(&val, &e.entry.value, size);
+        else if (index < e.index)
+            memcpy(&val, p-index*size, size);
+        else
+            memcpy(&val, p-(index-1)*size, size);
+    }
+    else
+        memcpy(&val, p-index*size, size);
+}
+
+int BtreeSparseBlock::get(int index, Entry &entry)
+{
+    assert(index >= 0 && index < *nEntries);
+    Key_t *pK = (Key_t*) (*ph.image + headerSize);
+    u8* pD = *ph.image + PAGE_SIZE - getDatumSize();
+    size_t size = getDatumSize();
+    // check overflow
+    if (*nEntries > getCapacity()) {
+        OverflowEntry &e = overflowEntries[0];
+        if (index == e.index)
+            entry = e.entry;
+        else if (index < e.index) {
+            entry.key = pK[index];
+            memcpy(&entry.value, pD-index*size, size);
+        }
+        else {
+            entry.key = pK[index-1];
+            memcpy(&entry.value, pD-(index-1)*size, size);
+        }
+    }
+    else
+        memcpy(&entry.value, pD-index*size, size);
+}
+
+int BtreeSparseBlock::put(int index, Entry &entry)
+{
+    assert(index >= 0 && index <= *nEntries);
+    size_t size = getDatumSize();
+    Key_t *pK = (Key_t*) (*ph.image + headerSize);
+    u8* p = *ph.image + PAGE_SIZE - size;
+
+    if (index < *nEntries && pK[index] == entry.key) {
+        memcpy(p-index*size, &entry.value, size);
+        return BT_OVERWRITE;
+    }
+    else {
+        u16 &n = *nEntries;
+        if (n >= getCapacity()) { // overflow
+            OverflowEntry &e = overflowEntries[n-getCapacity()];
+            e.index = index;
+            e.entry = entry;
+            n++;
+            return BT_OVERFLOW;
+        }
+        else {
+            // non-overflow
+            // NOTE: unsigned type cannot be used for i because
+            // nEntries can be 0 and assigning -1 to unsigned
+            // causes error.
+            int i;
+
+            // shift keys
+            for (i = n-1; i >= index; i--) {
+                pK[i+1] = pK[i];
+            }
+            pK[index] = entry.key;
+            // shift data
+            for (i = n-1; i >= index; i--)
+                memcpy(p-(i+1)*size, p-i*size, size);
+            //pD[-i-1] = pD[-i];
+            memcpy(p-index*size, &entry.value, size);
+            n++;
+            return BT_OK;
+        }
+    }
+}
+
+void BtreeSparseBlock::truncate(int cutoff)
+{
+    int i;
+    size_t size = getDatumSize();
+    Key_t *pK = (Key_t*) (*ph.image + headerSize);
+    u8* p = *ph.image + PAGE_SIZE - size;
+
+    upper = pK[cutoff];
+
+    if (*nEntries > getCapacity()) {
+        OverflowEntry &e = overflowEntries[0];
+        if (e.index < cutoff) {
+            // correct upper bound
+            upper = pK[cutoff-1];
+            // shift stuff and insert the overflown entry
+            for (i = cutoff-2; i >= e.index; i--)
+                pK[i+1] = pK[i];
+            pK[e.index] = e.entry.key;
+            for (i = cutoff-2; i >= e.index; i--)
+                memcpy(p-(i+1)*size, p-i*size, size);
+            memcpy(p-e.index*size, &e.entry.value, size);
+        }
+    }
+    *nEntries = cutoff;
+}
+
+void BtreeDLeafBlock::print(int depth, Btree *tree)
+{
+    using namespace std;
+    Datum_t *pD = (Datum_t*)(*ph.image + headerSize);
+    for (int i=0; i<depth; i++)
+        cout<<" ";
+    cout<<"|_";
+    cout<<" ["<<lower<<","<<upper<<") {";
+    for (int i=0; i<*nEntries; i++)
+        cout<<pD[i]<<", ";
+    cout<<"}"<<endl;
+}
+
+void BtreeSLeafBlock::print(int depth, Btree *tree)
+{
+    using namespace std;
+    Key_t *pK = (Key_t*)(*ph.image + headerSize);
+    Datum_t *pD = (Datum_t*) (*ph.image + PAGE_SIZE - sizeof(Datum_t));
+    for (int i=0; i<depth; i++)
+        cout<<"  ";
+    cout<<"|_";
+    cout<<" ["<<lower<<","<<upper<<") {";
+    for (int i=0; i<*nEntries; i++)
+        cout<<"("<<pK[i]<<","<<pD[-i]<<"), ";
+    cout<<"}"<<endl;
+}
+
+void BtreeIntBlock::print(int depth, Btree *tree)
+{
+    using namespace std;
+    Key_t *pK = (Key_t*)(*ph.image + headerSize);
+    PID_t *pP = (PID_t*) (*ph.image + PAGE_SIZE - sizeof(PID_t));
+    for (int i=0; i<depth; i++)
+        cout<<"  ";
+    cout<<"|_";
+    cout<<" ["<<lower<<","<<upper<<") {";
+    for (int i=0; i<*nEntries; i++)
+        cout<<pK[i]<<", ("<<pP[-i]<<"), ";
+    cout<<"}"<<endl;
+
+    if (tree != NULL && *nEntries > 0) {
+        PageHandle ph;
+        int i = 0;
+        for (; i<*nEntries-1; i++) {
+            ph.pid = pP[-i];
+            tree->loadPage(ph);
+            BtreeBlock *child = BtreeBlock::load(&ph, pK[i], pK[i+1]);
+            child->print(depth+1, tree);
+            delete child;
+            tree->releasePage(ph);
+        }
+        ph.pid = pP[-i];
+        tree->loadPage(ph);
+        BtreeBlock *child = BtreeBlock::load(&ph, pK[i], upper);
+        child->print(depth + 1, tree);
+        delete child;
+        tree->releasePage(ph);
+    }
 }

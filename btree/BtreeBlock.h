@@ -3,12 +3,27 @@
 
 #include "../common/common.h"
 #include <string.h>
+#include "../lower/BufferManager.h"
+#include "../lower/PageReplacer.h"
 
 #define BT_OK 0
 #define BT_OVERWRITE 1
 #define BT_OVERFLOW 2
+#define BT_NOT_FOUND 3
 
-#define BT_NOT_FOUND 1
+union Value
+{
+    Datum_t datum;
+    PID_t pid;
+};
+
+struct Entry
+{
+    Key_t key;
+    Value value;
+};
+
+class Btree;
 
 /**
  * Structure of a Btree block: 
@@ -61,45 +76,49 @@ protected:
                bool create=false);
 
 public:
-	/* If a key is not found in a dense leaf block, it has a default value
-	 * and is omitted. */
-	const static Datum_t defaultValue = 0.0;
-	static inline bool IS_DEFAULT(Datum_t x) { return x == defaultValue; }
+    /* If a key is not found in a dense leaf block, it has a default value
+     * and is omitted. */
+    const static Datum_t defaultValue = 0.0;
+    static inline bool IS_DEFAULT(Datum_t x) { return x == defaultValue; }
 
     static BtreeBlock *load(PageHandle *pPh, Key_t beginsAt, Key_t endsBy);
-    //static BtreeBlock *create(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
-    //                          bool isLeaf, bool isDense, bool isRoot=false);
-
     
     virtual ~BtreeBlock() {}
 
-	void syncHeader();
+    virtual BtreeBlock* copyNew(PageHandle *pPh, Key_t beginsAt, Key_t endsBy) = 0;
 
-	virtual int search(Key_t key, u16 *index) = 0;
+//	void syncHeader();
 
-	virtual int put(Key_t key, void *p) = 0;
+    virtual int search(Key_t key, u16 *index) = 0;
 
-	virtual int get(Key_t key, void *p) = 0;
+    virtual int put(Key_t key, void *p) = 0;
 
-	virtual int del(Key_t key) = 0;
+    virtual int get(Key_t key, void *p) = 0;
+
+    virtual int del(Key_t key) = 0;
 
     virtual u16 getCapacity() = 0;
 
     Key_t getLowerBound() { return lower; }
     Key_t getUpperBound() { return upper; }
     u16 & getSize() { return *nEntries; }
+    const PageHandle & getPageHandle() { return ph; }
 
-    /*
-    char *getPayload()
-    {
-        return *ph.image;
-    }
+    virtual void getKey(int index, Key_t &key) = 0;
+    virtual void getValue(int index, Value &val) = 0;
+    virtual int  get(int index, Entry &e) = 0;
+    virtual int  put(int index, Entry &e) = 0;
 
-    PID_t getPID()
-    {
-        return ph.pid;
-    }
-    */
+    /**
+     * The specified entry and all after it are truncated.
+     *
+     * @param cutoff Truncate from which entry on
+     */
+    virtual void truncate(int cutoff) = 0;
+
+    virtual void print(int depth, Btree *tree) = 0;
+
+    virtual void setNextLeaf(PID_t pid) = 0;
 };
 
 class BtreeDLeafBlock : public BtreeBlock
@@ -112,26 +131,70 @@ public:
 
 protected:
     PID_t *nextLeaf;
-    static const u16 capacity = ((PAGE_SIZE)-headerSize)/sizeof(Datum_t);
+    //static const u16 capacity = ((PAGE_SIZE)-headerSize)/sizeof(Datum_t);
+    static const u16 capacity = 5;
 
 public:
     BtreeDLeafBlock(PageHandle *pPh, Key_t beginsAt,
                     bool create=true);
     
-    virtual u16 getCapacity()
+    virtual u16 getCapacity() { return capacity; }
+
+    virtual void getKey(int index, Key_t &key)
     {
-        return capacity;
+        assert(index >=0 && index < *nEntries);
+        key = lower + index;
     }
+
+    virtual void getValue(int index, Value &val)
+    {
+        assert(index >=0 && index < *nEntries);
+        val.datum = ((Datum_t*) (*ph.image + headerSize))[index];
+    }
+
+    virtual int get(int index, Entry &e)
+    {
+        if (index >= 0 && index < *nEntries) {
+            e.key = lower + index;
+            e.value.datum = ((Datum_t*) (*ph.image + headerSize))[index];
+            return BT_OK;
+        }
+        return BT_NOT_FOUND;
+    }
+
+    virtual int put(int index, Entry &e)
+    {
+        Datum_t *p = (Datum_t*) ((*ph.image)+headerSize);
+        p[index] = e.value.datum;
+        ++(*nEntries);
+        return BT_OK;
+        // how about overwrite?
+    }
+
+    virtual BtreeBlock* copyNew(PageHandle *pPh, Key_t beginsAt, Key_t endsBy)
+    {
+        return new BtreeDLeafBlock(pPh, beginsAt);
+    }
+
+    virtual void truncate(int cutoff)
+    {
+        *nEntries = cutoff;
+        upper = ((Datum_t*)(*ph.image+headerSize))[cutoff];
+    }
+
+    virtual void print(int depth, Btree *tree);
+
+    virtual void setNextLeaf(PID_t pid) { *nextLeaf = pid; }
 };
 
 class BtreeSparseBlock: public BtreeBlock
 {
 public:
     struct OverflowEntry {
-		// insert this entry before the idx-th non-overflow entry
-		u16 idx;
-		// body of the overflown entry
-		u8 data[8];
+		/// Index of this entry if it is to be placed in the data area
+		u16 index;
+        /// The entry holding the key and the value
+        Entry entry;
 	} overflowEntries[2];
 
     BtreeSparseBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
@@ -146,32 +209,48 @@ public:
 	virtual int del(Key_t key);
 
     virtual int getDatumSize() = 0;
+
+    virtual void getKey(int index, Key_t &key);
+    virtual void getValue(int index, Value &val);
+    virtual int put(int index, Entry &e);
+    virtual int get(int index, Entry &e);
+    virtual void truncate(int cutoff);
 };
 
 class BtreeIntBlock : public BtreeSparseBlock
 {
 protected:
-    PID_t *rightChild;
-    static const u16 capacity = ((PAGE_SIZE)-headerSize)/
-        (sizeof(Key_t)+sizeof(PID_t));
+    // PID_t *rightChild;
+    //static const u16 capacity = ((PAGE_SIZE)-headerSize)/
+    //    (sizeof(Key_t)+sizeof(PID_t));
+    static const u16 capacity = 5;
     
 public:
     BtreeIntBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
                     bool create=true);
-    virtual int getDatumSize()
-    {
-        return sizeof(PID_t);
-    }
+    virtual int getDatumSize() { return sizeof(PID_t); }
 
     virtual u16 getCapacity() { return capacity; }
+    // virtual void getDatum(int index, void *datum);
+
+    //virtual int put(int index, Key_t *key, void *datum);
+
+    virtual BtreeBlock* copyNew(PageHandle *pPh, Key_t beginsAt, Key_t endsBy)
+    {
+        return new BtreeIntBlock(pPh, beginsAt, endsBy);
+    }
+
+    virtual void print(int depth, Btree *tree);
+    virtual void setNextLeaf(PID_t pid) { }
 };
 
 class BtreeSLeafBlock : public BtreeSparseBlock
 {
 protected:
     PID_t *nextLeaf;
-    static const u16 capacity = ((PAGE_SIZE)-headerSize)/
-        (sizeof(Key_t)+sizeof(Datum_t));
+    //static const u16 capacity = ((PAGE_SIZE)-headerSize)/
+    //    (sizeof(Key_t)+sizeof(Datum_t));
+    static const u16 capacity = 5;
     
 public:
     BtreeSLeafBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
@@ -180,6 +259,13 @@ public:
 
     virtual u16 getCapacity() { return capacity; }
 
+    virtual BtreeBlock* copyNew(PageHandle *pPh, Key_t beginsAt, Key_t endsBy)
+    {
+        return new BtreeSLeafBlock(pPh, beginsAt, endsBy);
+    }
+
+    virtual void print(int depth, Btree *tree);
+    virtual void setNextLeaf(PID_t pid) { *nextLeaf = pid; }
 };
 
 #endif
