@@ -23,7 +23,7 @@ include $(objects:.o=.d)
 lower:
 	cd .. ; $(MAKE)
 
-test: $(objects) ../../common/common.o ../BtreeBlock.o 
+test: $(objects) ../../common/common.o ../Splitter.o ../BtreeBlock.o ../BtreeCursor.o ../Btree.o ../../lower/BitmapPagedFile.o ../../lower/LRUPageReplacer.o
 	$(CXX) $(LDFLAGS) -o test $^ 
 
 

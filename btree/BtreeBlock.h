@@ -242,6 +242,7 @@ public:
 
     virtual void print(int depth, Btree *tree);
     virtual void setNextLeaf(PID_t pid) { }
+    virtual int search(Key_t key, u16 *index);
 };
 
 class BtreeSLeafBlock : public BtreeSparseBlock

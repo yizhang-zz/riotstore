@@ -108,6 +108,7 @@ typedef uint8_t Byte_t;
 /// A 32-bit integer used as page ID to uniquely identify a page in a file.
 typedef uint32_t PID_t;
 
+/*
 typedef struct 
 {
 	Key_t  	key;
@@ -119,6 +120,7 @@ typedef struct
 	Key_t 	lowerBound;
 	Key_t 	upperBound;
 } Range;
+*/
 
 /*
 typedef struct 
@@ -167,11 +169,13 @@ inline int BlockCapacity(BlockHeader *hdr)
 }
 */
 
+/*
 inline void SetRange(Range& range, Key_t lower, Key_t upper)
 {
 	range.lowerBound = lower;
 	range.upperBound = upper;
 }
+*/
 
 /*
 inline void SetBlockHeader(BlockHeader* blockHeader, BlockFormat format, Range& range, BlockNo nextBlock, Datum_t def=0, uint32_t nEntries=0)
@@ -184,12 +188,13 @@ inline void SetBlockHeader(BlockHeader* blockHeader, BlockFormat format, Range& 
 }
 */
 
+/*
 inline void SetEntry(Entry& entry, Key_t k, Datum_t d)
 {
    entry.key = k;
    entry.datum = d;
 }
-
+*/
 enum DataType { INT, DOUBLE, COMPLEX };
 
 /**

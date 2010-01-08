@@ -51,34 +51,31 @@ public:
 public:
 
   // sets bit in header that maps to pid
-  void allocate(PID_t pid);
+  void allocate(PID_t pid)
+  {
+	  if(pid < 8*PAGE_SIZE) {
+		  header[pid/8] |= (1 << (pid%8));
+	  }
+  }
 
   // clears bit in header that maps to pid
-  void deallocate(PID_t pid);
+  void deallocate(PID_t pid)
+  {
+	  if(pid < 8*PAGE_SIZE) {
+		  header[pid/8] &= ~(1 << (pid%8));
+	  }
+  }
 
   // returns value of bit in header that maps to pid
-  bool isAllocated(PID_t pid);
-
+  bool isAllocated(PID_t pid)
+  {
+	  if(pid < 8*PAGE_SIZE) {
+		  return (header[pid/8] & (1 << (pid%8))) >> (pid%8);
+	  }
+	  return false;
+  }
 };
 
-inline void BitmapPagedFile::allocate(PID_t pid) {
-    if(pid < 8*PAGE_SIZE) {
-        header[pid/8] |= (1 << (pid%8));
-    }
-}
-
-inline void BitmapPagedFile::deallocate(PID_t pid) {
-    if(pid < 8*PAGE_SIZE) {
-        header[pid/8] &= ~(1 << (pid%8));
-    }
-}
-
-inline bool BitmapPagedFile::isAllocated(PID_t pid) {
-    if(pid < 8*PAGE_SIZE) {
-        return (header[pid/8] & (1 << (pid%8))) >> (pid%8);
-    }
-    return false;
-}
 //////////////////////////////////////////////////////////////////////
 // Another possible implementation of PagedStorageContainer would be
 // IndexedPagedFile, where the header page stores, instead of a

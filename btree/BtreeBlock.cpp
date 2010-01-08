@@ -160,11 +160,16 @@ int BtreeSparseBlock::search(Key_t key, u16 *index)
 	}
 
 	*index = p;
-    if (*index == *nEntries)
-        (*index)--;
 	return BT_NOT_FOUND;
 }
 
+int BtreeIntBlock::search(Key_t key, u16 *index)
+{
+    int ret = BtreeSparseBlock::search(key, index);
+    if (ret == BT_NOT_FOUND)
+        (*index)--;
+    return ret;
+}
 /* 
  * Puts an entry into the block. The same key may already exist in the
  * block.
