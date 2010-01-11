@@ -5,7 +5,7 @@
 
 TEST(Btree, Create)
 {
-    MSplitter sp;
+    BSplitter sp(BtreeDLeafBlock::capacity);
     Btree tree("tree1.dat", 100, &sp, &sp);
     tree.print();
     Key_t key = 0;

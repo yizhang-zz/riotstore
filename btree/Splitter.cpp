@@ -3,19 +3,62 @@
 
 BtreeBlock* MSplitter::split(BtreeBlock *orig, PageHandle *newHandle)
 {
-    // orig must be a BtreeSparseBlock
-    Key_t beginsAt, endsBy;
+    Key_t beginsAt, endsBy; // bounds of new block
     u16 size = orig->getSize();
-    u16 mid = size / 2;
-    orig->getKey(mid, beginsAt);
+    u16 sp = size / 2;
+    orig->getKey(sp, beginsAt);
     endsBy = orig->getUpperBound();
     BtreeBlock *block = orig->copyNew(newHandle, beginsAt, endsBy);
     Entry e;
-    for (u16 k=mid; k<size; k++) {
+    for (u16 k=sp; k<size; k++) {
         orig->get(k, e);
-        block->put(k-mid, e);
+        block->put(k-sp, e);
     }
 
-    orig->truncate(mid);
+    orig->truncate(sp);
     return block;
+}
+
+BtreeBlock* BSplitter::split(BtreeBlock *orig, PageHandle *newHandle)
+{
+    // start from the middle and find the closest boundary
+    Key_t left, right, sp;
+    u16 size = orig->getSize();
+    if (size % 2 == 0)
+        left = right = size / 2;
+    else {
+        left = size / 2;
+        right = left + 1;
+    }
+    Entry e1,e2;
+    while(true) {
+        orig->get(right-1, e1);
+        orig->get(right, e2);
+        if (e1.key/boundary < e2.key/boundary) { // integer comparison
+            sp = right;
+            break;
+        }
+        right++;
+
+        orig->get(left-1, e1);
+        orig->get(left, e2);
+        if (e1.key/boundary < e2.key/boundary) {
+            sp = left;
+            break;
+        }
+        left--;
+    }
+
+    Key_t beginsAt, endsBy; // bounds of new block
+    orig->getKey(sp, beginsAt);
+    endsBy = orig->getUpperBound();
+    BtreeBlock *block = orig->copyNew(newHandle, beginsAt, endsBy);
+    Entry e;
+    for (u16 k=sp; k<size; k++) {
+        orig->get(k, e);
+        block->put(k-sp, e);
+    }
+    orig->truncate(sp);
+    return block;
+
 }

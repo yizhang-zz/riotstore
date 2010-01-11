@@ -128,11 +128,12 @@ public:
     virtual int put(Key_t key, void *p);
     virtual int get(Key_t key, void *p);
 	virtual int del(Key_t key);
-
+    
+    static const u16 capacity = 5;
 protected:
     PID_t *nextLeaf;
     //static const u16 capacity = ((PAGE_SIZE)-headerSize)/sizeof(Datum_t);
-    static const u16 capacity = 5;
+
 
 public:
     BtreeDLeafBlock(PageHandle *pPh, Key_t beginsAt,
