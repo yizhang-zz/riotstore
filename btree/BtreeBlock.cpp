@@ -44,7 +44,7 @@ BtreeBlock *BtreeBlock::load(PageHandle *pPh, Key_t beginsAt, Key_t endsBy)
     u8 flags = (*pPh->image)[0];
     if (flags & 1) {		// leaf
         if (flags & 2) {	// dense
-            block = new BtreeDLeafBlock(pPh, beginsAt, false);
+            block = new BtreeDLeafBlock(pPh, beginsAt, endsBy, false);
         } else {
             block = new BtreeSLeafBlock(pPh, beginsAt, endsBy, false);
         }
@@ -59,7 +59,7 @@ BtreeIntBlock::BtreeIntBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
     : BtreeSparseBlock(pPh, beginsAt, endsBy, create)
 {
     u8 *pData = *ph.image;
-    // rightChild = (PID_t*) (pData+3);
+    payload = pData+3;
 
     if (create) {
         u8 *flag = *ph.image;
@@ -67,22 +67,30 @@ BtreeIntBlock::BtreeIntBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
     }
 }
 
-BtreeDLeafBlock::BtreeDLeafBlock(PageHandle *pPh, Key_t beginsAt,
+BtreeDLeafBlock::BtreeDLeafBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
                                  bool create)
-    : BtreeBlock(pPh, beginsAt, beginsAt+capacity, create)
+    : BtreeBlock(pPh, beginsAt, endsBy, create)
 {
     u8 *pData = *ph.image;
     nextLeaf = (PID_t*) (pData+3);
+    headKey = (Key_t*) (pData+7);
+    head = (u16*) (pData+11);
+    nTotal = (u16*) (pData+13);
+    payload = pData+15;
 
     if (create) {
         u8 *flag = *ph.image;
         *flag = 3;
         
         // Init payload to defaultValue
-        Datum_t *p = (Datum_t*) (*ph.image + headerSize);
+        Datum_t *p = (Datum_t*) payload;
         for(int i=0; i<capacity; i++) {
             p[i] = defaultValue;
         }
+
+        *head = 0;
+        *headKey = beginsAt;
+        *nTotal = 0;
     }
 }
 
@@ -92,35 +100,13 @@ BtreeSLeafBlock::BtreeSLeafBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
 {
     u8 *pData = *ph.image;
     nextLeaf = (PID_t*) (pData+3);
+    payload = pData+7;
 
     if (create) {
         u8 *flag = *ph.image;
         *flag = 1;
     }
 }
-
-
-/*
- * Updates the block header in the page image.
- */
-
-/*
-void BtreeBlock::syncHeader()
-{
-	u8 *pData = *ph.image;
-	*pData |= isLeaf;
-	*pData |= isDense;
-
-	*((u16*)(pData + 1)) = nEntries;
-
-	if (isLeaf) {
-		*((PID_t*)(pData+3)) = ptr.nextLeaf;
-	}
-	else {
-		*((PID_t*)(pData+3)) = ptr.rightChild;
-	}
-}
-*/
 
 int BtreeDLeafBlock::search(Key_t key, u16 *idx)
 {
@@ -146,7 +132,7 @@ int BtreeSparseBlock::search(Key_t key, u16 *index)
 	int p = 0;
 	int q = *nEntries - 1;
 	int mid;
-	Key_t *pKeys = (Key_t*) (*ph.image+headerSize);
+	Key_t *pKeys = (Key_t*) payload;
 
 	do {
 		mid = (p+q)/2;
@@ -170,39 +156,10 @@ int BtreeIntBlock::search(Key_t key, u16 *index)
         (*index)--;
     return ret;
 }
-/* 
- * Puts an entry into the block. The same key may already exist in the
- * block.
- *
- * If the data to be inserted is defaultValue for leaf blocks, it is
- * equivalent to a delete. BT_OK is returned. 
- * 
- * Returns BT_OK if successfully inserted without overwriting or
- * overflowing, BT_OVERWRITE if a value exists and is overwritten,
- * BT_OVERFLOW if the insertion causes an overflow.
- */
-int BtreeDLeafBlock::put(Key_t key, void *pDatum)
-{
-	Datum_t datum = *(Datum_t*)pDatum;
-	if (IS_DEFAULT(datum)) {
-		del(key);
-		return BT_OK;
-	}
-    
-    Datum_t *p = (Datum_t*) ((*ph.image)+headerSize);
-    u16 offset = key - lower;
-    if (IS_DEFAULT(p[offset])) {
-        p[offset] = datum;
-        ++(*nEntries);
-        return BT_OK;
-    }
-    p[offset] = datum;
-    return BT_OVERWRITE;
-}
 
 int BtreeSparseBlock::put(Key_t key, void *pDatum)
 {
-	Key_t *pK = (Key_t*) ((*ph.image)+headerSize);
+	Key_t *pK = (Key_t*) payload;
 	u8 *p =  *ph.image + PAGE_SIZE - getDatumSize();
 
 	u16 idx;
@@ -242,6 +199,7 @@ int BtreeSparseBlock::put(Key_t key, void *pDatum)
 	}
 }
 
+
 /*
  * Gets an entry with the specified key. Returns BT_OK if found,
  * BT_NOT_FOUND otherwise. For dense leaf blocks, BT_OK is always returned.
@@ -251,36 +209,218 @@ int BtreeSparseBlock::put(Key_t key, void *pDatum)
  */
 
 int BtreeDLeafBlock::get(Key_t key, void *pRes)
-{ 
-    Datum_t *p = (Datum_t*) ((*ph.image)+headerSize);
-    u16 offset = key - lower;
-    memcpy(pRes, p+offset, sizeof(Datum_t));
+{
+    Datum_t *r = (Datum_t*) pRes;
+    if (key < *headKey || key >= *headKey+*nTotal) {
+        *r = defaultValue;
+        return BT_OK;
+    }
+
+    Datum_t *p = (Datum_t*) payload;
+    int index = key - *headKey;
+    Value v = getValue(index);
+    *r = v.datum;
     return BT_OK;
 }
 
-int BtreeSparseBlock::get(Key_t key, void *pRes)
+/*
+ * Puts an entry into the block. The same key may already exist in the
+ * block.
+ *
+ * If the data to be inserted is defaultValue for leaf blocks, it is
+ * equivalent to a delete. BT_OK is returned.
+ *
+ * Returns BT_OK if successfully inserted without overwriting or
+ * overflowing, BT_OVERWRITE if a value exists and is overwritten,
+ * BT_OVERFLOW if the insertion causes an overflow.
+ */
+int BtreeDLeafBlock::put(Key_t key, void *pDatum)
 {
-	Key_t *pK = (Key_t*) ((*ph.image)+headerSize);
-    // pointing to the begining of the last datum/pid
-    u8 *p = (*ph.image+PAGE_SIZE) - getDatumSize();
-	//Datum_t *pD = (Datum_t*) (*ph.image + PAGE_SIZE) - 1;
-	//PID_t *pP = (PID_t*) (*ph.image + PAGE_SIZE) - 1;
+    Datum_t datum = *(Datum_t*)pDatum;
+    // call index-based put
+    int index = key - *headKey;
+    Datum_t *p = (Datum_t*) pDatum;
+    Entry e;
+    e.key = key;
+    e.value.datum = *p;
+    return put(index, e);
 
-	u16 idx;
-	int res = search(key, &idx);
-	if (res == BT_OK) {
-        memcpy(pRes, p-idx*getDatumSize(), getDatumSize());
-		return BT_OK;
-	}
-	else {
-		// if (isLeaf) {
-		// 	Datum_t val = BtreeBlock::defaultValue;
-		// 	memcpy(pRes, &val, sizeof(Datum_t));
-		// 	return BT_OK;
-		// }
-		// else
-        return BT_NOT_FOUND;
-	}
+    /*
+    Datum_t *p = (Datum_t*) payload;
+    u16 offset = key - lower;
+    if (IS_DEFAULT(p[offset])) {
+        p[offset] = datum;
+        ++(*nEntries);
+        return BT_OK;
+    }
+    p[offset] = datum;
+    return BT_OVERWRITE;
+    */
+}
+
+Key_t BtreeDLeafBlock::getKey(int index)
+{
+    return *headKey + index;
+}
+
+Value BtreeDLeafBlock::getValue(int index)
+{
+    Value v;
+    OverflowEntry &e = overflowEntries[0];
+    if (*nTotal > capacity) {
+        // overflow can only happen at either of the two ends
+        // overflow at the beginning
+        if (e.index < 0) {
+            if (index == 0)
+                return e.entry.value;
+            else if (index < -e.index) {
+                v.datum = defaultValue;
+                return v;
+            }
+            else
+                index += e.index;
+        }
+        // overflow at the end
+        else {
+            if (index == e.index)
+                return e.entry.value;
+            else if (index >= capacity) {
+                v.datum = defaultValue;
+                return v;
+            }
+        }
+    }
+
+    Datum_t *p = (Datum_t*) payload;
+    v.datum = p[(*head + index + capacity) % capacity];
+    return v;
+}
+
+/**
+ * Gets the entry at the given logical index in the block. Elements are sorted
+ * in logical index order.
+ *
+ * @param index Logical index of the entry.
+ * @param e The entry to be returned.
+ */
+int BtreeDLeafBlock::get(int index, Entry &e)
+{
+    e.key = getKey(index);
+    e.value = getValue(index);
+    return BT_OK;
+}
+
+int BtreeDLeafBlock::put(int index, Entry &e)
+{
+    Datum_t *p = (Datum_t*) payload;
+
+    // If new data is defaultValue and old data is not, then it is a deletion
+    if (IS_DEFAULT(e.value.datum)) {
+        del(index);
+        return BT_OK;
+    }
+
+    if (*nEntries == 0) {
+        // Block is empty
+        *nTotal = 1;
+        *nEntries = 1;
+        *head = 0;
+        *headKey = e.key;
+        p[0] = e.value.datum;
+        return BT_OK;
+    }
+
+    if (index >= 0 && index < *nTotal) {
+        // Not extending the explicitly stored range of values
+        index = (*head + index) % capacity;
+        if (IS_DEFAULT(p[index])) {
+            *nEntries += 1;
+        }
+        p[index] = e.value.datum;
+        return BT_OK;
+    }
+    else if (index < 0) {
+        // Extending before the beginning of the explicitly stored range
+
+        if ((*nTotal-index) <= capacity) {
+            // Current space is enough
+            *head += index;
+            if (*head < 0) *head += capacity;
+            (*nEntries)++;
+            *nTotal += -index;
+            p[*head] = e.value.datum;
+            return BT_OK;
+        }
+        else {
+            (*nEntries)++;
+            // Scan and reclaim free space if possible
+            bool found = false;
+            int start = (*head+*nTotal-1)%capacity;
+            int end = (*head+index+capacity)%capacity;
+            for (int i=start; i>=end; i--) {
+                if (!IS_DEFAULT(p[i])) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                // Can move the tail to make room
+                *nTotal = capacity;
+                *head = end;
+                *headKey += index;
+                p[*head] = e.value.datum;
+                return BT_OK;
+            }
+            else {
+                overflowEntries[0].index = index;
+                overflowEntries[0].entry = e;
+                return BT_OVERFLOW;
+            }
+        }
+    }
+    else {
+        // Extending after the end of the explicitly stored range
+
+        if (index < capacity) {
+            // Current space is enough
+            (*nEntries)++;
+            *nTotal = index + 1;
+            p[(*head+index)%capacity] = e.value.datum;
+            return BT_OK;
+        }
+        else {
+            (*nEntries)++;
+            // Scan and reclaim free space if possible
+            bool found = false;
+            int start = *head;
+            int end = (*head+index)%capacity;
+            for (int i=start; i<=end; i++) {
+                if (!IS_DEFAULT(p[i])) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                // can move the head to make room
+                *nTotal = capacity;
+                *head = (end + 1) % capacity;
+                *headKey += end-start+1;
+                p[end] = e.value.datum;
+                return BT_OK;
+            }
+            else {
+                overflowEntries[0].index = index;
+                overflowEntries[0].entry = e;
+                return BT_OVERFLOW;
+            }
+        }
+    }
+
+//        Datum_t *p = (Datum_t*) ((*ph.image)+headerSize);
+//        p[index] = e.value.datum;
+//        ++(*nEntries);
+//        return BT_OK;
+//        // how about overwrite?
 }
 
 /*
@@ -288,20 +428,58 @@ int BtreeSparseBlock::get(Key_t key, void *pRes)
  * just return BT_OK for leaf blocks, or BT_NOT_FOUND for internal blocks. 
  */
 
-int BtreeDLeafBlock::del(Key_t key)
+int BtreeDLeafBlock::del(int index)
 {
-    Datum_t *p = (Datum_t*) (*ph.image+headerSize);
+    Datum_t *p = (Datum_t*) payload;
+    if (index >=0 && index < *nTotal) {
+        index = (index+*head)%capacity;
+        if (!IS_DEFAULT(p[index])) {
+            p[index] = defaultValue;
+            --(*nEntries);
+        }
+    }
+    return BT_OK;
+
+    /*
     u16 offset = key - lower;
     if (!IS_DEFAULT(p[offset])) {
         p[offset] = defaultValue;
         --(*nEntries);
     }
     return BT_OK;
+    */
 }
 
-int BtreeSparseBlock::del(Key_t key)
+/* ---------------- Sparse Block --------------- */
+
+int BtreeSparseBlock::get(Key_t key, void *pRes)
 {
-	Key_t *pK = (Key_t*) ((*ph.image)+headerSize);
+    Key_t *pK = (Key_t*) payload;
+    // pointing to the begining of the last datum/pid
+    u8 *p = (*ph.image+PAGE_SIZE) - getDatumSize();
+    //Datum_t *pD = (Datum_t*) (*ph.image + PAGE_SIZE) - 1;
+    //PID_t *pP = (PID_t*) (*ph.image + PAGE_SIZE) - 1;
+
+    u16 idx;
+    int res = search(key, &idx);
+    if (res == BT_OK) {
+        memcpy(pRes, p-idx*getDatumSize(), getDatumSize());
+        return BT_OK;
+    }
+    else {
+        // if (isLeaf) {
+        //  Datum_t val = BtreeBlock::defaultValue;
+        //  memcpy(pRes, &val, sizeof(Datum_t));
+        //  return BT_OK;
+        // }
+        // else
+        return BT_NOT_FOUND;
+    }
+}
+
+int BtreeSparseBlock::del(int key)
+{
+	Key_t *pK = (Key_t*) payload;
     u8 *pD = (*ph.image + PAGE_SIZE) - getDatumSize();
     u16 &n = *nEntries;
     int unitSize = getDatumSize();
@@ -348,15 +526,15 @@ int BtreeSparseBlock::del(Key_t key)
     */
 }
 
-void BtreeSparseBlock::getKey(int index, Key_t &key)
+Key_t BtreeSparseBlock::getKey(int index)
 {
     assert(index >= 0);
     if (index >= *nEntries) {
-        key = upper;
-        return;
+        return  upper;
     }
     
-    Key_t *pK = (Key_t*) (*ph.image + headerSize);
+    Key_t *pK = (Key_t*) payload;
+    Key_t key;
     // check overflow
     if (*nEntries > getCapacity()) {
         OverflowEntry &e = overflowEntries[0];
@@ -373,11 +551,13 @@ void BtreeSparseBlock::getKey(int index, Key_t &key)
     else {
         key = pK[index];
     }
+    return key;
 }
 
-void BtreeSparseBlock::getValue(int index, Value &val)
+Value BtreeSparseBlock::getValue(int index)
 {
     assert(index >= 0 && index < *nEntries);
+    Value val;
     u8* p = *ph.image + PAGE_SIZE - getDatumSize();
     size_t size = getDatumSize();
     // check overflow
@@ -392,12 +572,13 @@ void BtreeSparseBlock::getValue(int index, Value &val)
     }
     else
         memcpy(&val, p-index*size, size);
+    return val;
 }
 
 int BtreeSparseBlock::get(int index, Entry &entry)
 {
     assert(index >= 0 && index < *nEntries);
-    Key_t *pK = (Key_t*) (*ph.image + headerSize);
+    Key_t *pK = (Key_t*) payload;
     u8* pD = *ph.image + PAGE_SIZE - getDatumSize();
     size_t size = getDatumSize();
     // check overflow
@@ -422,7 +603,7 @@ int BtreeSparseBlock::put(int index, Entry &entry)
 {
     assert(index >= 0 && index <= *nEntries);
     size_t size = getDatumSize();
-    Key_t *pK = (Key_t*) (*ph.image + headerSize);
+    Key_t *pK = (Key_t*) payload;
     u8* p = *ph.image + PAGE_SIZE - size;
 
     if (index < *nEntries && pK[index] == entry.key) {
@@ -465,7 +646,7 @@ void BtreeSparseBlock::truncate(int cutoff)
 {
     int i;
     size_t size = getDatumSize();
-    Key_t *pK = (Key_t*) (*ph.image + headerSize);
+    Key_t *pK = (Key_t*) payload;
     u8* p = *ph.image + PAGE_SIZE - size;
 
     upper = pK[cutoff];
@@ -490,7 +671,7 @@ void BtreeSparseBlock::truncate(int cutoff)
 void BtreeDLeafBlock::print(int depth, Btree *tree)
 {
     using namespace std;
-    Datum_t *pD = (Datum_t*)(*ph.image + headerSize);
+    Datum_t *pD = (Datum_t*) payload;
     for (int i=0; i<depth; i++)
         cout<<" ";
     cout<<"|_";
@@ -503,7 +684,7 @@ void BtreeDLeafBlock::print(int depth, Btree *tree)
 void BtreeSLeafBlock::print(int depth, Btree *tree)
 {
     using namespace std;
-    Key_t *pK = (Key_t*)(*ph.image + headerSize);
+    Key_t *pK = (Key_t*) payload;
     Datum_t *pD = (Datum_t*) (*ph.image + PAGE_SIZE - sizeof(Datum_t));
     for (int i=0; i<depth; i++)
         cout<<"  ";
@@ -517,7 +698,7 @@ void BtreeSLeafBlock::print(int depth, Btree *tree)
 void BtreeIntBlock::print(int depth, Btree *tree)
 {
     using namespace std;
-    Key_t *pK = (Key_t*)(*ph.image + headerSize);
+    Key_t *pK = (Key_t*) payload;
     PID_t *pP = (PID_t*) (*ph.image + PAGE_SIZE - sizeof(PID_t));
     for (int i=0; i<depth; i++)
         cout<<"  ";

@@ -6,7 +6,7 @@ BtreeBlock* MSplitter::split(BtreeBlock *orig, PageHandle *newHandle)
     Key_t beginsAt, endsBy; // bounds of new block
     u16 size = orig->getSize();
     u16 sp = size / 2;
-    orig->getKey(sp, beginsAt);
+    beginsAt = orig->getKey(sp);
     endsBy = orig->getUpperBound();
     BtreeBlock *block = orig->copyNew(newHandle, beginsAt, endsBy);
     Entry e;
@@ -50,7 +50,7 @@ BtreeBlock* BSplitter::split(BtreeBlock *orig, PageHandle *newHandle)
     }
 
     Key_t beginsAt, endsBy; // bounds of new block
-    orig->getKey(sp, beginsAt);
+    beginsAt = orig->getKey(sp);
     endsBy = orig->getUpperBound();
     BtreeBlock *block = orig->copyNew(newHandle, beginsAt, endsBy);
     Entry e;

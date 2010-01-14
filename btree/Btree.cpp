@@ -62,14 +62,12 @@ int Btree::search(Key_t key, BtreeCursor *cursor)
         u16 &idx = cursor->indices[cursor->current];
         int ret = block->search(key, &idx);
         int cur = idx;
-        Value val;
-        block->getValue(cur, val);
+        Value val = block->getValue(cur);
         PID_t child = val.pid;
         ph.pid = child;
         buffer->readPage(ph);
-        Key_t l,u;
-        block->getKey(cur, l);
-        block->getKey(cur+1, u);
+        Key_t l = block->getKey(cur);
+        Key_t u = block->getKey(cur+1);
         // load child block
         block = BtreeBlock::load(&ph, l, u);
         ++(cursor->current);
