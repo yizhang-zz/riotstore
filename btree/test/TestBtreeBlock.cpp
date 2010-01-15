@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 #include "../BtreeBlock.h"
+#include "../BtreeDLeafBlock.h"
+#include "../BtreeSLeafBlock.h"
+#include "../BtreeIntBlock.h"
 
 /************************************************
  * Dense leaf block tests.
@@ -139,12 +142,62 @@ TEST(BtreeDLeafBlock, PutGet)
 
 }
 
+TEST(BtreeDLeafBlock, Overflow)
+{
+	PageImage image;
+	PageHandle ph;
+	ph.image = &image;
+	ph.pid = 0;
+
+	Key_t lower = 100;
+	Key_t upper = 500;
+	BtreeDLeafBlock block(&ph, lower, upper);
+	u16 cap = block.getCapacity();
+
+	// 5 pairs of key,datum to be inserted
+	const int num = cap;
+	Key_t idx[num];
+	Datum_t data[num];
+	for (int i=0; i<num; i++) {
+	    idx[i] = lower+i+1;
+	    data[i] = idx[i];
+	}
+
+	// non-overwrite put
+	for (int i=0; i<num; i++) {
+		ASSERT_EQ(block.put(idx[i], &data[i]), BT_OK)<<" i="<<i;
+	}
+
+    // overlow at the front
+    Entry e;
+    e.key = lower;
+    e.value.datum = e.key;
+    ASSERT_EQ(block.put(-1, e), BT_OVERFLOW);
+    ASSERT_EQ(block.getSize(), num+1);
+    e.value.datum = 0.0;
+    block.get(0, e);
+    ASSERT_EQ(e.key, lower);
+    ASSERT_DOUBLE_EQ(e.value.datum, lower);
+
+    // overflow at the back
+    block.truncate(cap);
+    block.get(0,e);
+    ASSERT_EQ(e.key,lower); 
+    ASSERT_DOUBLE_EQ(e.value.datum, lower);
+    e.key = lower+cap;
+    e.value.datum = e.key;
+    ASSERT_EQ(block.put(cap, e), BT_OVERFLOW);
+    block.get(cap, e);
+    ASSERT_EQ(e.key, lower+cap);
+    ASSERT_DOUBLE_EQ(e.value.datum, e.key);
+}
+
 /************************************************
  * Sparse leaf block tests.
  */
 
 
-TEST(BtreeBlock, SparseLeaf_CreateEmpty)
+TEST(BtreeSLeafBlock, CreateEmpty)
 {
 	PageImage image;
 	PageHandle ph;
@@ -165,7 +218,7 @@ TEST(BtreeBlock, SparseLeaf_CreateEmpty)
 	}
 }
 
-TEST(BtreeBlock, SparseLeaf_PutGet)
+TEST(BtreeSLeafBlock, PutGet)
 {
 	PageImage image;
 	PageHandle ph;
@@ -221,7 +274,7 @@ TEST(BtreeBlock, SparseLeaf_PutGet)
 }
 
 
-TEST(BtreeBlock, SparseLeaf_Overflow)
+TEST(BtreeSLeafBlock, Overflow)
 {
 	PageImage image;
 	PageHandle ph;
@@ -312,7 +365,7 @@ TEST(BtreeBlock, SparseLeaf_Delete)
  * Internal block tests.
  */
 
-TEST(BtreeBlock, Internal_CreateEmpty)
+TEST(BtreeIntBlock, CreateEmpty)
 {
 	PageImage image;
 	PageHandle ph;
@@ -395,7 +448,6 @@ TEST(BtreeBlock, Internal_PutGet)
 		}
 	}
 }
-
 
 TEST(BtreeBlock, Internal_Overflow)
 {

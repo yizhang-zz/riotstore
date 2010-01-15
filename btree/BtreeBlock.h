@@ -116,7 +116,7 @@ public:
     u16 & getSize() { return *nEntries; }
     const PageHandle & getPageHandle() { return ph; }
 
-
+    virtual bool  isDefault(void *p) = 0;
     virtual Key_t getKey(int index) = 0;
     virtual Value getValue(int index) = 0;
     virtual int   get(int index, Entry &e) = 0;
@@ -129,138 +129,11 @@ public:
      */
     virtual void truncate(int cutoff) = 0;
 
+    virtual BtreeBlock* pack() = 0;
+
     virtual void print(int depth, Btree *tree) = 0;
 
     virtual void setNextLeaf(PID_t pid) = 0;
-};
-
-class BtreeDLeafBlock : public BtreeBlock
-{
-public:
-    const static u16 headerSize=16;
-
-    virtual int search(Key_t key, u16 *index);
-    virtual int put(Key_t key, void *p);
-    virtual int get(Key_t key, void *p);
-    
-    static const u16 capacity = 5;
-    //static const u16 capacity = ((PAGE_SIZE)-headerSize)/sizeof(Datum_t);
-
-    BtreeDLeafBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
-                    bool create=true);
-    
-    virtual u16 getCapacity() { return capacity; }
-
-    virtual Key_t getKey(int index);
-    virtual Value getValue(int index);
-    virtual int  get(int index, Entry &e);
-    virtual int  put(int index, Entry &e);
-
-
-    virtual BtreeBlock* copyNew(PageHandle *pPh, Key_t beginsAt, Key_t endsBy)
-    {
-        return new BtreeDLeafBlock(pPh, beginsAt, endsBy);
-    }
-
-    virtual void truncate(int cutoff)
-    {
-        *nEntries = cutoff;
-        upper = ((Datum_t*)(*ph.image+headerSize))[cutoff];
-    }
-
-    virtual void print(int depth, Btree *tree);
-
-    virtual void setNextLeaf(PID_t pid) { *nextLeaf = pid; }
-
-protected:
-    PID_t *nextLeaf;
-    u16 *head;
-    u16 *nTotal;
-    Key_t *headKey;
-
-    virtual int del(int index);
-};
-
-class BtreeSparseBlock: public BtreeBlock
-{
-public:
-
-    BtreeSparseBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
-                     bool create=true)
-        : BtreeBlock(pPh, beginsAt, endsBy, create)
-    {
-    }
-    
-    virtual int search(Key_t key, u16 *index);
-    virtual int put(Key_t key, void *p);
-    virtual int get(Key_t key, void *p);
-
-    virtual int getDatumSize() = 0;
-
-    virtual Key_t getKey(int index);
-    virtual Value getValue(int index);
-    virtual int put(int index, Entry &e);
-    virtual int get(int index, Entry &e);
-    virtual void truncate(int cutoff);
-
-protected:
-    virtual int del(int index);
-};
-
-class BtreeIntBlock : public BtreeSparseBlock
-{
-protected:
-    // PID_t *rightChild;
-    //static const u16 capacity = ((PAGE_SIZE)-headerSize)/
-    //    (sizeof(Key_t)+sizeof(PID_t));
-    static const u16 capacity = 5;
-    
-public:
-    const static u16 headerSize=4;
-
-    BtreeIntBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
-                    bool create=true);
-    virtual int getDatumSize() { return sizeof(PID_t); }
-
-    virtual u16 getCapacity() { return capacity; }
-    // virtual void getDatum(int index, void *datum);
-
-    //virtual int put(int index, Key_t *key, void *datum);
-
-    virtual BtreeBlock* copyNew(PageHandle *pPh, Key_t beginsAt, Key_t endsBy)
-    {
-        return new BtreeIntBlock(pPh, beginsAt, endsBy);
-    }
-
-    virtual void print(int depth, Btree *tree);
-    virtual void setNextLeaf(PID_t pid) { }
-    virtual int search(Key_t key, u16 *index);
-};
-
-class BtreeSLeafBlock : public BtreeSparseBlock
-{
-protected:
-    PID_t *nextLeaf;
-    //static const u16 capacity = ((PAGE_SIZE)-headerSize)/
-    //    (sizeof(Key_t)+sizeof(Datum_t));
-    static const u16 capacity = 5;
-    
-public:
-    const static u16 headerSize=8;
-
-    BtreeSLeafBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
-                    bool create=true);
-    virtual int getDatumSize() { return sizeof(Datum_t); }
-
-    virtual u16 getCapacity() { return capacity; }
-
-    virtual BtreeBlock* copyNew(PageHandle *pPh, Key_t beginsAt, Key_t endsBy)
-    {
-        return new BtreeSLeafBlock(pPh, beginsAt, endsBy);
-    }
-
-    virtual void print(int depth, Btree *tree);
-    virtual void setNextLeaf(PID_t pid) { *nextLeaf = pid; }
 };
 
 #endif

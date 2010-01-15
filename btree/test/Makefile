@@ -5,6 +5,7 @@ LDFLAGS = -lgtest
 .PHONY: all clean lower
 
 objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp))
+par_objects := $(patsubst %.cpp, %.o, $(wildcard ../*.cpp))
 
 .c.o:
 	$(CXX) $(CXXFLAGS) -c $<
@@ -23,7 +24,8 @@ include $(objects:.o=.d)
 lower:
 	cd .. ; $(MAKE)
 
-test: $(objects) ../../common/common.o ../Splitter.o ../BtreeBlock.o ../BtreeCursor.o ../Btree.o ../../lower/BitmapPagedFile.o ../../lower/LRUPageReplacer.o
+test: $(objects) $(par_objects) ../../common/common.o ../../lower/BitmapPagedFile.o ../../lower/LRUPageReplacer.o 
+	echo $(par_objects)
 	$(CXX) $(LDFLAGS) -o test $^ 
 
 

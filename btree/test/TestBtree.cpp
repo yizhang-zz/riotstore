@@ -1,11 +1,13 @@
 #include <gtest/gtest.h>
 #include "../BtreeBlock.h"
+#include "../BtreeDLeafBlock.h"
 #include "../Btree.h"
 #include "../Splitter.h"
 
 TEST(Btree, Create)
 {
-    BSplitter sp(BtreeDLeafBlock::capacity);
+    // BSplitter sp(BtreeDLeafBlock::capacity);
+    MSplitter sp;
     Btree tree("tree1.dat", 100, &sp, &sp);
     tree.print();
     Key_t key = 0;

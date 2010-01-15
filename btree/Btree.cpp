@@ -1,5 +1,7 @@
-
 #include "BtreeBlock.h"
+#include "BtreeIntBlock.h"
+#include "BtreeSLeafBlock.h"
+#include "BtreeDLeafBlock.h"
 
 #include "Btree.h"
 #include "../lower/BitmapPagedFile.h"
@@ -114,7 +116,15 @@ int Btree::put(Key_t &key, Datum_t &datum)
     ret = block->put(cursor.indices[cursor.current], e);
     buffer->markPageDirty(block->getPageHandle());
     if (ret == BT_OVERFLOW) {
-        split(&cursor);
+        // first try pack (convert to another format)
+        BtreeBlock *newBlock = block->pack();
+        if (newBlock) {
+            delete cursor.trace[cursor.current];
+            cursor.trace[cursor.current] = newBlock;
+            ret = BT_OK;
+        }
+        else
+            split(&cursor);
     }
     return ret;
 }
