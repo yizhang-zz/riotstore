@@ -17,7 +17,7 @@ public:
     BtreeIntBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
                     bool create=true);
     virtual int getDatumSize() { return sizeof(PID_t); }
-    virtual bool isDefault(void *p) { return false; }
+    virtual bool isDefault(const void *p) { return false; }
     virtual u16 getCapacity() { return capacity; }
     // virtual void getDatum(int index, void *datum);
 
@@ -30,7 +30,7 @@ public:
 
     virtual void print(int depth, Btree *tree);
     virtual void setNextLeaf(PID_t pid) { }
-    virtual int search(Key_t key, u16 *index);
+    // virtual int search(Key_t key, int &index);
     virtual BtreeBlock* pack();
 };
 

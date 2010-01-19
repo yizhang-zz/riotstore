@@ -7,11 +7,11 @@
  * written in idx and 0 is returned. Otherwise, idx is set to the index of
  * key if key is to be inserted and 1 is returned.
  */ 
-int BtreeSparseBlock::search(Key_t key, u16 *index)
+int BtreeSparseBlock::search(Key_t key, int &index)
 {
 	assert(key>=lower && key<upper);
 	if (*nEntries == 0) {
-		*index = 0;
+		index = 0;
 		return BT_NOT_FOUND;
 	}
 
@@ -28,30 +28,30 @@ int BtreeSparseBlock::search(Key_t key, u16 *index)
 	} while (p <= q && pKeys[mid] != key);
 
 	if (pKeys[mid] == key) {
-		*index = mid;
+		index = mid;
 		return BT_OK;
 	}
 
-	*index = p;
+	index = p;
 	return BT_NOT_FOUND;
 }
 
-int BtreeSparseBlock::put(Key_t key, void *pDatum)
+int BtreeSparseBlock::put(Key_t key, const void *pDatum)
 {
 	Key_t *pK = (Key_t*) payload;
 	u8 *p =  *ph.image + PAGE_SIZE - getDatumSize();
     size_t size = getDatumSize();
 
-	u16 index;
+	int index;
     Entry e;
     e.key = key;
     memcpy(&e.value, pDatum, size);
-	int res = search(key, &index);
+	int res = search(key, index);
     return put(index, e);
 
     // TODO: the following is obsolete
-    u16 idx;
-    res = search(key, &idx);
+    int idx;
+    res = search(key, idx);
     u16 &n = *nEntries;
 	if (res == BT_OK) {
         memcpy(p-idx*size, pDatum, size);
@@ -94,8 +94,8 @@ int BtreeSparseBlock::get(Key_t key, void *pRes)
     //Datum_t *pD = (Datum_t*) (*ph.image + PAGE_SIZE) - 1;
     //PID_t *pP = (PID_t*) (*ph.image + PAGE_SIZE) - 1;
 
-    u16 idx;
-    int res = search(key, &idx);
+    int idx;
+    int res = search(key, idx);
     if (res == BT_OK) {
         memcpy(pRes, p-idx*getDatumSize(), getDatumSize());
         return BT_OK;
@@ -196,11 +196,13 @@ int BtreeSparseBlock::get(int index, Entry &entry)
             memcpy(&entry.value, pD-(index-1)*size, size);
         }
     }
-    else
+    else {
+        entry.key = pK[index];
         memcpy(&entry.value, pD-index*size, size);
+    }
 }
 
-int BtreeSparseBlock::put(int index, Entry &entry)
+int BtreeSparseBlock::put(int index, const Entry &entry)
 {
     assert(index >= 0 && index <= *nEntries);
     size_t size = getDatumSize();
@@ -278,3 +280,72 @@ void BtreeSparseBlock::truncate(int cutoff)
     }
     *nEntries = cutoff;
 }
+
+BtreeBlock::Iterator* BtreeSparseBlock::getSparseIterator(
+    const Key_t &beginsAt, const Key_t &endsBy)
+{
+    BtreeBlock::Iterator* itor = getSparseIterator();
+    itor->setRange(beginsAt, endsBy);
+    return itor;
+}
+
+BtreeBlock::Iterator* BtreeSparseBlock::getSparseIterator()
+{
+    BtreeBlock::Iterator* itor = new BtreeSparseBlock::SparseIterator(this);
+    return itor;
+}
+
+BtreeSparseBlock::SparseIterator::SparseIterator(BtreeSparseBlock *block)
+{
+    this->block = block;
+    index = -1;
+    size = block->getSize();
+    begin = 0;
+    end = size;
+}
+
+bool BtreeSparseBlock::SparseIterator::moveNext()
+{
+    return (++index < end);
+}
+
+bool BtreeSparseBlock::SparseIterator::movePrev()
+{
+    return (--index >= begin);
+}
+
+void BtreeSparseBlock::SparseIterator::get(Key_t &k, Value &d)
+{
+    Entry e;
+    block->get(index, e);
+    k = e.key;
+    d = e.value;
+}
+
+void BtreeSparseBlock::SparseIterator::put(const Value &d)
+{
+    Entry e;
+    e.value = d;
+    block->put(index, e);
+}
+
+void BtreeSparseBlock::SparseIterator::reset()
+{
+    index = begin - 1;
+}
+
+bool BtreeSparseBlock::SparseIterator::setRange(const Key_t &b, const Key_t &e)
+{
+    if (b < block->getLowerBound() || e > block->getUpperBound()
+        || b >=e)
+        return false;
+    int j;
+    block->search(b, begin);
+    if (e == block->getUpperBound())
+        end = size;
+    else
+        block->search(e, end);
+    reset();
+    return true;
+}
+

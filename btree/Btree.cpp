@@ -61,15 +61,16 @@ int Btree::search(Key_t key, BtreeCursor *cursor)
     cursor->current = 0;
 
     for (int i=1; i<header->depth; i++) {
-        u16 &idx = cursor->indices[cursor->current];
-        int ret = block->search(key, &idx);
-        int cur = idx;
-        Value val = block->getValue(cur);
+        int &idx = cursor->indices[cursor->current];
+        int ret = block->search(key, idx);
+        if (ret == BT_NOT_FOUND)
+            idx--;
+        Value val = block->getValue(idx);
         PID_t child = val.pid;
         ph.pid = child;
         buffer->readPage(ph);
-        Key_t l = block->getKey(cur);
-        Key_t u = block->getKey(cur+1);
+        Key_t l = block->getKey(idx);
+        Key_t u = block->getKey(idx+1);
         // load child block
         block = BtreeBlock::load(&ph, l, u);
         ++(cursor->current);
@@ -77,7 +78,7 @@ int Btree::search(Key_t key, BtreeCursor *cursor)
     }
 
     // already at the leaf level
-    int ret = block->search(key, &cursor->indices[cursor->current]);
+    int ret = block->search(key, cursor->indices[cursor->current]);
     return ret;
 }
 

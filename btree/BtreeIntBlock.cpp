@@ -15,13 +15,17 @@ BtreeIntBlock::BtreeIntBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
     }
 }
 
-int BtreeIntBlock::search(Key_t key, u16 *index)
+/*
+int BtreeIntBlock::search(Key_t key, int &index)
 {
     int ret = BtreeSparseBlock::search(key, index);
+    if (index == 0)
+        return ret;
     if (ret == BT_NOT_FOUND)
-        (*index)--;
+        index--;
     return ret;
 }
+*/
 
 void BtreeIntBlock::print(int depth, Btree *tree)
 {

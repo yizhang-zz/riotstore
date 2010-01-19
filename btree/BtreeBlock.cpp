@@ -57,3 +57,20 @@ BtreeBlock *BtreeBlock::load(PageHandle *pPh, Key_t beginsAt, Key_t endsBy)
     return block;
 }
 
+BtreeBlock *BtreeBlock::createSameType(BtreeBlock *orig, PageHandle *pPh,
+                                       Key_t beginsAt, Key_t endsBy)
+{
+    BtreeBlock *block;
+    u8 flags = *(orig->ph.image)[0];
+    if (flags & 1) {		// leaf
+        if (flags & 2) {	// dense
+            block = new BtreeDLeafBlock(pPh, beginsAt, endsBy, true);
+        } else {
+            block = new BtreeSLeafBlock(pPh, beginsAt, endsBy, true);
+        }
+    } else {
+        block = new BtreeIntBlock(pPh, beginsAt, endsBy, true);
+    }
+    return block;
+}
+

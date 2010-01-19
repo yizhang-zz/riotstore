@@ -12,7 +12,7 @@ public:
     static const int MaxDepth = 20;
     Btree *tree;
     BtreeBlock *trace[MaxDepth];
-    u16 indices[MaxDepth];
+    int indices[MaxDepth];
     int current;
 
     BtreeCursor(Btree *t);

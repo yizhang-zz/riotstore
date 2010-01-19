@@ -71,7 +71,7 @@ public:
      *
      * \param [in] d Datum to be put.
      */ 
-    virtual void put(D &d) = 0;
+    virtual void put(const D &d) = 0;
 
     /**
      * Resets the iterator to its initial position, which is before
@@ -92,7 +92,11 @@ public:
      * \return true if successful; false if out of range or beginsAt
      * is not before endsBy.
      */
-    virtual bool setRange(K &beginsAt, K &endsBy);
+    virtual bool setRange(const K &beginsAt, const K &endsBy)
+    {
+        this->beginsAt = beginsAt;
+        this->endsBy = endsBy;
+    }
 
 protected:
     /// Where the iteration should begin (inclusive).

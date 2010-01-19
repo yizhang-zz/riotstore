@@ -2,6 +2,7 @@
 #define BTREE_BLOCK_H
 
 #include "../common/common.h"
+#include "../common/Iterator.h"
 #include <string.h>
 #include "../lower/BufferManager.h"
 #include "../lower/PageReplacer.h"
@@ -81,6 +82,8 @@ protected:
     virtual int del(int index) = 0;
 
 public:
+    typedef ::Iterator<Key_t, Value> Iterator;
+    
     struct OverflowEntry {
         /// Index of this entry if it is to be placed in the data area
         int index;
@@ -94,16 +97,16 @@ public:
     static inline bool IS_DEFAULT(Datum_t x) { return x == defaultValue; }
 
     static BtreeBlock *load(PageHandle *pPh, Key_t beginsAt, Key_t endsBy);
-    
+    static BtreeBlock *createSameType(BtreeBlock *block, PageHandle *pPh, Key_t beginsAt, Key_t endsBy);
     virtual ~BtreeBlock() {}
 
     virtual BtreeBlock* copyNew(PageHandle *pPh, Key_t beginsAt, Key_t endsBy) = 0;
 
 //	void syncHeader();
 
-    virtual int search(Key_t key, u16 *index) = 0;
+    virtual int search(Key_t key, int &index) = 0;
 
-    virtual int put(Key_t key, void *p) = 0;
+    virtual int put(Key_t key, const void *p) = 0;
 
     virtual int get(Key_t key, void *p) = 0;
 
@@ -115,12 +118,14 @@ public:
     Key_t getUpperBound() { return upper; }
     u16 & getSize() { return *nEntries; }
     const PageHandle & getPageHandle() { return ph; }
+    bool  isSparse() { return !(*ph.image[0] & 2); }
+    bool  isLeaf() { return *ph.image[0] & 1; }
 
-    virtual bool  isDefault(void *p) = 0;
+    virtual bool  isDefault(const void *p) = 0;
     virtual Key_t getKey(int index) = 0;
     virtual Value getValue(int index) = 0;
     virtual int   get(int index, Entry &e) = 0;
-    virtual int   put(int index, Entry &e) = 0;
+    virtual int   put(int index, const Entry &e) = 0;
 
     /**
      * The specified entry and all after it are truncated.
@@ -134,6 +139,13 @@ public:
     virtual void print(int depth, Btree *tree) = 0;
 
     virtual void setNextLeaf(PID_t pid) = 0;
+    
+    virtual Iterator* getSparseIterator(const Key_t &beingsAt,
+                                        const Key_t &endsBy) = 0;    
+    virtual Iterator* getDenseIterator(const Key_t &beingsAt,
+                                        const Key_t &endsBy) = 0;
+    virtual Iterator* getSparseIterator() = 0;
+    virtual Iterator* getDenseIterator() = 0;
 };
 
 #endif

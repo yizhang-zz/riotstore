@@ -17,7 +17,7 @@ public:
     BtreeSLeafBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
                     bool create=true);
     virtual int getDatumSize() { return sizeof(Datum_t); }
-    virtual bool isDefault(void *p) { return *((Datum_t*)p) == defaultValue; }
+    virtual bool isDefault(const void *p) { return *((const Datum_t*)p) == defaultValue; }
     virtual u16 getCapacity() { return capacity; }
 
     virtual BtreeBlock* copyNew(PageHandle *pPh, Key_t beginsAt, Key_t endsBy)
