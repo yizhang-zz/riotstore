@@ -4,7 +4,8 @@ LDFLAGS = -lgtest
 
 .PHONY: all clean lower
 
-objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp))
+#objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp))
+objects := TestBtree.o main.o
 par_objects := $(patsubst %.cpp, %.o, $(wildcard ../*.cpp))
 
 .c.o:
