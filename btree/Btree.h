@@ -83,6 +83,7 @@ public:
     void setLeafSplitter(Splitter *sp) { leafSplitter = sp; }
 
     void print();
+    u32  getNumLeaves() { return header->nLeaves; }
 };
 
 #endif

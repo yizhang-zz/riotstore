@@ -63,6 +63,10 @@ int Btree::search(Key_t key, BtreeCursor *cursor)
     for (int i=1; i<header->depth; i++) {
         int &idx = cursor->indices[cursor->current];
         int ret = block->search(key, idx);
+        /* idx is the position where the key should be inserted at.
+         * To follow the child pointer, the position should be
+         * decremented.
+         */
         if (ret == BT_NOT_FOUND)
             idx--;
         Value val = block->getValue(idx);
@@ -137,6 +141,7 @@ void Btree::split(BtreeCursor *cursor)
     BtreeBlock *block = cursor->trace[cur];
     buffer->allocatePage(newPh);
     BtreeBlock *newBlock = leafSplitter->split(block, &newPh);
+    header->nLeaves++;
     block->setNextLeaf(newPh.pid);
     buffer->markPageDirty(block->getPageHandle());
     Entry e;
@@ -148,6 +153,7 @@ void Btree::split(BtreeCursor *cursor)
         e.value.pid = newPh.pid;
         ret = parent->put(pos, e);
         buffer->markPageDirty(parent->getPageHandle());
+        buffer->unpinPage(newPh);
         if (ret != BT_OVERFLOW)
             break;
         buffer->allocatePage(newPh);
@@ -166,6 +172,8 @@ void Btree::split(BtreeCursor *cursor)
         newRoot->put(1, e);
         header->root = rootPh.pid;
         header->depth++;
+        buffer->unpinPage(newPh);
+        buffer->unpinPage(rootPh);
     }
 }
 
