@@ -20,7 +20,7 @@
  *
  * Each (un)linearize operation can be expensive, especially if the
  * transformation is complex. For efficiency reasons, Linearization
- * also provides incremental (un)linearize operations. The implementer
+ * also provides optional incremental computation. The implementer
  * of a concrete subclass of Linearization should take advantage of
  * the efficiency of incremental computation if such an opportunity
  * exists.
@@ -48,7 +48,7 @@ public:
      * \param coord The coord to be linearized.
      * \return Result of linearization.
      */
-    virtual Key_t linearize(MDCoord &coord) = 0;
+    virtual Key_t linearize(const MDCoord &coord) = 0;
 
     /**
      * Unlinearizes the given 1-D coord.
@@ -58,7 +58,7 @@ public:
      */
     virtual MDCoord unlinearize(Key_t key) = 0;
 
-    /**
+    /*
      * Incrementally linearizes the coord specified as the sum of the
      * remembered last state and the give difference. Provided as a
      * potential optimization for quick linearization if the change in
@@ -67,18 +67,19 @@ public:
      * \param diff The difference in coordinate based on last state.
      * \return The result of linearization.
      */
-    virtual Key_t linearizeIncremental(MDCoord &diff) = 0;
+    // virtual Key_t linearizeIncremental(MDCoord &diff) = 0;
 
     /**
-     * Incrementally unlinearizes the coord specified as the sum of
-     * the remembered last state and the give difference. Provided as
-     * a potential optimization for quick unlinearization if the
-     * change in coordinates is incremental.
+     * Incrementally calculate \f$y\f$ such that \f$ f(y)=f(from)+diff
+     * \f$ from the given anchor and diff. Provided as a potential
+     * optimization for quick calculation of the next or pervious
+     * coordinate when iterating through an array.
      *
-     * \param diff The difference in key based on last state.
-     * \return The result of unlinearization.
+     * \param from The anchor coordinate in n-D space.
+     * \param diff The difference in linearized space.
+     * \return The new coordinate in n-D space.
      */
-    virtual MDCoord unlinearizeIncremental(KeyDiff_t diff) = 0;
+    virtual MDCoord move(const MDCoord &from, KeyDiff_t diff) = 0;
 
     /**
      * Clone method to simulate virtual copy constructor. IMPORTANT: a
@@ -89,16 +90,16 @@ public:
     virtual Linearization* clone() = 0;
     
 protected:
-    /**
+    /*
      * \name States
      * States of last (un)linearize operation, maintained for
      * incremental computation.
      */
     //@{
-    MDCoord linIn;
-    MDCoord unlinOut;
-    Key_t linOut;
-    Key_t unlinIn;
+    //MDCoord linIn;
+    //MDCoord unlinOut;
+    //Key_t linOut;
+    //Key_t unlinIn;
     //@}
 
 private:

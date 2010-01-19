@@ -20,8 +20,7 @@
  * In other words, moveNext() moves the pointer to \f$ f^{-1}(f(x)+1)
  * \f$.  Similarly, movePrev() moves the pointer to \f$ f^{-1}(f(x)-1)
  * \f$.  Often, these operations can be accelerated by
- * Linearization::unlinearizeIncremental() by providing a key
- * difference of 1 or -1.
+ * Linearization::move() by providing a key difference of 1 or -1.
  *
  * \sa Iterator
  * \sa MDArray
@@ -69,7 +68,7 @@ public:
      * \return true if successfully moved to the previous entry; false
      * if already before the beginning of the collection.
      *
-     * \sa Linearization::unlinearizeIncremental()
+     * \sa Linearization::move()
      */
     virtual bool movePrev();
 
@@ -83,7 +82,7 @@ public:
      * \return true if successfully moved to the next entry; false
      * if already after the end of the collection.
      *
-     * \sa Linearization::unlinearizeIncremental()
+     * \sa Linearization::move()
      */
     virtual bool moveNext();
 

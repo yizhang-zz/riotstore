@@ -8,7 +8,7 @@
  *
  * A major performance concern of MDSparseIterator is that most times
  * its operations can NOT be accelerated by
- * Linearization::unlinearizeIncremental().  This is because without
+ * Linearization::move().  This is because without
  * imposing any assumption on the array storage, one does not know
  * where the next or previous non-zero entry is.  Thus one cannot
  * assume a fixed increment of +1 or -1.  However, there is one
