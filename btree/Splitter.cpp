@@ -46,14 +46,17 @@ BtreeBlock* BSplitter::split(BtreeBlock *orig, PageHandle *newHandle)
     // start from the middle and find the closest boundary
     Key_t left, right, sp;
     u16 size = orig->getSize();
-    if (size % 2 == 0)
-        left = right = size / 2;
+    if (size % 2 == 0) {
+        right = size / 2;
+        left = right - 1;
+    }
     else {
-        left = size / 2;
-        right = left + 1;
+        left = right = size / 2;
     }
     Entry e1,e2;
     while(true) {
+        // test if can split in front of left/right position
+        // loop is terminated once a split point is found
         orig->get(right-1, e1);
         orig->get(right, e2);
         if (e1.key/boundary < e2.key/boundary) { // integer comparison
@@ -74,12 +77,26 @@ BtreeBlock* BSplitter::split(BtreeBlock *orig, PageHandle *newHandle)
     Key_t beginsAt, endsBy; // bounds of new block
     beginsAt = orig->getKey(sp);
     endsBy = orig->getUpperBound();
-    BtreeBlock *block = orig->copyNew(newHandle, beginsAt, endsBy);
+    BtreeBlock *block;
+    /*
+     * orig is guaranteed to be leaf, as internal blocks always use MSplitter.
+     */
+    if (size-sp > BtreeSLeafBlock::capacity)
+        block = new BtreeDLeafBlock(newHandle, beginsAt, endsBy);
+    else if (endsBy-beginsAt <= BtreeDLeafBlock::capacity)
+        block = new BtreeDLeafBlock(newHandle, beginsAt, endsBy);
+    else
+        block = new BtreeSLeafBlock(newHandle, beginsAt, endsBy);
+
     Entry e;
-    for (u16 k=sp; k<size; k++) {
-        orig->get(k, e);
-        block->put(k-sp, e);
+    BtreeBlock::Iterator *itor = orig->getSparseIterator(beginsAt, endsBy);
+    int i = 0;
+    while (itor->moveNext()) {
+        itor->get(e.key, e.value);
+        block->put(i++, e);
     }
+    delete itor;
+    
     orig->truncate(sp);
     return block;
 }
