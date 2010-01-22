@@ -3,6 +3,7 @@
 #include "BtreeIntBlock.h"
 #include "BtreeDLeafBlock.h"
 #include "BtreeSLeafBlock.h"
+#include <limits>
 
 BtreeBlock* MSplitter::split(BtreeBlock *orig, PageHandle *newHandle)
 {
@@ -99,4 +100,28 @@ BtreeBlock* BSplitter::split(BtreeBlock *orig, PageHandle *newHandle)
     
     orig->truncate(sp);
     return block;
+}
+
+BtreeBlock* RSplitter::split(BtreeBlock *orig, PageHandle *newHandle)
+{
+    Key_t beginsAt, endsBy;
+    Key_t lower = orig->getLowerBound();
+    Key_t upper = orig->getUpperBound();
+    int size = orig->getSize();
+    double min = std::numeric_limits<double>::max();
+    int minind = 0;
+    // for each i, try split after the i-th element
+    Entry e1, e2;
+    for(int i=0; i<size-1; i++) {
+        double r1, r2;
+        r1 = orig->getKey(i+1) - lower - (i+1);
+        if (i+1 <= BtreeSLeafBlock::capacity)
+            r1 /= (BtreeSLeafBlock::capacity-i-1);
+        else
+            r1 /= (BtreeDLeafBlock::capacity-i-1);
+        r2 = upper-orig->getKey(i+1)-(size-i-1);
+        // todo
+    }
+    return NULL;
+        
 }

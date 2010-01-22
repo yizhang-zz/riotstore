@@ -51,4 +51,15 @@ private:
     u16 boundary;
 };
 
+/**
+ * A strategy that splits an overflowing Btree block at the boundary that is
+ * closest to the middle position.
+ */
+class RSplitter : public Splitter
+{
+public:
+    virtual BtreeBlock* split(BtreeBlock *orig, PageHandle *newHandle);
+    // RSplitter(u16 boundary) { this->boundary = boundary; }
+};
+
 #endif
