@@ -3,6 +3,9 @@
 #include <string.h>
 #include "BitmapPagedFile.h"
 
+int BitmapPagedFile::readCount = 0;
+int BitmapPagedFile::writeCount = 0;
+
 /* Creates a BitmapPagedFile over a disk file of a given name. If flag has
  * F_CREATE set, then a new file is created; otherwise the file is assumed
  * to exist. It is the caller's responsibility to ensure the existence of
@@ -25,6 +28,7 @@
  */
 
 BitmapPagedFile::BitmapPagedFile(const char *pathname, int flag) {
+    readCount = 0;
 	// create new file
 	if (flag & F_CREATE) {
 		fd = open_direct(pathname, O_RDWR|O_CREAT|O_TRUNC);
@@ -142,6 +146,7 @@ RC_t BitmapPagedFile::readPage(PageHandle &ph) {
 
     lseek(fd, (1 + ph.pid)*PAGE_SIZE, SEEK_SET); // +1 for header page
     read(fd, ph.image, PAGE_SIZE);
+    readCount++;
     return RC_SUCCESS;
 }
 
@@ -166,5 +171,6 @@ RC_t BitmapPagedFile::writePage(const PageHandle &ph) {
     */
     lseek(fd, (1 + ph.pid)*PAGE_SIZE, SEEK_SET); // +1 for header page
     write(fd, ph.image, PAGE_SIZE);
+    writeCount++;
     return RC_SUCCESS;
 }

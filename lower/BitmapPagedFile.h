@@ -16,12 +16,19 @@
 
 class BitmapPagedFile : public PagedStorageContainer {
 
-// private:
-    public:
+public:
 
   int fd;	// file descriptor
   uint32_t numContentPages;
-  Byte_t header[PAGE_SIZE]; 
+  Byte_t header[PAGE_SIZE];
+
+  static int readCount;
+  static int writeCount;
+
+  static void resetCounts()
+  {
+      readCount = writeCount = 0;
+  }
 
 public:
 

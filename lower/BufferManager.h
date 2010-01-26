@@ -6,27 +6,37 @@
 #include <tr1/unordered_map>
 #include "../common/common.h"
 #include "PagedStorageContainer.h"
+#include <iostream>
+using namespace std;
 
 // forward declaration
 class PageReplacer;
 class LRUPageReplacer;
 
-struct BufferHeader {
+class BufferHeader {
+public:
 	BufferHeader *prev;
 	BufferHeader *next;
 	PID_t pid;
 	bool dirty;
 	uint32_t pinCount;
 	PageImage *image;
-};
+
+    BufferHeader()
+    {
+        reset();
+    }
  
-inline void InitBufferHeader(BufferHeader *bh)
-{
-	bh->prev = bh->next = NULL;
-	bh->pid = 0;
-	bh->dirty = 0;
-	bh->pinCount = 0;
-}
+    void reset()
+    {
+        BufferHeader *bh = this;
+        bh->prev = bh->next = NULL;
+        bh->pid = 0;
+        bh->dirty = false;
+        bh->pinCount = 0;
+        bh->image = NULL;
+    }
+};
 
 //////////////////////////////////////////////////////////////////////
 // Provides memory-buffered access to a PagedStorageContainer.  This
@@ -45,36 +55,20 @@ class BufferManager {
 
 private:
 
-  typedef std::tr1::unordered_map<PID_t, BufferHeader*> PageHashMap;
+    typedef std::tr1::unordered_map<PID_t, BufferHeader*> PageHashMap;
 
-  // The underlying storage.
-  PagedStorageContainer *storage;
+    // The underlying storage.
+    PagedStorageContainer *storage;
 
-  // Maximum number of pages the buffer can hold.
-  uint32_t numSlots;
+    // Maximum number of pages the buffer can hold.
+    uint32_t numSlots;
 
-  // The buffer memory.  It is implemented as an array of size
-  // numSlots.
-  PageImage *images;
+    // The buffer memory.  It is implemented as an array of size
+    // numSlots.
+    PageImage *images;
 
 	// A header for each image
 	BufferHeader *headers;
-
-  // An array of bits indicating whether the corresponding slots in
-  // the images buffer are in use.
-  //bool *usedBits;
-
-  // An array of bits indicating whether the corresponding pages are
-  // dirty (valid only for slots in use).
-  //bool *dirtyBits;
-
-  // An array of counts indicating the number of pins for each page
-  // (valid only for slots in use).
-  //uint32_t *pinCounts;
-
-  // An array of pids for the corresponding pages in the images buffer
-  // (valid only for slots in use).
-  //PID_t *pids;
 
 	/* We maintain three lists for the page images. A list for all
 		 pinned pages, a list for all the reclaimable pages (unpinned),
@@ -88,21 +82,21 @@ private:
 	*/
 
 	BufferHeader *freelist; // singly-linked list
-  // A hash table that allows one to map a pid to an index into the
-  // images buffer (if the page is buffered).
+    // A hash table that allows one to map a pid to an index into the
+    // images buffer (if the page is buffered).
 	PageHashMap *pageHash;
 	
-  // A page replacer implements algorithms for selecting a page to be
-  // replaced when the entire buffer is full and a new page has to be
-  // brought into the buffer
-  //friend class PageReplacer;
-  T *pageReplacer;
+    // A page replacer implements algorithms for selecting a page to be
+    // replaced when the entire buffer is full and a new page has to be
+    // brought into the buffer
+    //friend class PageReplacer;
+    T *pageReplacer;
 
 public:
 
-  // Constructs a BufferManager for a paged storage container with a
-  // memory buffer that holds a given number of pages.
-  BufferManager(PagedStorageContainer *s, uint32_t n) {
+    // Constructs a BufferManager for a paged storage container with a
+    // memory buffer that holds a given number of pages.
+    BufferManager(PagedStorageContainer *s, uint32_t n) {
 		numSlots = n;
 		storage = s;
 		images = new PageImage[numSlots];
@@ -112,9 +106,6 @@ public:
 		for (int i=0; i<numSlots; i++) {
 			freelist[i].next = freelist+(i+1);
 			//freelist[i+1].prev = freelist+i;
-			freelist[i].pid = 0;
-			freelist[i].dirty = false;
-			freelist[i].pinCount = 0;
 			freelist[i].image = images+i;
 		}
 		//freelist[0].prev = NULL;
@@ -135,8 +126,8 @@ public:
 		pageReplacer = new T();
 	}
 
-  // Destructs the BufferManager.  All dirty pages will be flushed.
-  ~BufferManager() {
+    // Destructs the BufferManager.  All dirty pages will be flushed.
+    ~BufferManager() {
 		flushAllPages();
 		delete[] images;
 		delete[] headers;
@@ -144,9 +135,9 @@ public:
 		delete pageReplacer;
 	}
 
-  // Creates a new page in buffer (with unintialized content), pins
-  // it, marks it dirty, and returns the handle.
-  RC_t allocatePage(PageHandle &ph) {
+    // Creates a new page in buffer (with unintialized content), pins
+    // it, marks it dirty, and returns the handle.
+    RC_t allocatePage(PageHandle &ph) {
 		BufferHeader *bh;
 		if (storage->allocatePage(ph.pid) != RC_SUCCESS) {
 			printf("Physical storage cannot allocate page.\n");
@@ -171,11 +162,11 @@ public:
 		return RC_SUCCESS;
 	}
 
-  // Creates a new page with given pid in buffer (with unintialized
-  // content), pins it, marks it dirty, and returns the handle.  This
-  // method only works if the implementation of PagedStorageContainer
-  // supports allocatePageWithPID.
-  RC_t allocatePageWithPID(PID_t pid, PageHandle &ph) {
+    // Creates a new page with given pid in buffer (with unintialized
+    // content), pins it, marks it dirty, and returns the handle.  This
+    // method only works if the implementation of PagedStorageContainer
+    // supports allocatePageWithPID.
+    RC_t allocatePageWithPID(PID_t pid, PageHandle &ph) {
 		BufferHeader *bh;
 		if (storage->allocatePageWithPID(pid) != RC_SUCCESS) {
 			// printf("Physical storage cannot allocate page.\n");
@@ -201,9 +192,9 @@ public:
 		return RC_SUCCESS;
 	}
 
-  // Disposes a buffered page.  It will be removed from both the
-  // buffer and the disk storage.  Dirty bit is ignored.
-  RC_t disposePage(const PageHandle &ph) {
+    // Disposes a buffered page.  It will be removed from both the
+    // buffer and the disk storage.  Dirty bit is ignored.
+    RC_t disposePage(const PageHandle &ph) {
 		if (storage->disposePage(ph.pid) != RC_SUCCESS) {
 			printf("Physical storage cannot dispose page.\n");
 			return RC_FAILURE;
@@ -217,15 +208,15 @@ public:
 		}
 		// move the page to free list
 		pageReplacer->remove(bh);
-		InitBufferHeader(bh);
+		bh->reset();
 		bh->next = freelist;	
 		freelist = bh;
 		return RC_SUCCESS;
 	}
 
-  // Reads a page into buffer (if it is not already in), pins it, and
-  // returns the handle.
-  RC_t readPage(PageHandle &ph) {
+    // Reads a page into buffer (if it is not already in), pins it, and
+    // returns the handle.
+    RC_t readPage(PageHandle &ph) {
 		// first check if already buffered
 		PageHashMap::iterator it = pageHash->find(ph.pid);
 		if (it != pageHash->end()) {
@@ -249,7 +240,6 @@ public:
 				}
 				ph.image = bh->image;
 			}
-			InitBufferHeader(bh);
 			bh->pid = ph.pid;
 			bh->pinCount = 1;
 			pageHash->insert(PageHashMap::value_type(ph.pid, bh));
@@ -262,8 +252,8 @@ public:
 		return RC_SUCCESS;
 	}
 
-  // Marks a pinned page as dirty (i.e., modified).
-  RC_t markPageDirty(const PageHandle &ph) {
+    // Marks a pinned page as dirty (i.e., modified).
+    RC_t markPageDirty(const PageHandle &ph) {
 		PageHashMap::iterator it = pageHash->find(ph.pid);
 		assert(it != pageHash->end());
 		BufferHeader *bh = it->second;
@@ -271,9 +261,9 @@ public:
 		return RC_SUCCESS;
 	}
 
-  // Pins a page.  As long as a page has at least one pin, it cannot
-  // be discarded from the buffer.
-  RC_t pinPage(const PageHandle &ph) {
+    // Pins a page.  As long as a page has at least one pin, it cannot
+    // be discarded from the buffer.
+    RC_t pinPage(const PageHandle &ph) {
 		// the page must have already been pinned (when it was created)	
 		PageHashMap::iterator it = pageHash->find(ph.pid);
 		assert(it != pageHash->end());
@@ -282,9 +272,9 @@ public:
 		return RC_SUCCESS;
 	}
 
-  // Unpins a page.  If a page has no pin left, it can be discarded
-  // from the buffer, in which case the handle will become invalid.
-  RC_t unpinPage(const PageHandle &ph) {
+    // Unpins a page.  If a page has no pin left, it can be discarded
+    // from the buffer, in which case the handle will become invalid.
+    RC_t unpinPage(const PageHandle &ph) {
 		PageHashMap::iterator it = pageHash->find(ph.pid);
 		assert(it != pageHash->end());
 		BufferHeader *bh = it->second;
@@ -297,9 +287,9 @@ public:
 		return RC_SUCCESS;
 	}
 
-  // Flushes a pinned page to disk, if it is dirty.  A page's dirty
-  // bit is unset after flushing.
-  RC_t flushPage(const PageHandle &ph) {
+    // Flushes a pinned page to disk, if it is dirty.  A page's dirty
+    // bit is unset after flushing.
+    RC_t flushPage(const PageHandle &ph) {
 		PageHashMap::iterator it = pageHash->find(ph.pid);
 		assert(it != pageHash->end());
 		BufferHeader *bh = it->second;
@@ -313,13 +303,13 @@ public:
 		return RC_SUCCESS;
 	}
 
-  // Flushes all dirty pages in the buffer to disk.  Pages' dirty bits
-  // are unset after flushing.
-  RC_t flushAllPages() {
+    // Flushes all dirty pages in the buffer to disk.  Pages' dirty bits
+    // are unset after flushing.
+    RC_t flushAllPages() {
 		bool good = true;
 		for (PageHashMap::iterator it = pageHash->begin();
-				 it != pageHash->end();
-				 it++) {
+             it != pageHash->end();
+             it++) {
 			BufferHeader *bh = it->second;
 			PageHandle ph;
 			ph.pid = bh->pid;
@@ -334,6 +324,15 @@ public:
 		}
 		return good ? RC_SUCCESS : RC_FAILURE;
 	}
+
+    void print() {
+        for (PageHashMap::iterator it = pageHash->begin();
+             it != pageHash->end();
+             it++) {
+            BufferHeader *bh = it->second;
+            cout<<it->first<<"\t"<<bh->pid<<"\t"<<bh->image<<"\t"<<bh->pinCount<<endl;
+        }
+    }
 
 private:
 	RC_t replacePage(BufferHeader **bh)
@@ -352,6 +351,8 @@ private:
 			}
 			(*bh)->dirty = 0;
 		}
+        // remove old mapping in hash table
+        assert(1==pageHash->erase((*bh)->pid));
 		return RC_SUCCESS;
 	}
 
