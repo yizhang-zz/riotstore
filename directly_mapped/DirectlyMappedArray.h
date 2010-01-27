@@ -1,371 +1,50 @@
 #ifndef DIRECTLY_MAPPED_ARRAY_H
 #define DIRECTLY_MAPPED_ARRAY_H
 
-#include <iostream>
-
 #include "../common/common.h"
-#include "../common/block.h"
-#include "../lower/BitmapPagedFile.h"
-#include "../lower/BufferManager.h"
-#include "../lower/LRUPageReplacer.h"
-#include <string>
+#include "../common/LinearStorage.h"
+#include "DenseArrayBlock.h"
 
 const int BUFFER_SIZE = 100;
 
-template <class _Tp>
-class DenseArrayBlockIterator {
-    typedef DenseArrayBlockIterator<_Tp> _Self;
-    typedef _Tp value_type;
-    typedef _Tp* pointer;
-    typedef _Tp& reference;
-
-    private:
-    pointer cur;
-    pointer end;
-
-    public:
-    DenseArrayBlockIterator(pointer _cur, pointer _end) {
-        cur = _cur;
-        end = _end;
-    }
-
-    DenseArrayBlockIterator(const _Self& obj) {
-        cur = obj.cur;
-        end = obj.end;
-    }
-
-    // checks if next element exists by incrementing cur, then comparing with
-    // end
-    bool next() {
-        cur++;
-        return cur != end;
-    }
-
-    bool hasNext() {
-        return cur != end;
-    }
-
-    reference operator*() const {
-        return *cur;
-    }
-
-    // the prefix ++ operator: ++x
-    _Self& operator++() {
-        cur++;
-        return *this;
-    }
-
-    // the postfix ++ operator: x++
-    _Self operator++(int) {
-        _Self tmp = *this;
-        cur++;
-        return tmp;
-    }
-
-    bool operator==(const _Self& x) const {
-        return cur == x.cur;
-    }
-
-    bool operator!=(const _Self& x) const {
-        return !(cur == x.cur);
-    }
+struct DirectlyMappedArrayHeader 
+{
+   uint32_t numElements;
+   enum DataType dataType;
 };
 
-/*
-   A DenseArrayBlock does not need a header for the block.  The page
-   simply stores a data array.  It stores a continuguous subrange for a
-   DirectlyMappedArray.
+/**
+ * A DirectlyMappedArray stores a one-dimensional array (with index
+ * starting from 0) in index order in the dense format.  All blocks
+ *except the last one is full.
+ *
+ *  It stores its metadata in its first block (header). The header includes
+ *  two pieces of information: 1) The template type of the array. Refer
+ * to common.h:DataType. 2) numElements.	
  */
-template<class Datum_t>
-class DenseArrayBlock : public Block<Key_t, Datum_t> {
-    typedef DenseArrayBlockIterator<Datum_t> iterator;
+class DirectlyMappedArray : public LinearStorage 
+{
+   protected:
+      uint32_t numElements;
 
-    protected:
+   public:
+      static const int CAPACITY = PAGE_SIZE/sizeof(Datum_t);
 
-    // A data array that corresponds to the portion of the
-    // DirectlyMappedArray in the index range [beginsAt, endsBy).
-    Datum_t *data;
+   public:
+      /// If numElements > 0, create a new array; otherwise read from disk.
+      /// Whether file exists is ignored.
+      DirectlyMappedArray(const char* fileName, uint32_t numElements);
+      ~DirectlyMappedArray();
 
-    // - It looks like we don't need a default value for the block, do
-    // we?
+      int get(Key_t &key, Datum_t &datum);
+      int put(Key_t &key, Datum_t &datum);
+      ArrayInternalIterator *createIterator(IteratorType t, Key_t beginsAt, Key_t endsBy);
 
-    // The default value, which has no bearing on how things are stored
-    // in the block but affects the behavior of SparseIterator.  Datum_t
-    // defaultValue;
-
-    public:
-    // Initializes the block by reading from a page image.  The index
-    // range and the default data value will be passed in---the caller,
-    // with the knowledge of the overall DirectlyMappedArray, should
-    // know the exact index range that this page is responsible for.
-    // The default data value will also be supplied by the caller.
-    DenseArrayBlock(PageHandle *ph, Key_t lower, Key_t upper) {
-        this->ph = *ph;
-        this->lowerBound = lower;
-        this->upperBound = upper;
-        this->data = (Datum_t *) ph->image;
-    }
-
-    ~DenseArrayBlock() {}
-
-    // Datum_t getDefaultValue() const;
-    bool isFull() const {}
-
-    Datum_t get(Key_t key) const { // assume key is within range
-        return *(data + (key - this->lowerBound));
-    }
-
-    void put(Key_t key, Datum_t datum) { // assume key is within range
-        *(data + (key - this->lowerBound)) = datum;
-    }
-
-    iterator* getIterator(Key_t beginsAt, Key_t endsBy) {
-        return new iterator(data + (beginsAt - this->lowerBound), data + (endsBy - this->lowerBound));
-    }
-
-    iterator* getIterator() {
-        return new iterator(data, data + (this->upperBound - this->lowerBound));
-    }
-};
-
-template <class _K, class _D>
-class DirectlyMappedArray;
-
-template <class _K, class _D>
-class DirectlyMappedArrayIterator {
-    typedef DirectlyMappedArrayIterator<_K,_D> _Self;
-    typedef _D value_type;
-    typedef _D* pointer;
-    typedef _D& reference;
-
-    private:
-    DirectlyMappedArray<_K,_D>* array;
-    DenseArrayBlock<_D>* block;
-    DenseArrayBlockIterator<_D>* iter;
-    _K endsBy;
-    bool atLastBlock;
-
-    bool nextBlockIterator() {
-        if (atLastBlock)
-            return false;
-
-        PID_t pid = block->getPID();
-        array->releaseBlock(block);
-        delete block;
-
-        if (array->loadBlock(pid+1, &block) != RC_SUCCESS) {
-            return false;
-        }
-        if (block->getUpperBound() < endsBy) {
-            atLastBlock = false;
-            delete iter;
-            iter = block->getIterator();
-        }
-        else {
-            atLastBlock = true;
-            delete iter;
-            iter = block->getIterator(block->getLowerBound(), endsBy);
-        }
-        return true;
-    }
-
-
-    public:
-    DirectlyMappedArrayIterator(_K beginsAt, _K endsBy, DirectlyMappedArray<_K,_D>* array) {
-        this->array = array;
-        if (array->getLowerBound() > beginsAt || array->getUpperBound() < endsBy)
-            throw std::string("Iterator range out of array range.");
-
-        this->endsBy = endsBy;
-        PID_t pid;
-        array->findPage(beginsAt, &pid);
-        array->loadBlock(pid, &block);
-        _K upper = endsBy;
-        atLastBlock = true;
-        if (block->getUpperBound() < endsBy) {
-            atLastBlock = false;
-            upper = block->getUpperBound();
-        }
-        iter = block->getIterator(beginsAt, upper);
-    }
-
-    ~DirectlyMappedArrayIterator() {
-        array->releaseBlock(block);
-        delete block;
-        delete iter;
-    }
-
-    bool next() {
-        if (iter->next())
-            return true;
-        return nextBlockIterator();
-    }
-
-    bool hasNext() {
-        if (iter->hasNext())
-            return true;
-        return !atLastBlock;
-    }
-
-    reference operator*() const {
-        return **iter;
-    }
-
-    /*
-    // the prefix ++ operator: ++x
-    _Self& operator++() {
-        next();
-        return *this;
-    }
-
-    // the postfix ++ operator: x++
-    _Self operator++(int) {
-        _Self tmp = *this;
-        //next();
-        return tmp;
-    }
-
-    bool operator==(const _Self& x) const {
-        return iter == x.iter;
-        //return array == x.array && block->getPID() == x.block->getPID() && iter == x.iter;
-    }
-
-    bool operator!=(const _Self& x) const {
-        // return !(this == x);
-        return array != x.array || block->getPID() != x.block->getPID() || iter
-            != x.iter;
-    }
-    */
-};
-
-
-struct DirectlyMappedArrayHeader {
-    uint32_t numElements;
-    enum DataType dataType;
-};
-
-/*
-   A DirectlyMappedArray stores a one-dimensional array (with index
-   starting from 0) in index order in the dense format.  All blocks
-   except the last one is full.
-
-   It stores its metadata in its first block (header). The header includes
-   two pieces of information: 1) The template type of the array. Refer
-   to common.h:DataType. 2) numElements.	
- */
-template<class Key_t, class Datum_t>
-class DirectlyMappedArray {
-    typedef DirectlyMappedArrayIterator<Key_t, Datum_t> iterator;
-
-    protected:
-    BitmapPagedFile *file;
-    BufferManager<> *buffer;
-
-    uint32_t pageCap;
-    uint32_t numElements;
-
-    public:
-    // If numElements > 0, create a new array; otherwise read from disk.
-    // Whether file exists is ignored.
-    DirectlyMappedArray(const char* fileName, uint32_t numElements) {
-        pageCap = PAGE_DENSE_CAP(Datum_t);
-        if (numElements > 0) {		// new array to be created
-            remove(fileName);
-            file = new BitmapPagedFile(fileName, BitmapPagedFile::F_CREATE);
-            buffer = new BufferManager<>(file, BUFFER_SIZE); 
-            this->numElements = numElements;
-            PageHandle ph;
-            assert(RC_SUCCESS == buffer->allocatePageWithPID(0, ph));
-            // page is already marked dirty
-            DirectlyMappedArrayHeader* header = (DirectlyMappedArrayHeader*) ph.image;
-            header->numElements = numElements;
-            Datum_t x;
-            header->dataType = GetDataType(x);
-            buffer->unpinPage(ph);
-        }
-        else {						// existing array
-            if (access(fileName, F_OK) != 0)
-                throw ("File for array does not exist.");
-            file = new BitmapPagedFile(fileName, BitmapPagedFile::F_NO_CREATE);
-            buffer = new BufferManager<>(file, BUFFER_SIZE); 
-            PageHandle ph;
-            ph.pid = 0; 			// first page is header
-            buffer->readPage(ph);
-            DirectlyMappedArrayHeader header = *((DirectlyMappedArrayHeader*) ph.image);
-            buffer->unpinPage(ph);
-            this->numElements = header.numElements;
-            Datum_t x;
-            assert(IsSameDataType(x, header.dataType));
-        }
-    }
-
-    ~DirectlyMappedArray() {
-        // should delete buffer first, because flushAll() is called in
-        // buffer's destructor, at which time file is updated.
-        delete buffer;
-        delete file;
-    }
-
-    Datum_t get(Key_t key) {
-        if (key < 0 || numElements <= key) {
-            return NA_DOUBLE; // key out of range
-        }
-
-        PageHandle ph;
-        findPage(key, &(ph.pid));
-        buffer->readPage(ph);
-        DenseArrayBlock<Datum_t> *dab = new DenseArrayBlock<Datum_t>(&ph, 
-                (key/pageCap)*pageCap, (key/pageCap+1)*pageCap);
-        Datum_t result = dab->get(key);
-        buffer->unpinPage(ph);
-        delete dab;
-        return result;
-    }
-
-    void put(Key_t key, Datum_t datum) {
-        PageHandle ph;
-        findPage(key, &(ph.pid));
-        if (buffer->allocatePageWithPID(ph.pid, ph) != RC_SUCCESS) { /* page containing
-                                                                        pid already exists */
-            buffer->readPage(ph);
-        }
-        DenseArrayBlock<Datum_t> *dab = new DenseArrayBlock<Datum_t>(&ph, 
-                (key/pageCap)*pageCap, (key/pageCap+1)*pageCap);
-        dab->put(key, datum);
-        buffer->markPageDirty(ph);
-        buffer->unpinPage(ph);
-        delete dab;
-    }
-
-    void findPage(Key_t key, PID_t *pid) {
-        *pid = key/pageCap + 1;
-    }
-
-    RC_t loadBlock(PID_t pid, DenseArrayBlock<Datum_t>** block) {
-        PageHandle ph;
-        ph.pid = pid;
-        if (buffer->readPage(ph) == RC_FAILURE)
-            return RC_FAILURE;
-        *block = new DenseArrayBlock<Datum_t>(&ph, pageCap*(pid-1), pageCap*pid);
-        return RC_SUCCESS;
-    }
-
-    RC_t releaseBlock(DenseArrayBlock<Datum_t>* block) {
-        return buffer->unpinPage((block->ph));
-    }
-
-    iterator* getIterator(Key_t beginsAt, Key_t endsBy) {
-        return new iterator(beginsAt, endsBy, this);
-    }
-
-    uint32_t getLowerBound() {
-        return 0;
-    }
-
-    uint32_t getUpperBound() {
-        return numElements;
-    }
-
+      void findPage(Key_t &key, PID_t *pid);
+      RC_t loadBlock(PID_t pid, DenseArrayBlock** block);
+      RC_t releaseBlock(DenseArrayBlock* block);
+      uint32_t getLowerBound();
+      uint32_t getUpperBound();
 };
 
 #endif
