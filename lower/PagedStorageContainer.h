@@ -15,7 +15,7 @@ public:
 	const static int F_CREATE = 01;
 	const static int F_NO_CREATE = 02;
 
-	// virtual ~PagedStorageContainer();
+	virtual ~PagedStorageContainer() {}
 
 	// Creates a new page in the storage and returns the pid of the new
 	// page.  Space of a previously disposed page may be reused.  The
