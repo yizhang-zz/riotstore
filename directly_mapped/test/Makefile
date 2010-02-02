@@ -1,9 +1,12 @@
-CXX = g++
+CXX = g++ -v
 CXXFLAGS = -g 
+LDFLAGS = -lgtest
 
-.PHONY: all clean 
+.PHONY: all clean lower
 
-objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp))
+#objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp))
+objects := TestDMA.o main.o
+par_objects := $(patsubst %.cpp, %.o, $(wildcard ../*.cpp))
 
 .c.o:
 	$(CXX) $(CXXFLAGS) -c $<
@@ -11,8 +14,7 @@ objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp))
 .cpp.o:
 	$(CXX) $(CXXFLAGS) -c $<
 
-all: DMA
-	@echo "testing"
+all: lower test
 	./test
 
 %.d: %.cpp
@@ -20,12 +22,15 @@ all: DMA
 
 include $(objects:.o=.d)
 
-DMA: TestDMA.o ../../lower/BitmapPagedFile.o ../../lower/LRUPageReplacer.o ../../common/common.o
-	$(CXX) -o test $^
+lower:
+	cd .. ; $(MAKE)
+
+test: $(objects) $(par_objects) ../../common/common.o ../../lower/BitmapPagedFile.o ../../lower/LRUPageReplacer.o 
+	echo $(par_objects)
+	$(CXX) $(LDFLAGS) -o test $^ 
+
 
 clean : 
 	rm -f *.o
+	rm -f *.out
 	rm -f *.d
-	rm -f ../*.o
-	rm -f ../*.d
-

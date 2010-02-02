@@ -33,23 +33,23 @@ bool DMADenseIterator::nextBlockIterator()
 DMADenseIterator::DMADenseIterator(Key_t _beginsAt, Key_t _endsBy, DirectlyMappedArray* array) 
 {
    this->array = array;
-   if (array->getLowerBound() > beginsAt || array->getUpperBound() < endsBy)
+   if (array->getLowerBound() > _beginsAt || array->getUpperBound() < _endsBy)
       throw std::string("Iterator range out of array range.");
    this->beginsAt = _beginsAt;
    this->endsBy = _endsBy;
 
-   Key_t upper = endsBy;
+   Key_t upper = _endsBy;
    PID_t pid;
    array->findPage(beginsAt, &pid);
    array->loadBlock(pid, &block);
 
    atLastBlock = true;
-   if (block->getUpperBound() < endsBy) 
+   if (block->getUpperBound() < _endsBy) 
    {
       atLastBlock = false;
       upper = block->getUpperBound();
    }
-   iter = block->getIterator(beginsAt, upper);
+   iter = block->getIterator(_beginsAt, upper);
 }
 
 DMADenseIterator::~DMADenseIterator() 

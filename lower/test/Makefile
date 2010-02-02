@@ -1,9 +1,12 @@
 CXX = g++
 CXXFLAGS = -g 
+LDFLAGS = -lgtest
 
 .PHONY: all clean lower
 
-objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp))
+#objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp))
+objects := TestFile.o main.o
+par_objects := $(patsubst %.cpp, %.o, $(wildcard ../*.cpp))
 
 .c.o:
 	$(CXX) $(CXXFLAGS) -c $<
@@ -11,8 +14,7 @@ objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp))
 .cpp.o:
 	$(CXX) $(CXXFLAGS) -c $<
 
-all: lower BitmapPagedFile
-	@echo "testing"
+all: lower test
 	./test
 
 %.d: %.cpp
@@ -23,12 +25,16 @@ include $(objects:.o=.d)
 lower:
 	cd .. ; $(MAKE)
 
-BitmapPagedFile: ../../common/common.o ../BitmapPagedFile.o TestBitmapPagedFile.o
-	$(CXX) -o test $^
+test: $(objects) $(par_objects) ../../common/common.o ../BitmapPagedFile.o ../LRUPageReplacer.o 
+	echo $(par_objects)
+	$(CXX) $(LDFLAGS) -o test $^ 
 
-bf: TestBufferManager.o
-	$(CXX) -o testbf $< ../BitmapPagedFile.o ../LRUPageReplacer.o
-	./testbf
+#BitmapPagedFile: ../../common/common.o ../BitmapPagedFile.o TestBitmapPagedFile.o
+	#$(CXX) -o test $^
+
+#bf: TestBufferManager.o
+	#$(CXX) -o testbf $< ../BitmapPagedFile.o ../LRUPageReplacer.o
+	#./testbf
 
 clean : 
 	rm -f *.o

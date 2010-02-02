@@ -41,7 +41,7 @@ void DABIterator::get(Key_t &k, Datum_t &d)
 {
    if (cur == begin)
    {
-      k = NA_INT;
+      // k = NA_INT;
       d = NA_DOUBLE;
    }
    else

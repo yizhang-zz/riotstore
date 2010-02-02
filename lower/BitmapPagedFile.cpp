@@ -6,7 +6,7 @@
 int BitmapPagedFile::readCount = 0;
 int BitmapPagedFile::writeCount = 0;
 
-/* Creates a BitmapPagedFile over a disk file of a given name. If flag has
+/** Creates a BitmapPagedFile over a disk file of a given name. If flag has
  * F_CREATE set, then a new file is created; otherwise the file is assumed
  * to exist. It is the caller's responsibility to ensure the existence of
  * the file.
@@ -76,7 +76,7 @@ RC_t BitmapPagedFile::allocatePage(PID_t &pid) {
     }
 
     // check for empty slot in allocated header space
-    for(int k = 0; k < numContentPages; k+=8) { // check 1 byte at a time
+    for(unsigned k = 0; k < numContentPages; k+=8) { // check 1 byte at a time
         if((header[k/8] & 255) != 255) { // found empty slot in header[k/8]
             Byte_t target = header[k/8];
             Byte_t mask = 1;

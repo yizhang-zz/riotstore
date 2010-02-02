@@ -20,10 +20,12 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numEleme
       PageHandle ph;
       assert(RC_SUCCESS == buffer->allocatePageWithPID(0, ph));
       // page is already marked dirty
-      DirectlyMappedArrayHeader* header = (DirectlyMappedArrayHeader*) ph.image;
+      DirectlyMappedArrayHeader* header = (DirectlyMappedArrayHeader*)
+         (*ph.image);
       header->numElements = numElements;
       Datum_t x;
       header->dataType = GetDataType(x);
+      buffer->markPageDirty(ph);
       buffer->unpinPage(ph);
    }
    else 						// existing array
@@ -35,11 +37,12 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numEleme
       PageHandle ph;
       ph.pid = 0; 			// first page is header
       buffer->readPage(ph);
-      DirectlyMappedArrayHeader header = *((DirectlyMappedArrayHeader*) ph.image);
+      DirectlyMappedArrayHeader* header = ((DirectlyMappedArrayHeader*)
+            (*ph.image));
       buffer->unpinPage(ph);
-      this->numElements = header.numElements;
+      this->numElements = header->numElements;
       Datum_t x;
-      assert(IsSameDataType(x, header.dataType));
+      assert(IsSameDataType(x, header->dataType));
    }
 }
 
@@ -55,7 +58,8 @@ int DirectlyMappedArray::get(Key_t &key, Datum_t &datum)
 {
    if (key < 0 || numElements <= key) 
    {
-      return NA_DOUBLE; // key out of range
+      datum =  NA_DOUBLE; // key out of range
+      return RC_FAILURE;
    }
 
    PageHandle ph;
