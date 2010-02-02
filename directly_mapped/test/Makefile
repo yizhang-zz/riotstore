@@ -1,4 +1,4 @@
-CXX = g++ -v
+CXX = g++ 
 CXXFLAGS = -g 
 LDFLAGS = -lgtest
 

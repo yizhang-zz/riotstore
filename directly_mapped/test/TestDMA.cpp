@@ -150,7 +150,7 @@ void testDenseArrayBlock() {
 // test retrieval
 TEST(DirectlyMappedArray, PutGet)
 {
-   int cap = DirectlyMappedArray::CAPACITY;
+    int cap = DenseArrayBlock::CAPACITY;
     ASSERT_EQ(cap , 512);
     DirectlyMappedArray *dma = new DirectlyMappedArray("test.bin", 3*cap);
     // test put/get
@@ -172,10 +172,10 @@ TEST(DirectlyMappedArray, PutGet)
     ASSERT_EQ(d, -123.456);
     k = -1;
     dma->get(k, d);
-    ASSERT_TRUE(R_IsNA(d));
+    ASSERT_TRUE(ISNA(d));
     k = 3*cap;
     dma->get(k,d);
-    ASSERT_TRUE(R_IsNA(d));
+    ASSERT_TRUE(ISNA(d));
     delete dma;
 
 dma = new DirectlyMappedArray("test.bin", 0);
@@ -201,10 +201,11 @@ dma = new DirectlyMappedArray("test.bin", 0);
 
 TEST(DirectlyMappedArray, DenseIterator)
 {
-   int cap = DirectlyMappedArray::CAPACITY;
+   int cap = DenseArrayBlock::CAPACITY;
    DirectlyMappedArray dma("test1.bin", 3*cap);
    Key_t k; Datum_t d;
-   ArrayInternalIterator *it = dma.createIterator(Dense, 0, 3*cap);
+   Key_t lower = 0, upper = 3*cap;
+   ArrayInternalIterator *it = dma.createIterator(Dense, lower, upper);
 /* unsigned count = 0;
    while (it->moveNext())
    {
@@ -228,7 +229,7 @@ TEST(DirectlyMappedArray, DenseIterator)
 // Incomplete
 TEST(DirectlyMappedArray, SparseIterator)
 {    // test iterator
-   int cap = DirectlyMappedArray::CAPACITY;
+   int cap = DenseArrayBlock::CAPACITY;
     DirectlyMappedArray dma("test2.bin", 3*cap);
     Key_t k; Datum_t d;
     k = 3; d = 10.2;

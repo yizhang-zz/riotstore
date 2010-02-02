@@ -62,7 +62,7 @@ public:
      * \param t Type of iterator.
      * \return An internal iterator.
      */
-    virtual ArrayInternalIterator* createIterator(IteratorType t) = 0;    
+    virtual ArrayInternalIterator* createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy) = 0;    
 };
 
 #endif

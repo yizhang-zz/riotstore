@@ -17,6 +17,7 @@ class DenseArrayBlock : public Block<Key_t, Datum_t>
       Datum_t *data;
 
    public:
+      const static u16 CAPACITY = PAGE_SIZE/sizeof(Datum_t);
       /// Initializes the block by reading from a page image.  The index
       /// range and the default data value will be passed in---the caller,
       /// with the knowledge of the overall DirectlyMappedArray, should

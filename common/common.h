@@ -68,7 +68,7 @@ extern double	NA_DOUBLE;
 /// A special value representing NA of int type.
 extern int		NA_INT;
 
-static bool R_IsNA(double x);
+bool R_IsNA(double x);
 /// Tests if a double value is NA.
 #define ISNA(x) R_IsNA(x)
 

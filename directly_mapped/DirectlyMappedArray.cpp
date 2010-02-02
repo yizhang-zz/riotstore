@@ -65,6 +65,7 @@ int DirectlyMappedArray::get(Key_t &key, Datum_t &datum)
    PageHandle ph;
    findPage(key, &(ph.pid));
    buffer->readPage(ph);
+   Key_t CAPACITY = DenseArrayBlock::CAPACITY;
    DenseArrayBlock *dab = new DenseArrayBlock(&ph, 
          (key/CAPACITY)*CAPACITY, (key/CAPACITY+1)*CAPACITY);
    datum = dab->get(key);
@@ -81,6 +82,7 @@ int DirectlyMappedArray::put(Key_t &key, Datum_t &datum)
    { /* page containing pid already exists */
       buffer->readPage(ph);
    }
+   Key_t CAPACITY = DenseArrayBlock::CAPACITY;
    DenseArrayBlock *dab = new DenseArrayBlock(&ph, 
          (key/CAPACITY)*CAPACITY, (key/CAPACITY+1)*CAPACITY);
    dab->put(key, datum);
@@ -90,7 +92,7 @@ int DirectlyMappedArray::put(Key_t &key, Datum_t &datum)
    return RC_SUCCESS;
 }
 
-ArrayInternalIterator *DirectlyMappedArray::createIterator(IteratorType t, Key_t beginsAt, Key_t endsBy)
+ArrayInternalIterator *DirectlyMappedArray::createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy)
 {
    if (t == Dense)
       return new DMADenseIterator(beginsAt, endsBy, this);
@@ -101,6 +103,7 @@ ArrayInternalIterator *DirectlyMappedArray::createIterator(IteratorType t, Key_t
 
 void DirectlyMappedArray::findPage(Key_t &key, PID_t *pid) 
 {
+   Key_t CAPACITY = DenseArrayBlock::CAPACITY;
    *pid = key/CAPACITY + 1;
 }
 
@@ -110,6 +113,7 @@ RC_t DirectlyMappedArray::loadBlock(PID_t pid, DenseArrayBlock** block)
    ph.pid = pid;
    if (buffer->readPage(ph) == RC_FAILURE)
       return RC_FAILURE;
+   Key_t CAPACITY = DenseArrayBlock::CAPACITY;
    *block = new DenseArrayBlock(&ph, CAPACITY*(pid-1), CAPACITY*pid);
    return RC_SUCCESS;
 }

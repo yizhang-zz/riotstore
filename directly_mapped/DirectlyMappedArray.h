@@ -28,17 +28,14 @@ class DirectlyMappedArray : public LinearStorage
       uint32_t numElements;
 
    public:
-      static const int CAPACITY = PAGE_SIZE/sizeof(Datum_t);
-
-   public:
       /// If numElements > 0, create a new array; otherwise read from disk.
       /// Whether file exists is ignored.
       DirectlyMappedArray(const char* fileName, uint32_t numElements);
-      ~DirectlyMappedArray();
+      virtual ~DirectlyMappedArray();
 
-      int get(Key_t &key, Datum_t &datum);
-      int put(Key_t &key, Datum_t &datum);
-      ArrayInternalIterator *createIterator(IteratorType t, Key_t beginsAt, Key_t endsBy);
+      virtual int get(Key_t &key, Datum_t &datum);
+      virtual int put(Key_t &key, Datum_t &datum);
+      virtual ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);
 
       void findPage(Key_t &key, PID_t *pid);
       RC_t loadBlock(PID_t pid, DenseArrayBlock** block);
