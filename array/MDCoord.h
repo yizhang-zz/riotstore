@@ -2,6 +2,7 @@
 #define MDCOORD_H
 
 #include "../common/common.h"
+#include <stdlib.h>
 #include <stdarg.h>
 
 
@@ -105,7 +106,10 @@ public:
      * \return true self is not equal to other.
      */
     
-    bool operator!=(const MDCoord &other) const;
+    bool operator!=(const MDCoord &other) const
+    {
+       return !(*this == other);
+    }
     //@}
     
     /**
