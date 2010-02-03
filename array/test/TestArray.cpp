@@ -17,9 +17,9 @@ TEST(MDCoord, Ctor)
    ASSERT_TRUE(m2.coords == NULL);
 
    // test for negative indices
-   MDCoord m3(3, 1, 12, 123);
+   MDCoord m3(3, (i64)-1, 12, 123);
    ASSERT_EQ(3, m3.nDim);
-   ASSERT_EQ(1, m3.coords[0]);
+   ASSERT_EQ(-1, m3.coords[0]);
    ASSERT_EQ(12, m3.coords[1]);
    ASSERT_EQ(123, m3.coords[2]);
 
