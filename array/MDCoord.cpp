@@ -35,7 +35,8 @@ MDCoord::MDCoord(i64 *coords, u8 nDim)
 
 MDCoord::~MDCoord()
 {
-   delete[] coords;
+    if (coords != NULL)
+        delete[] coords;
 }
 
 MDCoord::MDCoord(const MDCoord &src)
@@ -58,6 +59,8 @@ MDCoord & MDCoord::operator=(const MDCoord &src)
       if (src.nDim == 0)
       {
          nDim = 0;
+         if (coords != NULL)
+             delete[] coords;
          coords = NULL;
       }
       else 
