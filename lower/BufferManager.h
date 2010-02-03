@@ -139,27 +139,28 @@ public:
     // it, marks it dirty, and returns the handle.
     RC_t allocatePage(PageHandle &ph) {
 		BufferHeader *bh;
-		if (storage->allocatePage(ph.pid) != RC_SUCCESS) {
-			printf("Physical storage cannot allocate page.\n");
-			return RC_FAILURE;
+        RC_t ret;
+		if ((ret=storage->allocatePage(ph.pid)) != RC_OK) {
+			fprintf(stderr, "Physical storage cannot allocate page; error %d\n", ret);
+			return ret;
 		}
 		// check free list first
 		if (freelist != NULL) {
 			bh = freelist;
 			ph.image = bh->image;
 			freelist = freelist->next;
-		}	
+		}
 		else {
-			if (replacePage(&bh) != RC_SUCCESS) {
-				return RC_FAILURE;
+			if ((ret=replacePage(&bh)) != RC_OK) {
+				return ret;
 			}
 			ph.image = bh->image;
 		}	
 		bh->pinCount = 1;
-		bh->dirty = 1;
+		bh->dirty = true;
 		bh->pid = ph.pid;
 		pageHash->insert(PageHashMap::value_type(ph.pid, bh));
-		return RC_SUCCESS;
+		return RC_OK;
 	}
 
     // Creates a new page with given pid in buffer (with unintialized
@@ -168,9 +169,10 @@ public:
     // supports allocatePageWithPID.
     RC_t allocatePageWithPID(PID_t pid, PageHandle &ph) {
 		BufferHeader *bh;
-		if (storage->allocatePageWithPID(pid) != RC_SUCCESS) {
-			// printf("Physical storage cannot allocate page.\n");
-			return RC_FAILURE;
+        RC_t ret = storage->allocatePageWithPID(pid);
+		if (ret != RC_OK) {
+			fprintf(stderr, "Physical storage cannot allocate pid %d, error %d.\n",pid,ret);
+			return ret;
 		}
 		ph.pid = pid;
 		// check free list first
@@ -180,24 +182,25 @@ public:
 			freelist = freelist->next;
 		}	
 		else {
-			if (replacePage(&bh) != RC_SUCCESS) {
-				return RC_FAILURE;
+			if ((ret=replacePage(&bh)) != RC_OK) {
+				return ret;
 			}
 			ph.image = bh->image;
 		}	
 		bh->pinCount = 1;
-		bh->dirty = 1;
+		bh->dirty = true;
 		bh->pid = ph.pid;
 		pageHash->insert(PageHashMap::value_type(ph.pid, bh));
-		return RC_SUCCESS;
+		return RC_OK;
 	}
 
     // Disposes a buffered page.  It will be removed from both the
     // buffer and the disk storage.  Dirty bit is ignored.
     RC_t disposePage(const PageHandle &ph) {
-		if (storage->disposePage(ph.pid) != RC_SUCCESS) {
-			printf("Physical storage cannot dispose page.\n");
-			return RC_FAILURE;
+        RC_t ret;
+		if ((ret=storage->disposePage(ph.pid)) != RC_OK) {
+			fprintf(stderr, "Physical storage cannot dispose pid %d, error %d.\n",ph.pid,ret);
+			return ret;
 		}
 		PageHashMap::iterator it = pageHash->find(ph.pid);
 		BufferHeader *bh = it->second;
@@ -211,20 +214,21 @@ public:
 		bh->reset();
 		bh->next = freelist;	
 		freelist = bh;
-		return RC_SUCCESS;
+		return RC_OK;
 	}
 
     // Reads a page into buffer (if it is not already in), pins it, and
     // returns the handle.
     RC_t readPage(PageHandle &ph) {
+        RC_t ret;
 		// first check if already buffered
 		PageHashMap::iterator it = pageHash->find(ph.pid);
 		if (it != pageHash->end()) {
 			BufferHeader *bh = it->second;
+			if (bh->pinCount == 0)
+				pageReplacer->remove(bh);
 			bh->pinCount++;
 			ph.image = bh->image;
-			if (bh->pinCount == 1)
-				pageReplacer->remove(bh);
 		}
 		else {
 			// check free list first
@@ -235,8 +239,8 @@ public:
 				freelist = freelist->next;
 			}
 			else {
-				if (replacePage(&bh) != RC_SUCCESS) {
-					return RC_FAILURE;
+				if ((ret=replacePage(&bh)) != RC_OK) {
+					return ret;
 				}
 				ph.image = bh->image;
 			}
@@ -244,21 +248,63 @@ public:
 			bh->pinCount = 1;
 			pageHash->insert(PageHashMap::value_type(ph.pid, bh));
 			
-			if (storage->readPage(ph) != RC_SUCCESS) {
-				printf("Physical storage cannot read page.\n");
-				return RC_FAILURE;
+			if (storage->readPage(ph) != RC_OK) {
+				fprintf(stderr, "Physical storage cannot read pid %d, error %d.\n",ph.pid,ret);
+				return ret;
 			}
 		}
-		return RC_SUCCESS;
+		return RC_OK;
 	}
+
+    RC_t readOrAllocatePage(PageHandle &ph) {
+        RC_t ret;
+		// first check if already buffered
+		PageHashMap::iterator it = pageHash->find(ph.pid);
+		if (it != pageHash->end()) {
+			BufferHeader *bh = it->second;
+			if (bh->pinCount == 0)
+				pageReplacer->remove(bh);
+			bh->pinCount++;
+			ph.image = bh->image;
+		}
+		else {
+			// check free list first
+			BufferHeader *bh;
+			if (freelist != NULL) {
+				bh = freelist;
+				ph.image = bh->image;
+				freelist = freelist->next;
+			}
+			else {
+				if ((ret=replacePage(&bh)) != RC_OK) {
+					return ret;
+				}
+				ph.image = bh->image;
+			}
+			bh->pid = ph.pid;
+			bh->pinCount = 1;
+			pageHash->insert(PageHashMap::value_type(ph.pid, bh));
+			
+            ret = storage->readPage(ph);
+            if (ret == RC_OK)
+                return RC_OK;
+            if (ret == RC_NotAllocated) {
+                storage->allocatePageWithPID(ph.pid);
+                bh->dirty = true;
+            }
+            else
+                return ret;
+		}
+		return RC_OK;
+    }
 
     // Marks a pinned page as dirty (i.e., modified).
     RC_t markPageDirty(const PageHandle &ph) {
 		PageHashMap::iterator it = pageHash->find(ph.pid);
 		assert(it != pageHash->end());
 		BufferHeader *bh = it->second;
-		bh->dirty = 1;
-		return RC_SUCCESS;
+		bh->dirty = true;
+		return RC_OK;
 	}
 
     // Pins a page.  As long as a page has at least one pin, it cannot
@@ -269,7 +315,7 @@ public:
 		assert(it != pageHash->end());
 		BufferHeader *bh = it->second;
 		bh->pinCount++;
-		return RC_SUCCESS;
+		return RC_OK;
 	}
 
     // Unpins a page.  If a page has no pin left, it can be discarded
@@ -284,29 +330,31 @@ public:
 			// Let PageReplacer manager this page
 			pageReplacer->add(bh);
 		}
-		return RC_SUCCESS;
+		return RC_OK;
 	}
 
     // Flushes a pinned page to disk, if it is dirty.  A page's dirty
     // bit is unset after flushing.
     RC_t flushPage(const PageHandle &ph) {
+        RC_t ret;
 		PageHashMap::iterator it = pageHash->find(ph.pid);
 		assert(it != pageHash->end());
 		BufferHeader *bh = it->second;
 		if (bh->dirty) {
-			if (storage->writePage(ph) != RC_SUCCESS) {
-				printf("Physical storage cannot write page.\n");
-				return RC_FAILURE;
+			if ((ret=storage->writePage(ph)) != RC_OK) {
+				fprintf(stderr, "Physical storage cannot write pid %d, error %d.\n", ph.pid, ret);
+				return ret;
 			}
-			bh->dirty = 0;
+			bh->dirty = false;
 		}
-		return RC_SUCCESS;
+		return RC_OK;
 	}
 
     // Flushes all dirty pages in the buffer to disk.  Pages' dirty bits
     // are unset after flushing.
     RC_t flushAllPages() {
 		bool good = true;
+        RC_t ret;
 		for (PageHashMap::iterator it = pageHash->begin();
              it != pageHash->end();
              it++) {
@@ -315,14 +363,14 @@ public:
 			ph.pid = bh->pid;
 			ph.image = bh->image;
 			if (bh->dirty) {
-				if (storage->writePage(ph) != RC_SUCCESS) {
-					printf("Physical storage cannot write page.\n");
+				if ((ret=storage->writePage(ph)) != RC_OK) {
+					fprintf(stderr, "Physical storage cannot write pid %d, error %d.\n",ph.pid,ret);
 					good = false;
 				}
-				bh->dirty = 0;
+				bh->dirty = false;
 			}
 		}
-		return good ? RC_SUCCESS : RC_FAILURE;
+		return good ? RC_OK : RC_FAILURE;
 	}
 
     void print() {
@@ -337,23 +385,24 @@ public:
 private:
 	RC_t replacePage(BufferHeader **bh)
 	{
-		if (pageReplacer->selectToReplace(bh) != RC_SUCCESS) {
-			printf("Out of memory: cannot allocate page in buffer.\n");
-			return RC_FAILURE;
+        RC_t ret;
+		if ((ret=pageReplacer->selectToReplace(bh)) != RC_OK) {
+			fprintf(stderr, "Out of memory: cannot allocate page in buffer, error %d.\n", ret);
+			return ret;
 		}
 		if ((*bh)->dirty) {
 			PageHandle ph;
 			ph.pid = (*bh)->pid;
 			ph.image = (*bh)->image;
-			if (storage->writePage(ph) != RC_SUCCESS) {
-				printf("Physical storage cannot write page.\n");
-				return RC_FAILURE;
+			if ((ret=storage->writePage(ph)) != RC_OK) {
+				fprintf(stderr, "Physical storage cannot write pid %d, error %d.\n",ph.pid,ret);
+				return ret;
 			}
-			(*bh)->dirty = 0;
+			(*bh)->dirty = false;
 		}
         // remove old mapping in hash table
         assert(1==pageHash->erase((*bh)->pid));
-		return RC_SUCCESS;
+		return RC_OK;
 	}
 
 };

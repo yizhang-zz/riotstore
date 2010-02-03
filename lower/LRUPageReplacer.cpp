@@ -15,13 +15,13 @@ LRUPageReplacer::~LRUPageReplacer()
 RC_t LRUPageReplacer::selectToReplace(BufferHeader **bh)
 {
 	if (head == NULL)
-		return RC_FAILURE;
+		return RC_OutOfSpace;
 	*bh = head;
 	head = head->next;
 	if (head != NULL)
 		head->prev = NULL;
 	(*bh)->prev = (*bh)->next = NULL;
-	return RC_SUCCESS;
+	return RC_OK;
 }
 
 void LRUPageReplacer::add(BufferHeader *bh)

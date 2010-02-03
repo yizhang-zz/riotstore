@@ -72,7 +72,7 @@ RC_t BitmapPagedFile::allocatePage(PID_t &pid) {
         pid = numContentPages;
         allocate(pid);
         numContentPages++;
-        return RC_SUCCESS;
+        return RC_OK;
     }
 
     // check for empty slot in allocated header space
@@ -87,11 +87,11 @@ RC_t BitmapPagedFile::allocatePage(PID_t &pid) {
 			}
 			pid = k + i;
 			allocate(pid);
-			return RC_SUCCESS;
+			return RC_OK;
         }
     }
 
-    return RC_FAILURE; // header filled
+    return RC_OutOfSpace; // header filled
 }
 
 /* tries to allocate new page with input pid. if pid is available, bitmask flag
@@ -100,16 +100,16 @@ RC_t BitmapPagedFile::allocatePage(PID_t &pid) {
  */
 RC_t BitmapPagedFile::allocatePageWithPID(PID_t pid) {
     if(pid >= 8*PAGE_SIZE) { // pid outside valid range
-        return RC_FAILURE;
+        return RC_OutOfRange;
     }
 
     // if pid is within range of current allocated pages
     if(pid < numContentPages) {
         if(isAllocated(pid)) { // pid already allocated
-            return RC_FAILURE;
+            return RC_AlreadyAllocated;
         }
         allocate(pid);
-        return RC_SUCCESS;
+        return RC_OK;
     }
 
     // pid not in current page ranges, but within maximum page bounds
@@ -122,40 +122,42 @@ RC_t BitmapPagedFile::allocatePageWithPID(PID_t pid) {
      */
     numContentPages = pid + 1;
     allocate(pid);
-    return RC_SUCCESS;
+    return RC_OK;
 }
 
 RC_t BitmapPagedFile::disposePage(PID_t pid) {
     if(pid >= numContentPages) {
-        return RC_FAILURE; /* pid not within allocated pid range, nothing is done */
+        return RC_OutOfRange; /* pid not within allocated pid range, nothing is done */
     }
 
     if(isAllocated(pid)) {
         deallocate(pid); /* deallocates mapped bit in header, defers actual
                             physical disposal of data until later */
-        return RC_SUCCESS;
+        return RC_OK;
     }
-    return RC_FAILURE;
+    return RC_NotAllocated;
 }
 
 RC_t BitmapPagedFile::readPage(PageHandle &ph) {
     // pid is not in usable region yet or is unallocated
-    if(ph.pid >= numContentPages || !isAllocated(ph.pid)) { 
-        return RC_FAILURE; 
-    }
+    if(ph.pid >= numContentPages)
+        return RC_OutOfRange;
+    if(!isAllocated(ph.pid)) 
+        return RC_NotAllocated;
 
     lseek(fd, (1 + ph.pid)*PAGE_SIZE, SEEK_SET); // +1 for header page
     read(fd, ph.image, PAGE_SIZE);
     readCount++;
-    return RC_SUCCESS;
+    return RC_OK;
 }
 
 // writes ph to file if pid has been allocated
 RC_t BitmapPagedFile::writePage(const PageHandle &ph) {
     // pid is not in usable region yet or is unallocated
-    if(ph.pid >= numContentPages || !isAllocated(ph.pid)) { 
-        return RC_FAILURE;
-    }
+    if(ph.pid >= numContentPages)
+        return RC_OutOfRange;
+    if(!isAllocated(ph.pid)) 
+        return RC_NotAllocated;
 
     /*
     fseek(file, 0, SEEK_END);
@@ -172,5 +174,5 @@ RC_t BitmapPagedFile::writePage(const PageHandle &ph) {
     lseek(fd, (1 + ph.pid)*PAGE_SIZE, SEEK_SET); // +1 for header page
     write(fd, ph.image, PAGE_SIZE);
     writeCount++;
-    return RC_SUCCESS;
+    return RC_OK;
 }

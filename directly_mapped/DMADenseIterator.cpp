@@ -12,7 +12,7 @@ bool DMADenseIterator::nextBlockIterator()
    array->releaseBlock(block);
    delete block;
 
-   if (array->loadBlock(pid+1, &block) != RC_SUCCESS) 
+   if (array->loadBlock(pid+1, &block) != RC_OK) 
       return false;
 
    if (block->getUpperBound() < endsBy) 

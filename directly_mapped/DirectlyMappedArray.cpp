@@ -18,7 +18,7 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numEleme
       buffer = new BufferManager<>(file, BUFFER_SIZE); 
       this->numElements = numElements;
       PageHandle ph;
-      assert(RC_SUCCESS == buffer->allocatePageWithPID(0, ph));
+      assert(RC_OK == buffer->allocatePageWithPID(0, ph));
       // page is already marked dirty
       DirectlyMappedArrayHeader* header = (DirectlyMappedArrayHeader*)
          (*ph.image);
@@ -59,7 +59,7 @@ int DirectlyMappedArray::get(Key_t &key, Datum_t &datum)
    if (key < 0 || numElements <= key) 
    {
       datum =  NA_DOUBLE; // key out of range
-      return RC_FAILURE;
+      return AC_OK;
    }
 
    PageHandle ph;
@@ -71,14 +71,14 @@ int DirectlyMappedArray::get(Key_t &key, Datum_t &datum)
    datum = dab->get(key);
    buffer->unpinPage(ph);
    delete dab;
-   return RC_SUCCESS;
+   return AC_OK;
 }
 
 int DirectlyMappedArray::put(Key_t &key, Datum_t &datum) 
 {
    PageHandle ph;
    findPage(key, &(ph.pid));
-   if (buffer->allocatePageWithPID(ph.pid, ph) != RC_SUCCESS) 
+   if (buffer->allocatePageWithPID(ph.pid, ph) != RC_OK) 
    { /* page containing pid already exists */
       buffer->readPage(ph);
    }
@@ -89,7 +89,7 @@ int DirectlyMappedArray::put(Key_t &key, Datum_t &datum)
    buffer->markPageDirty(ph);
    buffer->unpinPage(ph);
    delete dab;
-   return RC_SUCCESS;
+   return AC_OK;
 }
 
 ArrayInternalIterator *DirectlyMappedArray::createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy)
@@ -111,11 +111,12 @@ RC_t DirectlyMappedArray::loadBlock(PID_t pid, DenseArrayBlock** block)
 {
    PageHandle ph;
    ph.pid = pid;
-   if (buffer->readPage(ph) == RC_FAILURE)
-      return RC_FAILURE;
+   RC_t ret;
+   if ((ret=buffer->readOrAllocatePage(ph)) != RC_OK)
+      return ret;
    Key_t CAPACITY = DenseArrayBlock::CAPACITY;
    *block = new DenseArrayBlock(&ph, CAPACITY*(pid-1), CAPACITY*pid);
-   return RC_SUCCESS;
+   return RC_OK;
 }
 
 RC_t DirectlyMappedArray::releaseBlock(DenseArrayBlock* block) 
