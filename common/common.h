@@ -139,9 +139,18 @@ const int CAPACITY_SPARSE = ((BLOCK_SIZE - sizeof(BlockHeader))/(sizeof(Datum_t)
 
 
 /// Return code type.
-typedef int RC_t;
-#define RC_SUCCESS 0
-#define RC_FAILURE 1
+//typedef int RC_t;
+//#define RC_SUCCESS 0
+//#define RC_FAILURE 1
+enum RC_t {
+    RC_OK = 0,
+    RC_FAILURE,
+    RC_OutOfSpace,
+    RC_NotAllocated,
+    RC_AlreadyAllocated,
+    RC_OutOfRange
+};
+
 
 // #define PGID_INVALID UINT_MAX
 
@@ -239,8 +248,8 @@ inline DataType GetDataType(T x) {
  * Code returned from methods that access elements of an array.
  */
 enum AccessCode {
-    OK = 0,
-    OutOfRange
+    AC_OK = 0,
+    AC_OutOfRange
 };
 
 #endif
