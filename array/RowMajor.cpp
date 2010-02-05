@@ -46,7 +46,8 @@ MDCoord RowMajor::unlinearize(Key_t key)
 
 MDCoord RowMajor::move(const MDCoord &from, KeyDiff_t diff)
 {
-   MDCoord to = MDCoord(from);
+   return unlinearize(linearize(from) + diff);
+/*   MDCoord to = MDCoord(from);
    if (diff > 0)
    {
       to += unlinearize(abs(diff));
@@ -71,7 +72,7 @@ MDCoord RowMajor::move(const MDCoord &from, KeyDiff_t diff)
          }
       }
    }
-   return to;
+   return to;*/
 }
 
 RowMajor* RowMajor::clone()

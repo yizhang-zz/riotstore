@@ -178,13 +178,13 @@ TEST(RowMajor, Move)
       cur = rm.move(cur, 1);
       ASSERT_EQ(i, rm.linearize(cur));
    }
-   for (int i = size-1; i >0; i++)
+   for (int i = size-1; i >0; i--)
    {
       ASSERT_EQ(i, rm.linearize(cur));
-      cur = rm.move(cur,-1);
+      cur = rm.move(cur,(KeyDiff_t)(-1));
    }
    ASSERT_EQ(0, rm.linearize(cur));
-   cur = rm.move(cur, size);
+   cur = rm.move(cur, size-1);
    ASSERT_EQ(size-1, rm.linearize(cur));
    int x = rand() % (size-1) + 1;
    cur = rm.move(cur, -1*x);
