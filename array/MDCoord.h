@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+#define COORD(x) ((i64)(x))
 
 /**
  * MDCoord is a class for representing coordinates inside a

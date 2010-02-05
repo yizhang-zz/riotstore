@@ -42,6 +42,7 @@
 class Linearization
 {
 public:
+Linearization() {}
     /**
      * Linearizes the given coord.
      *
