@@ -1,12 +1,11 @@
-#ifndef ROW_MAJOR_H
-#define ROW_MAJOR_H
+#ifndef COL_MAJOR_H
+#define COL_MAJOR_H
 
 #include "Linearization.h"
 
-class RowMajor : public Linearization
+class ColMajor : public Linearization
 
 {
-   // make sure none of the dimension sizes are equal to 0!!
 //   private:
    public:
       /**
@@ -19,8 +18,8 @@ class RowMajor : public Linearization
 
 public:
 
-      RowMajor(const MDCoord &coord);
-      ~RowMajor();
+      ColMajor(const MDCoord &coord);
+      ~ColMajor();
     /**
      * Linearizes the given coord.
      *
@@ -71,7 +70,7 @@ public:
      *
      * \return A pointer to a clone of subclass type.
      */
-    RowMajor* clone();
+    ColMajor* clone();
     
 
 };

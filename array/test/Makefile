@@ -32,5 +32,5 @@ test: $(objects) $(par_objects) ../../common/common.o ../../lower/BitmapPagedFil
 
 clean : 
 	rm -f *.o
-	rm -f *.out
 	rm -f *.d
+	rm test

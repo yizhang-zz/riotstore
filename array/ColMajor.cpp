@@ -1,10 +1,10 @@
 
 #include <assert.h>
 #include <math.h>
-#include "RowMajor.h"
+#include "ColMajor.h"
 
 
-RowMajor::RowMajor(const MDCoord &coord)
+ColMajor::ColMajor(const MDCoord &coord)
 {
    assert(coord.nDim != 0);
    for (int k = 0; k < coord.nDim; k++)
@@ -12,17 +12,18 @@ RowMajor::RowMajor(const MDCoord &coord)
    dimension = new MDCoord(coord);
 }
 
-RowMajor::~RowMajor()
+ColMajor::~ColMajor()
 {
    delete dimension;
 }
 
-Key_t RowMajor::linearize(const MDCoord &coord)
+Key_t ColMajor::linearize(const MDCoord &coord)
 {
    assert(coord.nDim == dimension->nDim);
-   assert(coord.coords[0] < dimension->coords[0]);
-   Key_t key = coord.coords[0];
-   for (int k = 1; k < dimension->nDim; k++)
+   assert(coord.coords[dimension->nDim - 1] < dimension->coords[dimension->nDim
+         - 1]);
+   Key_t key = coord.coords[dimension->nDim - 1];
+   for (int k = dimension->nDim - 2; k >= 0; k--)
    {
       assert(coord.coords[k] < dimension->coords[k]);
       key = key*dimension->coords[k] + coord.coords[k];
@@ -32,36 +33,36 @@ Key_t RowMajor::linearize(const MDCoord &coord)
    return key;
 }
 
-MDCoord RowMajor::unlinearize(Key_t key)
+MDCoord ColMajor::unlinearize(Key_t key)
 {
    i64 coords[dimension->nDim];
-   coords[dimension->nDim-1] = key % dimension->coords[dimension->nDim-1];
-   for (int k = dimension->nDim - 2; k >= 0; k--)
+   coords[0] = key % dimension->coords[0];
+   for (int k = 1; k < dimension->nDim; k++)
    {
-      key /= dimension->coords[k+1];
+      key /= dimension->coords[k-1];
       coords[k] = key % dimension->coords[k];
    }
    return MDCoord(coords, dimension->nDim);
 }
 
-MDCoord RowMajor::move(const MDCoord &from, KeyDiff_t diff)
+MDCoord ColMajor::move(const MDCoord &from, KeyDiff_t diff)
 {
    assert(from.nDim == dimension->nDim);
    MDCoord to(from);
-   to.coords[dimension->nDim - 1] += diff;
-   for (int k = dimension->nDim - 1; k >= 0; k--)
+   to.coords[0] += diff;
+   for (int k = 0; k < dimension->nDim; k++)
    {
       if (to.coords[k] < dimension->coords[k]) // carry-over done propogating
          break;
-      if (k > 0)
-         to.coords[k-1] += to.coords[k]/dimension->coords[k];
+      if (k < dimension->nDim - 1)
+         to.coords[k+1] += to.coords[k]/dimension->coords[k];
       to.coords[k] %= dimension->coords[k];
    }
    return to;
 }
 
-RowMajor* RowMajor::clone()
+ColMajor* ColMajor::clone()
 {
-   return new RowMajor(*(this->dimension));
+   return new ColMajor(*(this->dimension));
 }
 
