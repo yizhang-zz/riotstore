@@ -14,10 +14,13 @@ class ColMajor : public Linearization
        * each coordinate in dimension.coords corresponds to size of the matrix
        * along that dimension
        */
-      MDCoord *dimension;
+      u8 nDims;
+      i64 *dimSizes;
+      // MDCoord *dimension;
 
 public:
 
+      ColMajor(u8 nDims, const i64 *coords);
       ColMajor(const MDCoord &coord);
       ~ColMajor();
     /**

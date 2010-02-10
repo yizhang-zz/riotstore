@@ -1,10 +1,9 @@
-#ifndef ROW_MAJOR_H
-#define ROW_MAJOR_H
+#ifndef BLOCK_BASED_H
+#define BLOCK_BASED_H
 
 #include "Linearization.h"
 
-class RowMajor : public Linearization
-
+class BlockBased : public Linearization
 {
    // make sure none of the dimension sizes are equal to 0!!
 //   private:
@@ -16,14 +15,15 @@ class RowMajor : public Linearization
        * along that dimension
        */
       u8 nDims;
-      i64 *dimSizes;
-      // MDCoord *dimension;
+      i64 *arraySizes; /// size of array in each dimension
+      i64 *blockSizes; /// size of block in each dimension
+      u8 *blockOrder; /// ordering of dimensions between blocks, descending order of significance
+      u8 *microOrder; /// ordering of elements inside a block, descending order of significance
 
 public:
 
-      RowMajor(u8 nDims, const i64 *coords);
-      RowMajor(const MDCoord &coord);
-      ~RowMajor();
+      BlockBased(u8 nDims, const i64 *arraySizes, const i64 *blockSizes, const u8 *blockOrder, const u8 *microOrder);
+      ~BlockBased();
     /**
      * Linearizes the given coord.
      *
@@ -74,8 +74,11 @@ public:
      *
      * \return A pointer to a clone of subclass type.
      */
-    RowMajor* clone();
+    BlockBased* clone();
     
+private:
+    i64 blockSize;
+    i64 *blocksPerArray;
 
 };
 
