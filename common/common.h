@@ -3,6 +3,8 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <stdlib.h>
+
 /// Print error message like printf.
 void riot_error(const char *s, ...);
 
