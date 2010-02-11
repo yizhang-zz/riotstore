@@ -252,4 +252,15 @@ enum AccessCode {
     AC_OutOfRange
 };
 
+template<class T>
+void permute(T* array, const int size)
+{
+    for (int i=0; i<size-1; i++) {
+        int target = rand() % (size-i) + i;
+        T temp = array[target];
+        array[target] = array[i];
+        array[i] = temp;
+    }
+}
+
 #endif
