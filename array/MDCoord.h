@@ -28,7 +28,7 @@ class MDCoord
 {
 public:
     /// Number of dimensions.
-    u8 nDim;
+    u8 nDims;
     /// Array of coordinates in each dimension.
     i64 *coords;
 
@@ -37,30 +37,30 @@ public:
      */
     MDCoord()
     {
-        nDim = 0;
+        nDims = 0;
         coords = NULL;
     }
 
     /**
      * Constructs a MDCoord using the given number of dimensions and
      * coordinates. It is the caller's responsibility to ensure the
-     * number of coordinates given is equal to nDim.
+     * number of coordinates given is equal to nDims.
      * 
-     * \param nDim Number of dimensions
+     * \param nDims Number of dimensions
      * \param ... Variable length argument specifying the coordinates
      */
     
-    MDCoord(u8 nDim, ...);
+    MDCoord(u8 nDims, ...);
 
     /**
      * Constructs a MDCoord using the given coordinates and number of
      * dimensions. A copy of coord is kept.
      *
      * \param coords An array of coordinates in each dimension
-     * \param nDim Number of dimensions
+     * \param nDims Number of dimensions
      */ 
 
-    MDCoord(i64 *coords, u8 nDim);
+    MDCoord(i64 *coords, u8 nDims);
 
     /**
      * Destructor. Memory resource for keeping the coordinates is
