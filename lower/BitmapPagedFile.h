@@ -17,10 +17,9 @@
 class BitmapPagedFile : public PagedStorageContainer {
 
 public:
-
+  Byte_t *header;
   int fd;	// file descriptor
   uint32_t numContentPages;
-  Byte_t header[PAGE_SIZE];
 
   static int readCount;
   static int writeCount;
@@ -50,9 +49,9 @@ public:
 
   virtual RC_t disposePage(PID_t pid);
 
-  virtual RC_t readPage(PageHandle &ph);
+  virtual RC_t readPage(PageHandle ph);
 
-  virtual RC_t writePage(const PageHandle &ph);
+  virtual RC_t writePage(PageHandle ph);
 
 // private:
 public:

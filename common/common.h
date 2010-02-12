@@ -11,6 +11,7 @@ void riot_error(const char *s, ...);
 /* Direct I/O, no caching by the OS */
 #if defined(linux)
 #define RIOT_LINUX
+#include <malloc.h>
 /* Linux supports O_DIRECT in open(2) for direct I/O */
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
@@ -29,6 +30,7 @@ int open_direct_bsd(const char *pathname, int flags);
 
 #elif defined(sun)
 #define RIOT_SUN
+#include <stdlib.h>
 /* Solaris has directio(3C) for the same purpose */
 #include <fcntl.h>
 int open_direct_sol(const char *pathname, int flags);
@@ -146,7 +148,7 @@ const int CAPACITY_SPARSE = ((BLOCK_SIZE - sizeof(BlockHeader))/(sizeof(Datum_t)
 //#define RC_FAILURE 1
 enum RC_t {
     RC_OK = 0,
-    RC_FAILURE,
+    RC_Failure,
     RC_OutOfSpace,
     RC_NotAllocated,
     RC_AlreadyAllocated,
@@ -154,21 +156,17 @@ enum RC_t {
 };
 
 
-// #define PGID_INVALID UINT_MAX
-
 //////////////////////////////////////////////////////////////////////
 // In-memory image of a page.
 
-typedef Byte_t PageImage[PAGE_SIZE];
+typedef void *PageImage;
+PageImage allocPageImage(size_t num);
+void freePageImage(PageImage p);
 
 //////////////////////////////////////////////////////////////////////
 // A handle for a page buffered in memory.
 
-typedef struct {
-  PID_t pid;
-  PageImage *image;
-} PageHandle;
-
+typedef void *PageHandle;
 
 /* Coding style: inline small functions (<= 10 lines of code) */
 
@@ -265,4 +263,5 @@ void permute(T* array, const int size)
     }
 }
 
+//#include "PageHandle.h"
 #endif

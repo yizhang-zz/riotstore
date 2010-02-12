@@ -1,102 +1,84 @@
 #include "../../common/common.h"
-#include "../LRUPageReplacer.h"
 #include "../BufferManager.h"
+#include "../PageReplacer.h"
 #include "../BitmapPagedFile.h"
+#include <gtest/gtest.h>
 #include <assert.h>
 #include <stdio.h>
 #include <iostream>
 using namespace std;
 
-BitmapPagedFile* bpf;
-BufferManager<>* bm;
-#define FILE_NAME "a.bin"
+//BitmapPagedFile* bpf;
+//BufferManager* bm;
+//#define FILE_NAME "a.bin"
 #define BUFFER_SIZE 2
 
-void create() {
-	RC_t rc = BitmapPagedFile::createPagedFile(FILE_NAME, bpf);
-	assert(rc == RC_SUCCESS);
-	bm = new BufferManager<>(bpf, BUFFER_SIZE);
-	assert(bm != NULL);
-	cout<<"create test passed"<<endl;
-}
 
-void allocate() {
+TEST(BufferManager, Allocate)
+{
+    BitmapPagedFile bpf("a.bin", PagedStorageContainer::F_CREATE);
+	BufferManager bm(&bpf, BUFFER_SIZE);
 	PageHandle ph;
-	PageImage* image;
+	Byte_t *image;
 	for (int i=0; i<3; i++) {
-	assert(RC_SUCCESS == bm->allocatePage(ph));
-	cout<<ph.pid<<" "<< ph.image<<endl;
-	image = ph.image;
-	(*image)[0] = i;
-	bm->markPageDirty(ph);
-	bm->flushPage(ph);
-	bm->unpinPage(ph);
+        ASSERT_EQ(RC_OK, bm.allocatePage(ph));
+        image = (Byte_t*) bm.getPageImage(ph);
+        image[0] = i;
+        bm.markPageDirty(ph);
+        bm.flushPage(ph);
+        bm.unpinPage(ph);
 	}
-	cout<<"allocate test passed"<<endl;
 }
 
-void read() {
+TEST(BufferManager, AllocateRead) {
+    BitmapPagedFile bpf("a.bin", PagedStorageContainer::F_NO_CREATE);
+	BufferManager bm(&bpf, BUFFER_SIZE);
 	PageHandle ph;
-	ph.pid = 1;
-	bm->readPage(ph);
-	assert(*ph.image[0] != 0);
-	bm->unpinPage(ph);
-	cout<<"read test passed"<<endl;
+	Byte_t *image;
+
+	ASSERT_EQ(RC_OK, bm.readPage(1, ph));
+    image = (Byte_t*) bm.getPageImage(ph);
+	ASSERT_NE(image[0] , 0);
+	bm.unpinPage(ph);
 }
 
-void replaceDirty() {
+TEST(BufferManager, ReplaceDirty) {
+    BitmapPagedFile bpf("a.bin", PagedStorageContainer::F_NO_CREATE);
+	BufferManager bm(&bpf, BUFFER_SIZE);
 	PageHandle ph;
+	Byte_t *image;
+
 	Byte_t updated;
 	void *addr;
 	
-	ph.pid = 0;
-	bm->readPage(ph);
-	addr = ph.image;
-	updated = ++(*(ph.image)[0]);
-	bm->markPageDirty(ph);
-	bm->unpinPage(ph);
+	bm.readPage(0, ph);
+	addr = image = (Byte_t*) bm.getPageImage(ph);
+	updated = ++(image[0]);
+	bm.markPageDirty(ph);
+	bm.unpinPage(ph);
 	
-	ph.pid = 1;
-	bm->readPage(ph);
-	++(*(ph.image)[0]);
-	bm->markPageDirty(ph);
-	bm->unpinPage(ph);
+	bm.readPage(1, ph);
+    image = (Byte_t*) bm.getPageImage(ph);
+	++(image[0]);
+	bm.markPageDirty(ph);
+	bm.unpinPage(ph);
 
-	ph.pid = 2;
-	bm->readPage(ph);
-	assert(addr == ph.image);
-	++(*(ph.image)[0]);
-	bm->markPageDirty(ph);
-	bm->unpinPage(ph);
+	bm.readPage(2, ph);
+	ASSERT_EQ(addr, bm.getPageImage(ph));
+    image = (Byte_t*) bm.getPageImage(ph);
+	++(image[0]);
+	bm.markPageDirty(ph);
+	bm.unpinPage(ph);
 
 	
 	// check if page 0 has been flushed
-	FILE *f = fopen(FILE_NAME, "r");
+	FILE *f = fopen("a.bin", "r");
 	// skip the first header page
 	fseek(f, 1*PAGE_SIZE, SEEK_SET);
 	char buf;
 	fread(&buf, 1, sizeof(char), f);
 	fclose(f);
-	assert(updated == buf);
+    ASSERT_EQ(updated , buf);
 
-	cout<<"replace dirty test passed"<<endl;
+    remove("a.bin");
 }
-	
-	
-void cleanup() {
-	delete bm;
-	delete bpf;
-	cout<<"cleanup test passed"<<endl;
-}
-
-int main()
-{
-	create();
-	if (bpf->numContentPages == 0)
-		allocate();
-	read();
-	replaceDirty();
-	cleanup();
-	return 0;
-}
-

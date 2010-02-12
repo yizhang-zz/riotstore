@@ -4,8 +4,8 @@ LDFLAGS = -lgtest
 
 .PHONY: all clean lower
 
-#objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp))
-objects := TestFile.o main.o
+objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp))
+#objects := TestFile.o TestBufferManager.o main.o
 par_objects := $(patsubst %.cpp, %.o, $(wildcard ../*.cpp))
 
 .c.o:

@@ -1,11 +1,12 @@
 #include <gtest/gtest.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../../common/common.h"
-#include "../BitmapPagedFile.h"
 #include <iostream>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include "../../common/common.h"
+#include "../BitmapPagedFile.h"
+#include "../PageRec.h"
 using namespace std;
 
 /*
@@ -18,8 +19,7 @@ TEST(BmpPagedFile, constructor)
 {
     // create new file
     BitmapPagedFile *bpf = new BitmapPagedFile("test1.bin", BitmapPagedFile::F_CREATE);
-RC_t rc;
-    ASSERT_EQ(rc , RC_SUCCESS);
+    RC_t rc;
     for(int k=0; k<PAGE_SIZE; k++) {
         ASSERT_FALSE(bpf->isAllocated(k));
     }
@@ -49,7 +49,7 @@ RC_t rc;
     }
     delete bpf;
 
-	remove("test1.bin");
+	//remove("test1.bin");
 }
 
 TEST(BmpPagedFile, allocatePage)
@@ -60,13 +60,13 @@ PID_t pid;
 
     // allocate each bit sequentially in header
     for(int k=0; k<8*PAGE_SIZE; k++) {
-        ASSERT_EQ(bpf->allocatePage(pid) , RC_SUCCESS);
+        ASSERT_EQ(bpf->allocatePage(pid) , RC_OK);
         ASSERT_EQ(pid , k);
         ASSERT_EQ(bpf->numContentPages , k+1);
     }
 
     // allocate past range
-    ASSERT_EQ(bpf->allocatePage(pid) , RC_FAILURE);
+    ASSERT_EQ(bpf->allocatePage(pid) , RC_OutOfSpace);
 
     // allocate holes from least to greatest
     bpf->header[3] = 0;
@@ -74,22 +74,21 @@ PID_t pid;
     bpf->header[4000] = 0;
 
     for(int k=0; k<8; k++) {
-        ASSERT_EQ(bpf->allocatePage(pid) , RC_SUCCESS);
+        ASSERT_EQ(bpf->allocatePage(pid) , RC_OK);
         ASSERT_EQ(pid , 3*8+k);
     }
     for(int k=0; k<8; k++) {
-        ASSERT_EQ(bpf->allocatePage(pid) , RC_SUCCESS);
+        ASSERT_EQ(bpf->allocatePage(pid) , RC_OK);
         ASSERT_EQ(pid , 123*8+k);
     }
     for(int k=0; k<8; k++) {
-        ASSERT_EQ(bpf->allocatePage(pid) , RC_SUCCESS);
+        ASSERT_EQ(bpf->allocatePage(pid) , RC_OK);
         ASSERT_EQ(pid , 4000*8+k);
     }
-    ASSERT_EQ(bpf->allocatePage(pid) , RC_FAILURE);
+    ASSERT_EQ(bpf->allocatePage(pid) , RC_OutOfSpace);
     delete bpf;
-remove("test1.bin");
+    remove("test1.bin");
 	remove("test2.bin");
-
 }
 
 TEST(BmpPagedFile, allocatedPagePID)
@@ -100,13 +99,13 @@ TEST(BmpPagedFile, allocatedPagePID)
 
     // allocate each PID once
     for(int k=0; k<8*PAGE_SIZE; k++) {
-        ASSERT_EQ(bpf->allocatePageWithPID(k) , RC_SUCCESS);
+        ASSERT_EQ(bpf->allocatePageWithPID(k) , RC_OK);
         ASSERT_EQ(bpf->numContentPages , k+1);
-        ASSERT_EQ(bpf->allocatePageWithPID(k) , RC_FAILURE);
+        ASSERT_EQ(bpf->allocatePageWithPID(k) , RC_AlreadyAllocated);
         ASSERT_EQ(bpf->numContentPages , k+1);
     }
 
-    ASSERT_EQ(bpf->allocatePageWithPID(8*PAGE_SIZE) , RC_FAILURE);
+    ASSERT_EQ(bpf->allocatePageWithPID(8*PAGE_SIZE) , RC_OutOfRange);
     delete bpf;
 
     // header and contentPages written and retrieved
@@ -124,7 +123,7 @@ TEST(BmpPagedFile, allocatedPagePID)
 
     bpf = new BitmapPagedFile("test2.bin", BitmapPagedFile::F_CREATE);
     ASSERT_TRUE(bpf);
-    ASSERT_EQ(bpf->allocatePageWithPID(202) , RC_SUCCESS);
+    ASSERT_EQ(bpf->allocatePageWithPID(202) , RC_OK);
     delete bpf;
 
     bpf = new BitmapPagedFile("test2.bin", BitmapPagedFile::F_NO_CREATE);
@@ -155,22 +154,22 @@ TEST(BmpPagedFile, disposePage)
     bpf->header[1543] = 47; // 00101111
     bpf->numContentPages = 15000;
 
-    ASSERT_EQ(bpf->disposePage(39) , RC_SUCCESS);
+    ASSERT_EQ(bpf->disposePage(39) , RC_OK);
     ASSERT_EQ(bpf->header[4] , 2);
-    ASSERT_EQ(bpf->disposePage(12345) , RC_SUCCESS);
+    ASSERT_EQ(bpf->disposePage(12345) , RC_OK);
     ASSERT_EQ(bpf->header[1543] , 45);
 
     for(int k=0; k<8*PAGE_SIZE; k++) {
         if(k==33||k==12344||k==12346||k==12347||k==12349) {
-            ASSERT_EQ(bpf->disposePage(k) , RC_SUCCESS);
+            ASSERT_EQ(bpf->disposePage(k) , RC_OK);
         }
         else {
-            ASSERT_EQ(bpf->disposePage(k) , RC_FAILURE);
+            ASSERT_NE(bpf->disposePage(k) , RC_OK);
         }
     }
 
-    // ASSERT_EQ(bpf->disposePage(-1) , RC_FAILURE);
-    ASSERT_EQ(bpf->disposePage(8*PAGE_SIZE) , RC_FAILURE);
+    // ASSERT_EQ(bpf->disposePage(-1) , RC_Failure);
+    ASSERT_EQ(bpf->disposePage(8*PAGE_SIZE) , RC_OutOfRange);
 
     delete bpf;
 remove("test1.bin");
@@ -178,41 +177,41 @@ remove("test1.bin");
 
 TEST(BmpPagedFile, readWrite)
 {
-PageHandle ph;
-Byte_t filler[PAGE_SIZE];
+    PageRec ph;
+    Byte_t *filler = (Byte_t*) allocPageImage(1);
     BitmapPagedFile *bpf = new BitmapPagedFile("test1.bin", BitmapPagedFile::F_CREATE);
     ASSERT_TRUE(bpf);
 
     for(int k=0; k<PAGE_SIZE; k++) {
         memset(filler+k, k%256, 1);
     }
-    ph.image = &filler;
+    ph.image = filler;
     ph.pid = 20;
 
-    ASSERT_EQ(bpf->writePage(ph) , RC_FAILURE); // pid out of range and
+    ASSERT_EQ(bpf->writePage(&ph) , RC_OutOfRange); // pid out of range and
                                                 // unallocated
 
     bpf->header[2] = 16; // 00010000
     bpf->numContentPages = 20;
-    ASSERT_EQ(bpf->writePage(ph) , RC_FAILURE); // pid out of range
+    ASSERT_EQ(bpf->writePage(&ph) , RC_OutOfRange); // pid out of range
 
     // pad contentPages on file
     bpf->numContentPages = 30;
-    ASSERT_EQ(bpf->writePage(ph) , RC_SUCCESS);
+    ASSERT_EQ(bpf->writePage(&ph) , RC_OK);
     // fflush(bpf->file);
 	struct stat s;
 	fstat(bpf->fd, &s);
-	ASSERT_EQ(s.st_size , 22*PAGE_SIZE);
+	ASSERT_EQ(s.st_size , 22*PAGE_SIZE)<<s.st_size/PAGE_SIZE;
 
     // write to one of contentPages
     bpf->header[1] = 1; // 00000001
-    ph.pid = 8;
-    ASSERT_EQ(bpf->writePage(ph) , RC_SUCCESS);
+    ph.pid = (8);
+    ASSERT_EQ(bpf->writePage(&ph) , RC_OK);
 
     // expand contentPages
     bpf->header[3] = 32; // 00100000
-    ph.pid = 29;
-    ASSERT_EQ(bpf->writePage(ph) , RC_SUCCESS);
+    ph.pid = (29);
+    ASSERT_EQ(bpf->writePage(&ph) , RC_OK);
 	fstat(bpf->fd, &s);
     ASSERT_EQ(s.st_size , 31*PAGE_SIZE);
 
@@ -220,9 +219,9 @@ Byte_t filler[PAGE_SIZE];
     for(int k=0; k<PAGE_SIZE; k++) {
         memset(filler+k, 255, 1);
     }
-    ph.image = &filler;
-    ph.pid = 8;
-    ASSERT_EQ(bpf->writePage(ph) , RC_SUCCESS);
+    ph.image = (filler);
+    ph.pid = (8);
+    ASSERT_EQ(bpf->writePage(&ph) , RC_OK);
 
     delete bpf;
 
@@ -231,34 +230,35 @@ Byte_t filler[PAGE_SIZE];
     ASSERT_TRUE(bpf);
     for(int k=0; k<8*PAGE_SIZE; k++) {
         if(k == 20) {
-            ph.pid = 20;
-            ASSERT_EQ(bpf->readPage(ph) , RC_SUCCESS);
+            ph.pid = (20);
+            ASSERT_EQ(bpf->readPage(&ph) , RC_OK);
             for(int k=0; k<PAGE_SIZE; k++) {
-                ASSERT_EQ((*(ph.image))[k] , k%256);
+                ASSERT_EQ(((Byte_t*)ph.image)[k] , k%256);
             }
         }
         else if(k == 29) {
-            ph.pid = 29;
-            ASSERT_EQ(bpf->readPage(ph) , RC_SUCCESS);
+            ph.pid = (29);
+            ASSERT_EQ(bpf->readPage(&ph) , RC_OK);
             for(int k=0; k<PAGE_SIZE; k++) {
-                ASSERT_EQ((*(ph.image))[k] , k%256);
+                ASSERT_EQ(((Byte_t*)ph.image)[k] , k%256);
             }
         }
         else if(k == 8) {
-            ph.pid = 8;
-            ASSERT_EQ(bpf->readPage(ph) , RC_SUCCESS);
+            ph.pid =(8);
+            ASSERT_EQ(bpf->readPage(&ph) , RC_OK);
             for(int k=0; k<PAGE_SIZE; k++) {
-                ASSERT_EQ((*(ph.image))[k] , 255);
+                ASSERT_EQ(((Byte_t*)ph.image)[k] , 255);
             }
         }
         else {
-            ph.pid = k;
-            ASSERT_EQ(bpf->readPage(ph) , RC_FAILURE);
+            ph.pid = (k);
+            ASSERT_NE(bpf->readPage(&ph) , RC_OK);
         }
     }
 
     delete bpf;
-remove("test1.bin");
+    remove("test1.bin");
+    free(filler);
 }
 
 TEST(BmpPagedFile, allocate)

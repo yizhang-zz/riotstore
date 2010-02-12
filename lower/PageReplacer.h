@@ -4,8 +4,7 @@
 #include "../common/common.h"
 //#include "BufferManager.h"
 
-//class BufferManager;
-struct BufferHeader;
+struct PageRec;
 //////////////////////////////////////////////////////////////////////
 // The interface for a BufferManager helper that decides which
 // existing buffered page should be evicted when there is no space
@@ -14,42 +13,40 @@ struct BufferHeader;
 // policies, e.g., LRU, implemented as subclasses of this one, which
 // provide actual implementation for these methods.
 
-class PageReplacer {
-
-//  friend class BufferManager;
-
+class PageReplacer
+{
 public:
 
-  // A handle to the buffer manager that this replacer works for
-  // BufferManager *bufferManager;
+    // A handle to the buffer manager that this replacer works for
+    // BufferManager *bufferManager;
 
-  PageReplacer() {}
-  virtual ~PageReplacer() {}
+    PageReplacer() {}
+    virtual ~PageReplacer() {}
 
-  // Allows subclasses to access BufferManager's protected/private
-  // members that may be useful.
-  /* const bool *getUsedBits() const; */
-  /* const bool *getDirtyBits() const; */
-  /* const uint32_t *getPinCounts() const; */
+    // Allows subclasses to access BufferManager's protected/private
+    // members that may be useful.
+    /* const bool *getUsedBits() const; */
+    /* const bool *getDirtyBits() const; */
+    /* const uint32_t *getPinCounts() const; */
 
-  // Returns the index (into BufferManager::images) of the recommended
-  // page to be replaced when called by BufferManager.  All pages in
-  // the buffer should be in use at this point.  Does not perform the
-  // actual replacement.
-  RC_t selectToReplace(BufferHeader **bh);
+    // Returns the index (into BufferManager::images) of the recommended
+    // page to be replaced when called by BufferManager.  All pages in
+    // the buffer should be in use at this point.  Does not perform the
+    // actual replacement.
+    virtual RC_t selectToReplace(PageRec *&bh) = 0;
 
-  // Called by BufferManager when unpinning a page.  indexOfPage is
-  // the index into BufferManager::images.
-  // When a page is accessed, it must have been pinned already. On the
-  // other hand, if a page is to be unpinned, it must have been
-  // accessed at least once. So we can always touch it when it is
-  // unpinned.
-  void add(BufferHeader *bh);
-	void remove(BufferHeader *bh);
+    // Called by BufferManager when unpinning a page.  indexOfPage is
+    // the index into BufferManager::images.
+    // When a page is accessed, it must have been pinned already. On the
+    // other hand, if a page is to be unpinned, it must have been
+    // accessed at least once. So we can always touch it when it is
+    // unpinned.
+    virtual void add(PageRec *bh) = 0;
+	virtual void remove(PageRec *bh) = 0;
 
-  // Called by BufferManager to reset statistics about a page.
-  // indexOfPage is the index into BufferManager::images.
-  //void reset(uint32_t indexOfPage);
+    // Called by BufferManager to reset statistics about a page.
+    // indexOfPage is the index into BufferManager::images.
+    //void reset(uint32_t indexOfPage);
 };
 
 #endif
