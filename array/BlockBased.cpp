@@ -10,8 +10,8 @@ BlockBased::BlockBased(u8 nDims, const i64 *arraySizes, const i64 *blockSizes, c
    assert(nDims != 0);
    for (int i = 0; i < nDims; i++)
    {
-      assert(arraySizes[i] != 0);
-      assert(blockSizes[i] != 0 && blockSizes[i] < arraySizes[i]);
+      assert(arraySizes[i] > 0);
+      assert(0 < blockSizes[i] && blockSizes[i] <= arraySizes[i]);
       assert(0 <= blockOrder[i] && blockOrder[i] < nDims); // duplicate check?
       assert(0 <= microOrder[i] && microOrder[i] < nDims); // duplicate check?
    }
@@ -64,7 +64,7 @@ Key_t BlockBased::linearize(const MDCoord &coord)
       blockKey = blockKey*blocksPerArray[k] + blockCoords[k];
       microKey = microKey*blockSizes[k] + microCoords[k];
    }
-   return blockKey*blockSize + microKey;
+   return (Key_t)blockKey*blockSize + microKey;
 }
 
 MDCoord BlockBased::unlinearize(Key_t key)
@@ -78,7 +78,7 @@ MDCoord BlockBased::unlinearize(Key_t key)
    for (int i = nDims - 1; i >= 0; i--)
    {
       u8 k = blockOrder[i];
-      coords[i] = (blockKey % blocksPerArray[k])*blockSizes[i] + microKey % blockSizes[k];
+      coords[k] = (blockKey % blocksPerArray[k])*blockSizes[k] + microKey % blockSizes[k];
       // blockCoords[i] = blockKey % blocksPerArray[k];
       blockKey /= blocksPerArray[k];
       // microCoords[i] = microKey % blockSizes[k];

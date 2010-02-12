@@ -8,7 +8,7 @@ ColMajor::ColMajor(u8 nDims, const i64* coords)
 {
    assert(nDims != 0);
    for (int k = 0; k < nDims; k++)
-      assert(coords[k] != 0); // cannot have dimension length of 0
+      assert(coords[k] > 0); // cannot have dimension length of 0
 
    this->nDims = nDims;
    dimSizes = new i64[nDims];
@@ -19,7 +19,7 @@ ColMajor::ColMajor(const MDCoord &coord)
 {
    assert(coord.nDims != 0);
    for (int k = 0; k < coord.nDims; k++)
-      assert(coord.coords[k] != 0); // cannot have dimension length of 0
+      assert(coord.coords[k] > 0); // cannot have dimension length of 0
 
    nDims = coord.nDims;
    dimSizes = new i64[nDims];

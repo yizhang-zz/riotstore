@@ -495,7 +495,7 @@ TEST(BlockBased, Linearize)
    i64 arraySizes[] = {6, 6};
    i64 blockSizes[] = {3, 3};
    u8 blockOrder[] = {0, 1};
-   u8 microOrder[] = {0, 1};
+   u8 microOrder[] = {1, 0};
    Key_t size = 36;
 
    BlockBased bb(nDims, arraySizes, blockSizes, blockOrder, microOrder);
@@ -542,19 +542,41 @@ TEST(BlockBased, Linearize)
       ASSERT_TRUE(c == bb.unlinearize((Key_t)i));
       ASSERT_TRUE(c == bb.unlinearize(bb.linearize(c)));
    }
-/*
-   n = 8;
-   coords[n];
+
+  for (int i = 0; i < 36; i++)
+  {
+     ASSERT_EQ(i, bb.linearize(bb.unlinearize(i)));
+  }
+  
+   u8 n = 5;
+   /*i64 *as = new i64[n];
+   i64 *bs = new i64[n];
+   u8 *bo = new u8[n];
+   u8 *mo = new u8[n];
+   */
+   i64 as[n];
+   i64 bs[n];
+   u8 bo[n];
+   u8 mo[n];
    size = 1;
+
    for (int i = 0; i < n; i++)
    {
-      coords[i] = i+3;
-      size *= coords[i];
+      as[i] = 10*(i+1);
+      bs[i] = i+1;
+      bo[i] = n - i -1;
+      mo[i] = n - i -1;
+      size *= as[i];
    }
-   MDCoord dim2(coords, n);
-   RowMajor rm2(dim2);
-   for (int i = 0; i < size; i++)
-      ASSERT_TRUE(i == rm2.linearize(rm2.unlinearize(i)));
-*/
+
+   permute(bo, n);
+   permute(mo, n);
+
+   BlockBased bb2(n, as, bs, bo, mo);
+   for (Key_t i = 0; i < size; i++)
+   {
+      ASSERT_EQ(i, bb2.linearize(bb2.unlinearize(i)));
+   }
+
 }
 
