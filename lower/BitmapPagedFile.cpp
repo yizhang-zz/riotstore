@@ -1,7 +1,11 @@
 #include <unistd.h>
+#include <malloc.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <stdio.h>
+#include <errno.h>
 #include "BitmapPagedFile.h"
+#include "PageRec.h"
 
 int BitmapPagedFile::readCount = 0;
 int BitmapPagedFile::writeCount = 0;
@@ -28,18 +32,31 @@ int BitmapPagedFile::writeCount = 0;
  */
 
 BitmapPagedFile::BitmapPagedFile(const char *pathname, int flag) {
+    header = (Byte_t*)memalign(PAGE_SIZE, PAGE_SIZE);
     readCount = 0;
 	// create new file
 	if (flag & F_CREATE) {
 		fd = open_direct(pathname, O_RDWR|O_CREAT|O_TRUNC);
+        if (fd < 0) {
+            fprintf(stderr, "error %d\n", errno);
+            exit(1);
+        }
 		assert(fd >= 0);
         numContentPages = 0;
         memset(header, 0, PAGE_SIZE);
-        write(fd, header, PAGE_SIZE);
+        int c = write(fd, header, PAGE_SIZE);
+        if (c <= 0) {
+            fprintf(stderr, "written %d\n, %p\n", c, header);
+        }
     }
 	// file exists
     else { // at least header here
 		fd = open_direct(pathname, O_RDWR);
+        if (fd < 0) {
+            fprintf(stderr, "error %d\n", errno);
+            exit(1);
+        }
+
 		assert(fd >= 0);
 		struct stat s;
 		fstat(fd, &s);
@@ -61,8 +78,9 @@ BitmapPagedFile::~BitmapPagedFile() {
     }
     // write header
 	lseek(fd, 0, SEEK_SET);
-    write(fd, header, PAGE_SIZE);
+    int c = write(fd, header, PAGE_SIZE);
     close(fd);
+    free(header);
 }
 
 /* only mark bit in header as allocated, defer writing until later */
@@ -90,7 +108,6 @@ RC_t BitmapPagedFile::allocatePage(PID_t &pid) {
 			return RC_OK;
         }
     }
-
     return RC_OutOfSpace; // header filled
 }
 
@@ -138,25 +155,29 @@ RC_t BitmapPagedFile::disposePage(PID_t pid) {
     return RC_NotAllocated;
 }
 
-RC_t BitmapPagedFile::readPage(PageHandle &ph) {
+RC_t BitmapPagedFile::readPage(PageHandle ph) {
     // pid is not in usable region yet or is unallocated
-    if(ph.pid >= numContentPages)
+    PageRec *rec = (PageRec*)ph;
+    PID_t pid = rec->pid;
+    if(pid >= numContentPages)
         return RC_OutOfRange;
-    if(!isAllocated(ph.pid)) 
+    if(!isAllocated(pid)) 
         return RC_NotAllocated;
 
-    lseek(fd, (1 + ph.pid)*PAGE_SIZE, SEEK_SET); // +1 for header page
-    read(fd, ph.image, PAGE_SIZE);
+    lseek(fd, (1 + pid)*PAGE_SIZE, SEEK_SET); // +1 for header page
+    read(fd, rec->image, PAGE_SIZE);
     readCount++;
     return RC_OK;
 }
 
 // writes ph to file if pid has been allocated
-RC_t BitmapPagedFile::writePage(const PageHandle &ph) {
+RC_t BitmapPagedFile::writePage(PageHandle ph) {
+    PageRec *rec = (PageRec*) ph;
+    PID_t pid = rec->pid;
     // pid is not in usable region yet or is unallocated
-    if(ph.pid >= numContentPages)
+    if(pid >= numContentPages)
         return RC_OutOfRange;
-    if(!isAllocated(ph.pid)) 
+    if(!isAllocated(pid)) 
         return RC_NotAllocated;
 
     /*
@@ -171,8 +192,8 @@ RC_t BitmapPagedFile::writePage(const PageHandle &ph) {
         }
     }
     */
-    lseek(fd, (1 + ph.pid)*PAGE_SIZE, SEEK_SET); // +1 for header page
-    write(fd, ph.image, PAGE_SIZE);
+    lseek(fd, (1 + pid)*PAGE_SIZE, SEEK_SET); // +1 for header page
+    write(fd, rec->image, PAGE_SIZE);
     writeCount++;
     return RC_OK;
 }

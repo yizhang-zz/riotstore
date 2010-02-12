@@ -96,6 +96,12 @@ public:
     {
         this->beginsAt = beginsAt;
         this->endsBy = endsBy;
+        return false;
+    }
+
+    virtual bool setIndexRange(int begin, int end)
+    {
+        return false;
     }
 
 protected:

@@ -41,14 +41,14 @@ public:
      * Reads a page into memory.  The pid and the memory location for
 	 * the image are given in the page handle.
      */
-	virtual RC_t readPage(PageHandle &ph) = 0;
+	virtual RC_t readPage(PageHandle ph) = 0;
 
 	/**
      * Writes a page to the storage.  The pid and the memory location
 	 * for the image are given in the page handle.  The page must have
 	 * been allocated before.
      */
-	virtual RC_t writePage(const PageHandle &ph) = 0;
+	virtual RC_t writePage(PageHandle ph) = 0;
 
 };
 #endif

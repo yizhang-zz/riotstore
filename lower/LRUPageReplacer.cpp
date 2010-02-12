@@ -12,19 +12,19 @@ LRUPageReplacer::~LRUPageReplacer()
 {
 }
 
-RC_t LRUPageReplacer::selectToReplace(BufferHeader **bh)
+RC_t LRUPageReplacer::selectToReplace(PageRec *&bh)
 {
 	if (head == NULL)
 		return RC_OutOfSpace;
-	*bh = head;
+	bh = head;
 	head = head->next;
 	if (head != NULL)
 		head->prev = NULL;
-	(*bh)->prev = (*bh)->next = NULL;
+	bh->prev = bh->next = NULL;
 	return RC_OK;
 }
 
-void LRUPageReplacer::add(BufferHeader *bh)
+void LRUPageReplacer::add(PageRec *bh)
 {
 	if (tail == NULL) {
 		head = tail = bh;
@@ -38,7 +38,7 @@ void LRUPageReplacer::add(BufferHeader *bh)
 	}
 }
 
-void LRUPageReplacer::remove(BufferHeader *bh)
+void LRUPageReplacer::remove(PageRec *bh)
 {
 	if (bh->prev == NULL) 
 		head = bh->next;

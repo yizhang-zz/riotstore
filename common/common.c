@@ -45,6 +45,18 @@ int open_direct_bsd(const char *pathname, int flags)
 		riot_error("Cannot open %s in direct I/O mode.\n", pathname);
 	return fd;
 }
+PageImage allocPageImage(size_t num)
+{
+    PageImage p;
+    if (posix_memalign(&p, PAGE_SIZE, PAGE_SIZE*num))
+        return p;
+    return NULL;
+}
+
+void freePageImage(PageImage p)
+{
+    free(p);
+}
 #endif
 
 #ifdef RIOT_SUN
@@ -54,5 +66,26 @@ int open_direct_sol(const char *pathname, int flags)
 	if (fd < 0)
 		return fd;
 	return directio(fd, DIRECTIO_ON);
+}
+PageImage allocPageImage(size_t num)
+{
+    return (PageImage) memalign(PAGE_SIZE, PAGE_SIZE*num);
+}
+
+void freePageImage(PageImage p)
+{
+    free(p);
+}
+#endif
+
+#ifdef RIOT_LINUX
+PageImage allocPageImage(size_t num)
+{
+    return (PageImage) memalign(PAGE_SIZE, PAGE_SIZE*num);
+}
+
+void freePageImage(PageImage p)
+{
+    free(p);
 }
 #endif
