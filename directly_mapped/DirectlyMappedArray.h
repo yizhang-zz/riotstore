@@ -2,7 +2,7 @@
 #define DIRECTLY_MAPPED_ARRAY_H
 
 #include "../common/common.h"
-#include "../common/LinearStorage.h"
+#include "../lower/LinearStorage.h"
 #include "DenseArrayBlock.h"
 
 const int BUFFER_SIZE = 100;
@@ -39,9 +39,11 @@ class DirectlyMappedArray : public LinearStorage
 
       void findPage(Key_t &key, PID_t *pid);
       RC_t loadBlock(PID_t pid, DenseArrayBlock** block);
+    RC_t loadNextBlock(PageHandle ph, DenseArrayBlock** block);
       RC_t releaseBlock(DenseArrayBlock* block);
       uint32_t getLowerBound();
       uint32_t getUpperBound();
+    void *getPageImage(PageHandle ph);
 };
 
 #endif

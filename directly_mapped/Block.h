@@ -14,13 +14,14 @@ protected:
 	// [lowerBound, upperBound) specifies the key range of this block
 	_K lowerBound;
 	_K upperBound;
+	PageHandle ph; // contains PID and a pointer to the in-memory image
 	
 public:
 
-	PageHandle ph; // contains PID and a pointer to the in-memory image
     // TODO: implement these?
 	Block() {}
 	virtual ~Block() {}
+PageHandle getPageHandle() {return ph;}
 	
 	// Factory method for creating a proper subclass of Block.
 	static Block<_K, _D>* initFromPage(PageHandle *ph, _K begin, _K end, _D
@@ -58,9 +59,11 @@ public:
         upperBound = upper;
     }
 	
+/*
 	PID_t getPID() const {
 		return ph.pid;
 	}
+*/
 	//virtual Iterator* getIterator(Range range) = 0;
 };
 

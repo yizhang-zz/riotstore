@@ -1,4 +1,3 @@
-
 #include <string>
 #include "DirectlyMappedArray.h"
 #include "DMASparseIterator.h"
@@ -8,11 +7,11 @@ bool DMASparseIterator::nextBlockIterator()
    if (atLastBlock)
       return false;
 
-   PID_t pid = block->getPID();
+   PageHandle ph = block->getPageHandle();
    array->releaseBlock(block);
    delete block;
-
-   if (array->loadBlock(pid+1, &block) != RC_OK) 
+   int ret = array->loadNextBlock(ph, &block);
+   if (ret != RC_OK) 
       return false;
 
    if (block->getUpperBound() < endsBy) 

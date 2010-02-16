@@ -111,6 +111,7 @@ typedef double Datum_t;
 typedef uint8_t Byte_t;
 /// A 32-bit integer used as page ID to uniquely identify a page in a file.
 typedef uint32_t PID_t;
+#define INVALID_PID (PID_t(-1))
 
 /*
 typedef struct 

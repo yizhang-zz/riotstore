@@ -4,15 +4,12 @@
 #include "BtreeBlock.h"
 #include "BtreeCursor.h"
 #include "Splitter.h"
-#include "BtreePagePacker.h"
 #include "../lower/PagedStorageContainer.h"
 #include "../lower/BufferManager.h"
 
-namespace Btree
-{
-const int BTreeBufferSize = 100;
+const int BtreeBufferSize = 100;
 
-struct BTreeHeader {
+struct BtreeHeader {
     u32 endsBy;		/// all keys >=0 and < endsBy
 	u32 nLeaves;	/// number of leaf nodes
 	u32 depth;		/// depth of tree; root is at depth 0
@@ -21,55 +18,55 @@ struct BTreeHeader {
 };
 
 /*
- * A BTree is used to store (key,val) pairs in a one-dimensional array. The
+ * A Btree is used to store (key,val) pairs in a one-dimensional array. The
  * keys starts from 0. It is stored in a paged storage container, e.g.,
  * BitmapPagedFile. The first (PID=0) page in the file contains the header
- * of the entire BTree, as defined in struct BTreeHeader.
+ * of the entire Btree, as defined in struct BtreeHeader.
  */
-class BTree {
+class Btree {
 protected:
 	// the underlying file storing the B-tree
 	PagedStorageContainer *file;
 
 	// buffer manager for this array; default LRU
-	BufferManager *buffer;
-    BtreePagePacker *packer;
+	BufferManager<> *buffer;
+
     Splitter *internalSplitter;
     Splitter *leafSplitter;
 
 private:
 	// the header block(page) is kept in mem during lifetime of the tree
-	// BTreeBlock *headerBlock;
+	// BtreeBlock *headerBlock;
     PageHandle headerPage;
     static const PID_t headerPID = 0;
 
-    void split(Cursor *cursor);
+    void split(BtreeCursor *cursor);
 
 public:
 	// points to the data in the header page
-	BTreeHeader *header;
+	BtreeHeader *header;
 
 public:
 	/**
-	 * Creates a new BTree with the given file name and dimension
+	 * Creates a new Btree with the given file name and dimension
 	 * size. If the file exists, it is overwritten. Given dim, all
-	 * keys in the BTree should be >=0 and < endsby. The header page
+	 * keys in the Btree should be >=0 and < endsby. The header page
 	 * (0-th page in the file) is written immediately.
 	 */
-	BTree(const char *fileName, u32 endsBy, Splitter *leafSp, Splitter *intSp);
+	Btree(const char *fileName, u32 endsBy, Splitter *leafSp, Splitter *intSp);
 
 	/**
-	 * Initializes a BTree from the given file. Metadata is read from the
+	 * Initializes a Btree from the given file. Metadata is read from the
 	 * header page.
 	 */
-	BTree(const char *fileName, Splitter *leafSp, Splitter *intSp);
+	Btree(const char *fileName, Splitter *leafSp, Splitter *intSp);
 
 	/**
-	 * Destroys the BTree object (also release header page).
+	 * Destroys the Btree object (also release header page).
 	 */
-	~BTree();
+	~Btree();
 
-    int search(Key_t key, Cursor *cursor);
+    int search(Key_t key, BtreeCursor *cursor);
 
 	int put(Key_t &key, Datum_t &datum);
 	int put(Key_t begin, Key_t end, Datum_t *data);
@@ -79,30 +76,14 @@ public:
 	int get(Key_t begin, Key_t end, Datum_t *data);
 	int get(Key_t *keys, Datum_t *data, int length);
 
+    void loadPage(PageHandle &ph);
+    void releasePage(const PageHandle &ph);
+
     void setInternalSplitter(Splitter *sp) {internalSplitter = sp; }
     void setLeafSplitter(Splitter *sp) { leafSplitter = sp; }
 
     void print();
     u32  getNumLeaves() { return header->nLeaves; }
-
-    void allocatePage(PID_t &pid, PageHandle &ph) {
-        buffer->allocatePage(ph);
-        pid = buffer->getPID(ph);
-    }
-    PageHandle loadPage(PID_t pid) {
-        PageHandle ph;
-        buffer->readPage(pid, ph);
-        return ph;
-    }
-    void releasePage(PageHandle ph) {
-        buffer->unpinPage(ph);
-    }
-    void *getPagePacked(PageHandle ph) {
-        return buffer->getPageImage(ph);
-    }
-    void *getPageUnpacked(PageHandle ph) {
-        return buffer->getUnpackedPageImage(ph);
-    }
 };
-}
+
 #endif

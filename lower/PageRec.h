@@ -20,7 +20,7 @@ struct PageRec
 
     void reset()
     {
-        pid = 0;
+        pid = INVALID_PID;
         dirty = false;
         pinCount = 0;
         unpacked = NULL;

@@ -1,13 +1,15 @@
-
 #include "DenseArrayBlock.h"
+#include "DirectlyMappedArray.h"
 #include "DABIterator.h"
 
-DenseArrayBlock::DenseArrayBlock(PageHandle *ph, Key_t lower, Key_t upper) 
+DenseArrayBlock::DenseArrayBlock(DirectlyMappedArray *arr,
+                                 PageHandle ph, Key_t lower, Key_t upper) 
 {
-   this->ph = *ph;
+    this->array = arr;
+   this->ph = ph;
    this->lowerBound = lower;
    this->upperBound = upper;
-   this->data = (Datum_t *) ph->image;
+   this->data = (Datum_t *) array->getPageImage(ph);
 }
 
 DenseArrayBlock::~DenseArrayBlock() {}
