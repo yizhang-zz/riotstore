@@ -25,7 +25,8 @@ include $(objects:.o=.d)
 lower:
 	cd .. ; $(MAKE)
 
-test: $(objects) $(par_objects) ../../common/common.o ../../lower/BitmapPagedFile.o ../../lower/LRUPageReplacer.o 
+test: $(objects) $(par_objects) ../../common/common.o ../../lower/BitmapPagedFile.o 
+#../../lower/LRUPageReplacer.o 
 	echo $(par_objects)
 	$(CXX) $(LDFLAGS) -o test $^ 
 

@@ -59,13 +59,24 @@ MDCoord ColMajor::move(const MDCoord &from, KeyDiff_t diff)
    assert(from.nDims == nDims);
    MDCoord to(from);
    to.coords[0] += diff;
-   for (int k = 0; k < nDims; k++)
+   for (int k = 0; k < nDims-1; k++)
    {
-      if (to.coords[k] < dimSizes[k]) // carry-over done propogating
+      if (0 <= to.coords[k] && to.coords[k] < dimSizes[k]) // carry-over done propogating
          break;
-      if (k < nDims - 1)
-         to.coords[k+1] += to.coords[k]/dimSizes[k];
-      to.coords[k] %= dimSizes[k];
+
+      to.coords[k+1] += to.coords[k]/dimSizes[k];
+      if ((to.coords[k] %= dimSizes[k]) < 0)
+      {
+         to.coords[k] += dimSizes[k];
+         to.coords[k+1]--;
+      }
+   }
+
+   // most significant bit
+   if (to.coords[nDims-1] < 0 || to.coords[nDims-1] >= dimSizes[nDims-1])
+   {
+      if ((to.coords[nDims-1] %= dimSizes[nDims-1]) < 0)
+         to.coords[nDims-1] += dimSizes[nDims-1];
    }
    return to;
 }

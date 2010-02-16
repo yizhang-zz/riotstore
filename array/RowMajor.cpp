@@ -1,4 +1,5 @@
 
+#include <iostream>
 #include <assert.h>
 #include <math.h>
 #include <string.h>
@@ -60,14 +61,26 @@ MDCoord RowMajor::move(const MDCoord &from, KeyDiff_t diff)
    assert(from.nDims == nDims);
    MDCoord to(from);
    to.coords[nDims - 1] += diff;
-   for (int k = nDims - 1; k >= 0; k--)
+   for (int k = nDims - 1; k > 0; k--)
    {
-      if (to.coords[k] < dimSizes[k]) // carry-over done propogating
+      if (0 <= to.coords[k] && to.coords[k] < dimSizes[k]) // carry-over done propogating
          break;
-      if (k > 0)
-         to.coords[k-1] += to.coords[k]/dimSizes[k];
-      to.coords[k] %= dimSizes[k];
+
+      to.coords[k-1] += to.coords[k]/dimSizes[k];
+      if ((to.coords[k] %= dimSizes[k]) < 0) // if coords[k] is negative
+      {
+         to.coords[k] += dimSizes[k];
+         to.coords[k-1]--;
+      }
    }
+
+   // the most significant bit
+   if (to.coords[0] < 0 || to.coords[0] >= dimSizes[0])
+   {
+      if ((to.coords[0] %= dimSizes[0]) < 0)
+         to.coords[0] += dimSizes[0];
+   }
+
    return to;
 }
 

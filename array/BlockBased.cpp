@@ -62,7 +62,8 @@ Key_t BlockBased::linearize(const MDCoord &coord)
    {
       u8 k = blockOrder[i];
       blockKey = blockKey*blocksPerArray[k] + blockCoords[k];
-      microKey = microKey*blockSizes[k] + microCoords[k];
+      u8 j = microOrder[i];
+      microKey = microKey*blockSizes[j] + microCoords[j];
    }
    return (Key_t)blockKey*blockSize + microKey;
 }
@@ -72,28 +73,102 @@ MDCoord BlockBased::unlinearize(Key_t key)
    Key_t blockKey = key / blockSize;
    Key_t microKey = key % blockSize;
 
-   i64 coords[nDims];
-   // i64 blockCoords[nDims];
-   // i64 microCoords[nDims];
+   i64 blockCoords[nDims];
+   i64 microCoords[nDims];
    for (int i = nDims - 1; i >= 0; i--)
    {
       u8 k = blockOrder[i];
-      coords[k] = (blockKey % blocksPerArray[k])*blockSizes[k] + microKey % blockSizes[k];
-      // blockCoords[i] = blockKey % blocksPerArray[k];
+      blockCoords[k] = (blockKey % blocksPerArray[k]) * blockSizes[k];
       blockKey /= blocksPerArray[k];
-      // microCoords[i] = microKey % blockSizes[k];
-      microKey /= blockSizes[k];
+
+      u8 j = microOrder[i];
+      microCoords[j] = microKey % blockSizes[j];
+      microKey /= blockSizes[j];
    }
-   /*
+
    for (int i = 0; i < nDims; i++)
    {
-      coords[i] = blockCoords[i]*blockSizes[i] + microCoords[i];
-   }*/
-   return MDCoord(coords, nDims);
+      blockCoords[i] += microCoords[i];
+   }
+   return MDCoord(blockCoords, nDims);
 }
-
+/*
+   assert(from.nDims == nDims);
+   MDCoord to(from);
+   to.coords[nDims - 1] += diff;
+   for (int k = nDims - 1; k >= 0; k--)
+   {
+      if (to.coords[k] < dimSizes[k]) // carry-over done propogating
+         break;
+      if (k > 0)
+         to.coords[k-1] += to.coords[k]/dimSizes[k];
+      to.coords[k] %= dimSizes[k];
+   }
+   return to;
+*/
 MDCoord BlockBased::move(const MDCoord &from, KeyDiff_t diff)
 {
+   assert(from.nDims == nDims);
+   MDCoord to(from);
+   i64 blockCoords[nDims];
+   i64 microCoords[nDims];
+   KeyDiff_t blockDiff = diff / blockSize;
+   KeyDiff_t microDiff = diff % blockSize;
+
+   for (int i = 0; i < nDims; i++)
+   {
+      blockCoords[i] = from.coords[i] / blockSizes[i];
+      microCoords[i] = from.coords[i] % blockSizes[i];
+   }
+
+   microCoords[microOrder[nDims - 1]] += microDiff;
+   for (int i = nDims - 1; i >= 0; i--)
+   {
+      u8 k = microOrder[i];
+      if (0 <= microCoords[k] && microCoords[k] < blockSizes[k])
+         break;
+
+      if (i > 0)
+         microCoords[microOrder[i-1]] += microCoords[k] / blockSizes[k];
+      else
+         blockDiff += microCoords[k] / blockSizes[k];
+
+      if ((microCoords[k] %= blockSizes[k]) < 0) // check negative index
+      {
+         microCoords[k] += blockSizes[k];
+         if (i > 0)
+            microCoords[microOrder[i-1]]--;
+         else
+            blockDiff--;
+      }
+   }
+
+   blockCoords[blockOrder[nDims - 1]] += blockDiff;
+   for (int i = nDims -1; i >= 0; i--)
+   {
+      u8 k = blockOrder[i];
+      if (0 <= blockCoords[k] && blockCoords[k] < blocksPerArray[k])
+         break;
+
+      if (i > 0)
+         blockCoords[blockOrder[i-1]] += blockCoords[k] / blocksPerArray[k];
+
+      if ((blockCoords[k] %= blocksPerArray[k]) < 0) // check negative index
+      {
+         blockCoords[k] += blocksPerArray[k];
+         if (i > 0)
+            blockCoords[blockOrder[i-1]]--;
+      }
+   }
+ 
+   for (int i = 0; i < nDims; i++)
+   {
+      microCoords[i] += blockCoords[i] * blockSizes[i];
+   }
+
+   return MDCoord(microCoords, nDims);
+
+  // return unlinearize(linearize(from) + diff);
 }
 
 BlockBased* BlockBased::clone()

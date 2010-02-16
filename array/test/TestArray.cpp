@@ -84,7 +84,7 @@ TEST(MDCoord, Arithmetic)
    MDCoord m1(coords, 3);
    MDCoord m2;
    m2 = m1;
-   
+
    MDCoord m3;
    m3 = (m1 + m2);
    ASSERT_EQ(3, m3.nDims);
@@ -183,14 +183,16 @@ TEST(RowMajor, Move)
    for (int i = size-1; i >0; i--)
    {
       ASSERT_EQ(i, rm.linearize(cur));
-      cur = rm.move(cur,(KeyDiff_t)(-1));
+      cur = rm.move(cur,/*(KeyDiff_t)*/(-1));
    }
    ASSERT_EQ(0, rm.linearize(cur));
    cur = rm.move(cur, size-1);
    ASSERT_EQ(size-1, rm.linearize(cur));
-   int x = rand() % (size-1) + 1;
-   cur = rm.move(cur, -1*x);
-   ASSERT_EQ(size-1-x, rm.linearize(cur));
+   cur = rm.move(cur, /*(KeyDiff_t)*/(-size+1));
+   ASSERT_EQ(0, rm.linearize(cur));
+   int x = rand() % (size);
+   cur = rm.move(cur, x);
+   ASSERT_EQ(x, rm.linearize(cur));
 }
 
 TEST(RowMajor, Timing)
@@ -364,9 +366,11 @@ TEST(ColMajor, Move)
    ASSERT_EQ(0, cm.linearize(cur));
    cur = cm.move(cur, size-1);
    ASSERT_EQ(size-1, cm.linearize(cur));
-   int x = rand() % (size-1) + 1;
-   cur = cm.move(cur, -1*x);
-   ASSERT_EQ(size-1-x, cm.linearize(cur));
+   cur = cm.move(cur, -size+1);
+   ASSERT_EQ(0, cm.linearize(cur));
+   int x = rand() % (size);
+   cur = cm.move(cur, x);
+   ASSERT_EQ(x, cm.linearize(cur));
 }
 
 TEST(ColMajor, Timing)
@@ -499,61 +503,34 @@ TEST(BlockBased, Linearize)
    Key_t size = 36;
 
    BlockBased bb(nDims, arraySizes, blockSizes, blockOrder, microOrder);
-   for (int i = 0; i < 9; i++)
+   for (int i = 0; i < 18; i++)
    {
       i64 coords[2];
-      coords[0] = (i/3)%3;
-      coords[1] = (i)%3;
-      MDCoord c(coords, 2);
-      ASSERT_EQ(i, bb.linearize(c));
-      ASSERT_TRUE(c == bb.unlinearize((Key_t)i));
-      ASSERT_TRUE(c == bb.unlinearize(bb.linearize(c)));
-   }
-   
-   for (int i = 9; i < 18; i++)
-   {
-      i64 coords[2];
-      coords[0] = (i/3)%3;
-      coords[1] = (i)%3 + 3;
+      coords[0] = (i)%3;
+      coords[1] = (i/3);
       MDCoord c(coords, 2);
       ASSERT_EQ(i, bb.linearize(c));
       ASSERT_TRUE(c == bb.unlinearize((Key_t)i));
       ASSERT_TRUE(c == bb.unlinearize(bb.linearize(c)));
    }
 
-  for (int i = 18; i < 27; i++)
+   for (int i = 18; i < 36; i++)
    {
       i64 coords[2];
-      coords[0] = (i/3)%3 + 3;
-      coords[1] = (i)%3;
+      coords[0] = (i)%3 + 3;
+      coords[1] = (i)/3 - 6;
       MDCoord c(coords, 2);
       ASSERT_EQ(i, bb.linearize(c));
       ASSERT_TRUE(c == bb.unlinearize((Key_t)i));
       ASSERT_TRUE(c == bb.unlinearize(bb.linearize(c)));
    }
 
-  for (int i = 27; i < 36; i++)
+   for (int i = 0; i < 36; i++)
    {
-      i64 coords[2];
-      coords[0] = (i/3)%3 + 3;
-      coords[1] = (i)%3 + 3;
-      MDCoord c(coords, 2);
-      ASSERT_EQ(i, bb.linearize(c));
-      ASSERT_TRUE(c == bb.unlinearize((Key_t)i));
-      ASSERT_TRUE(c == bb.unlinearize(bb.linearize(c)));
+      ASSERT_EQ(i, bb.linearize(bb.unlinearize(i)));
    }
 
-  for (int i = 0; i < 36; i++)
-  {
-     ASSERT_EQ(i, bb.linearize(bb.unlinearize(i)));
-  }
-  
    u8 n = 5;
-   /*i64 *as = new i64[n];
-   i64 *bs = new i64[n];
-   u8 *bo = new u8[n];
-   u8 *mo = new u8[n];
-   */
    i64 as[n];
    i64 bs[n];
    u8 bo[n];
@@ -562,7 +539,7 @@ TEST(BlockBased, Linearize)
 
    for (int i = 0; i < n; i++)
    {
-      as[i] = 10*(i+1);
+      as[i] = (i+1)*(i+1);
       bs[i] = i+1;
       bo[i] = n - i -1;
       mo[i] = n - i -1;
@@ -577,6 +554,56 @@ TEST(BlockBased, Linearize)
    {
       ASSERT_EQ(i, bb2.linearize(bb2.unlinearize(i)));
    }
+}
 
+TEST(BlockBased, Move)
+{
+   u8 nDims = 5;
+   i64 arraySizes[nDims];
+   i64 blockSizes[nDims];
+   i64 start[nDims];
+   u8 blockOrder[nDims];
+   u8 microOrder[nDims];
+   Key_t size = 1;
+
+   for (int i = 0; i < nDims; i++)
+   {
+      arraySizes[i] = 2*(i+1)*(i+1);
+      blockSizes[i] = i+1;
+      start[i] = 0;
+      blockOrder[i] = i;
+      microOrder[i] = nDims - i - 1;
+      size *= arraySizes[i];
+   }
+
+   permute(blockOrder, nDims);
+   permute(microOrder, nDims);
+
+   BlockBased bb(nDims, arraySizes, blockSizes, blockOrder, microOrder);
+   MDCoord coord(start, nDims);
+
+   ASSERT_EQ(0, bb.linearize(coord));
+   for (int i = 1; i < size; i++)
+   {
+      coord = bb.move(coord, 1);
+      ASSERT_EQ(i, bb.linearize(coord));
+   }
+
+   for (int i = size-1; i > 0; i--)
+   {
+      ASSERT_EQ(i, bb.linearize(coord));
+      coord = bb.move(coord, (KeyDiff_t)(-1));
+   }
+
+   ASSERT_EQ(0, bb.linearize(coord));
+   coord = bb.move(coord, size-1);
+   ASSERT_EQ(size-1, bb.linearize(coord));
+   coord = bb.move(coord, -size+1);
+   ASSERT_EQ(0, bb.linearize(coord));
+   srand(time(NULL));
+   int x = rand()%size;
+   coord = bb.move(coord, x);
+   ASSERT_EQ(x, bb.linearize(coord));
+   
 }
 
