@@ -1,10 +1,10 @@
 #ifndef LINEAR_STORAGE_H
 #define LINEAR_STORAGE_H
 
-#include "common.h"
-#include "ArrayInternalIterator.h"
-#include "../lower/PagedStorageContainer.h"
-#include "../lower/BufferManager.h"
+#include "../common/common.h"
+#include "../common/ArrayInternalIterator.h"
+#include "PagedStorageContainer.h"
+#include "BufferManager.h"
 
 enum StorageType {
     DMA,
@@ -29,7 +29,7 @@ protected:
     /// Physical storage
     PagedStorageContainer *file;
     /// Buffer manager
-    BufferManager<> *buffer;
+    BufferManager *buffer;
 
 public:
 

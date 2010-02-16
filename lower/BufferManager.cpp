@@ -39,6 +39,10 @@ BufferManager::BufferManager(PagedStorageContainer *s, uint32_t n,
 // Destructs the BufferManager.  All dirty pages will be flushed.
 BufferManager::~BufferManager() {
     flushAllPages();
+    for (int i=0; i<numSlots; i++) {
+        if (headers[i].unpacked && packer)
+            packer->destroyUnpacked(headers[i].unpacked);
+    }
     freePageImage(pool);
     //delete[] handles;
     delete[] headers;
@@ -108,6 +112,8 @@ RC_t BufferManager::disposePage(PageHandle ph) {
     // the page should be already unpinned and added to pageReplacer
     assert(rec->pinCount == 0);
     pageHash->erase(it);
+    rec->reset();
+    pageReplacer->add(rec);
     return RC_OK;
 }
 
@@ -166,14 +172,11 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
         pageHash->insert(PageHashMap::value_type(pid, rec));
         ph = rec;
         ret = storage->readPage(ph);
-        if (ret == RC_OK)
-            return RC_OK;
-        if (ret == RC_NotAllocated) {
-            storage->allocatePageWithPID(pid);
+        if (ret != RC_OK) {
+            ret = storage->allocatePageWithPID(pid);
             rec->dirty = true;
-        }
-        else
             return ret;
+        }
     }
     return RC_OK;
 }
@@ -290,6 +293,12 @@ RC_t BufferManager::replacePage(PageRec *&bh)
         packer->destroyUnpacked(bh->unpacked);
     bh->reset();
     return RC_OK;
+}
+
+PID_t BufferManager::getPID(PageHandle ph)
+{
+    PageRec *rec = (PageRec*) ph;
+    return rec->pid;
 }
 
 void *BufferManager::getPageImage(PageHandle ph)

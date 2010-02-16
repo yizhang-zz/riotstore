@@ -1,9 +1,11 @@
 #include "Splitter.h"
 #include "BtreeBlock.h"
+#include "BtreeIntBlock.h"
+#include "BtreeDLeafBlock.h"
+#include "BtreeSLeafBlock.h"
 #include <limits>
-using namespace Btree;
 
-Block* MSplitter::split(Block *orig, PageHandle newPh)
+BtreeBlock* MSplitter::split(BtreeBlock *orig, PageHandle *newHandle)
 {
     /*
      * orig's dense/sparse format will not be changed for efficiency
@@ -15,10 +17,8 @@ Block* MSplitter::split(Block *orig, PageHandle newPh)
     u16 size = orig->getSize();
     u16 sp = size / 2;
     beginsAt = orig->getKey(sp);
-    //endsBy = orig->getUpperBound();
-    Block *block = orig->split(newPh, sp, beginsAt);
-    return block;
-    /*
+    endsBy = orig->getUpperBound();
+    BtreeBlock *block;
     if (!orig->isLeaf())
         block = new BtreeIntBlock(newHandle, beginsAt, endsBy);
     else if (orig->isSparse())
@@ -40,10 +40,8 @@ Block* MSplitter::split(Block *orig, PageHandle newPh)
 
     orig->truncate(sp);
     return block;
-    */
 }
 
-/*
 BtreeBlock* BSplitter::split(BtreeBlock *orig, PageHandle *newHandle)
 {
     // start from the middle and find the closest boundary
@@ -81,10 +79,9 @@ BtreeBlock* BSplitter::split(BtreeBlock *orig, PageHandle *newHandle)
     beginsAt = orig->getKey(sp);
     endsBy = orig->getUpperBound();
     BtreeBlock *block;
-    
-    // orig is guaranteed to be leaf, as internal blocks always use
-    // MSplitter.
-    // 
+    /*
+     * orig is guaranteed to be leaf, as internal blocks always use MSplitter.
+     */
     if (size-sp > BtreeSLeafBlock::capacity)
         block = new BtreeDLeafBlock(newHandle, beginsAt, endsBy);
     else if (endsBy-beginsAt <= BtreeDLeafBlock::capacity)
@@ -128,4 +125,3 @@ BtreeBlock* RSplitter::split(BtreeBlock *orig, PageHandle *newHandle)
     return NULL;
         
 }
-*/

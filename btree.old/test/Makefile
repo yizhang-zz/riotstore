@@ -1,12 +1,12 @@
 CXX = g++
 CXXFLAGS = -g 
-LDFLAGS = -lgtest -lapr-1
+LDFLAGS = -lgtest
 
 .PHONY: all clean lower
 
-objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp))
+#objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp))
+objects := TestBtree.o main.o
 par_objects := $(patsubst %.cpp, %.o, $(wildcard ../*.cpp))
-lower_objects := $(wildcard ../../lower/*.o)
 
 .c.o:
 	$(CXX) $(CXXFLAGS) -c $<
@@ -14,16 +14,18 @@ lower_objects := $(wildcard ../../lower/*.o)
 .cpp.o:
 	$(CXX) $(CXXFLAGS) -c $<
 
-all: test
+all: lower test
 	./test
-#LD_LIBRARY_PATH=$(HOME)/lib ./test
 
 %.d: %.cpp
 	$(SHELL) -ec '$(CXX) -M $(CXXFLAGS) $< | sed "s/$*.o/& $@/g" > $@'
 
+include $(objects:.o=.d)
 
+lower:
+	cd .. ; $(MAKE)
 
-test: $(objects) $(par_objects) $(lower_objects) ../../common/common.o
+test: $(objects) $(par_objects) ../../common/common.o ../../lower/BitmapPagedFile.o ../../lower/LRUPageReplacer.o 
 	echo $(par_objects)
 	$(CXX) $(LDFLAGS) -o test $^ 
 
@@ -32,6 +34,3 @@ clean :
 	rm -f *.o
 	rm -f *.out
 	rm -f *.d
-
-
-include $(objects:.o=.d)

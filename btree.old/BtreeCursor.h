@@ -3,23 +3,20 @@
 
 #include "../common/common.h"
 
-namespace Btree
-{
-class BTree;
-class Block;
+class Btree;
+class BtreeBlock;
 
-class Cursor
+class BtreeCursor
 {
 public:
     static const int MaxDepth = 20;
-    BTree *tree;
-    Block *trace[MaxDepth];
+    Btree *tree;
+    BtreeBlock *trace[MaxDepth];
     int indices[MaxDepth];
     int current;
 
-    Cursor(BTree *t);
+    BtreeCursor(Btree *t);
 
-    ~Cursor();
+    ~BtreeCursor();
 };
-}
 #endif

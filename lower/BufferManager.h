@@ -128,6 +128,8 @@ public:
     void print() ;
 
     void setPagePacker(PagePacker *packer) { this->packer = packer; }
+
+    PID_t getPID(PageHandle ph);
     void *getPageImage(PageHandle ph);
     void *getUnpackedPageImage(PageHandle ph);
 

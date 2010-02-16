@@ -8,11 +8,13 @@ bool DMADenseIterator::nextBlockIterator()
    if (atLastBlock)
       return false;
 
-   PID_t pid = block->getPID();
+   DenseArrayBlock *next;
+   int ret = array->loadNextBlock(block->getPageHandle(), &next);
    array->releaseBlock(block);
    delete block;
-
-   if (array->loadBlock(pid+1, &block) != RC_OK) 
+   block = next;
+   
+   if (ret != RC_OK) 
       return false;
 
    if (block->getUpperBound() < endsBy) 

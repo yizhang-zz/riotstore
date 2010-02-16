@@ -15,13 +15,13 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numEleme
    {
       remove(fileName);
       file = new BitmapPagedFile(fileName, BitmapPagedFile::F_CREATE);
-      buffer = new BufferManager<>(file, BUFFER_SIZE); 
+      buffer = new BufferManager(file, BUFFER_SIZE); 
       this->numElements = numElements;
       PageHandle ph;
       assert(RC_OK == buffer->allocatePageWithPID(0, ph));
       // page is already marked dirty
       DirectlyMappedArrayHeader* header = (DirectlyMappedArrayHeader*)
-         (*ph.image);
+          (buffer->getPageImage(ph));
       header->numElements = numElements;
       Datum_t x;
       header->dataType = GetDataType(x);
@@ -33,12 +33,11 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numEleme
       if (access(fileName, F_OK) != 0)
          throw ("File for array does not exist.");
       file = new BitmapPagedFile(fileName, BitmapPagedFile::F_NO_CREATE);
-      buffer = new BufferManager<>(file, BUFFER_SIZE); 
+      buffer = new BufferManager(file, BUFFER_SIZE); 
       PageHandle ph;
-      ph.pid = 0; 			// first page is header
-      buffer->readPage(ph);
-      DirectlyMappedArrayHeader* header = ((DirectlyMappedArrayHeader*)
-            (*ph.image));
+      buffer->readPage(0, ph);
+      DirectlyMappedArrayHeader* header = (DirectlyMappedArrayHeader*)
+          (buffer->getPageImage(ph));
       buffer->unpinPage(ph);
       this->numElements = header->numElements;
       Datum_t x;
@@ -63,10 +62,11 @@ int DirectlyMappedArray::get(Key_t &key, Datum_t &datum)
    }
 
    PageHandle ph;
-   findPage(key, &(ph.pid));
-   buffer->readPage(ph);
+   PID_t pid;
+   findPage(key, &pid);
+   buffer->readPage(pid, ph);
    Key_t CAPACITY = DenseArrayBlock::CAPACITY;
-   DenseArrayBlock *dab = new DenseArrayBlock(&ph, 
+   DenseArrayBlock *dab = new DenseArrayBlock(this, ph, 
          (key/CAPACITY)*CAPACITY, (key/CAPACITY+1)*CAPACITY);
    datum = dab->get(key);
    buffer->unpinPage(ph);
@@ -77,13 +77,14 @@ int DirectlyMappedArray::get(Key_t &key, Datum_t &datum)
 int DirectlyMappedArray::put(Key_t &key, Datum_t &datum) 
 {
    PageHandle ph;
-   findPage(key, &(ph.pid));
-   if (buffer->allocatePageWithPID(ph.pid, ph) != RC_OK) 
+   PID_t pid;
+   findPage(key, &(pid));
+   if (buffer->allocatePageWithPID(pid, ph) != RC_OK) 
    { /* page containing pid already exists */
-      buffer->readPage(ph);
+       buffer->readPage(pid, ph);
    }
    Key_t CAPACITY = DenseArrayBlock::CAPACITY;
-   DenseArrayBlock *dab = new DenseArrayBlock(&ph, 
+   DenseArrayBlock *dab = new DenseArrayBlock(this, ph, 
          (key/CAPACITY)*CAPACITY, (key/CAPACITY+1)*CAPACITY);
    dab->put(key, datum);
    buffer->markPageDirty(ph);
@@ -110,18 +111,29 @@ void DirectlyMappedArray::findPage(Key_t &key, PID_t *pid)
 RC_t DirectlyMappedArray::loadBlock(PID_t pid, DenseArrayBlock** block) 
 {
    PageHandle ph;
-   ph.pid = pid;
    RC_t ret;
-   if ((ret=buffer->readOrAllocatePage(ph)) != RC_OK)
+   if ((ret=buffer->readOrAllocatePage(pid, ph)) != RC_OK)
       return ret;
    Key_t CAPACITY = DenseArrayBlock::CAPACITY;
-   *block = new DenseArrayBlock(&ph, CAPACITY*(pid-1), CAPACITY*pid);
+   *block = new DenseArrayBlock(this, ph, CAPACITY*(pid-1), CAPACITY*pid);
    return RC_OK;
 }
 
+RC_t DirectlyMappedArray::loadNextBlock(PageHandle ph, DenseArrayBlock** block) 
+{
+    PID_t pid = buffer->getPID(ph);
+    if (DenseArrayBlock::CAPACITY*pid >= numElements)
+        return RC_OutOfRange;
+    RC_t ret;
+    if ((ret=buffer->readOrAllocatePage(pid+1, ph)) != RC_OK)
+        return ret;
+   Key_t CAPACITY = DenseArrayBlock::CAPACITY;
+   *block = new DenseArrayBlock(this, ph, CAPACITY*(pid), CAPACITY*(pid+1));
+   return RC_OK;
+}
 RC_t DirectlyMappedArray::releaseBlock(DenseArrayBlock* block) 
 {
-   return buffer->unpinPage((block->ph));
+    return buffer->unpinPage((block->getPageHandle()));
 }
 
 uint32_t DirectlyMappedArray::getLowerBound() 
@@ -132,4 +144,9 @@ uint32_t DirectlyMappedArray::getLowerBound()
 uint32_t DirectlyMappedArray::getUpperBound() 
 {
    return numElements;
+}
+
+void *DirectlyMappedArray::getPageImage(PageHandle ph)
+{
+    buffer->getPageImage(ph);
 }

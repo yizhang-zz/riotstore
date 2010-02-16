@@ -3,8 +3,6 @@
 
 #include "BtreeBlock.h"
 
-namespace Btree
-{
 /**
  * An abstract class that defines the interface of splitting an overflowing
  * Btree block. All concrete splitting algorithms should be implemented in a
@@ -21,7 +19,7 @@ public:
      * @param orig The original node.
      * @return The new node on the right after split.
      */
-    virtual Block* split(Block *orig, PageHandle newPh) = 0;
+    virtual BtreeBlock* split(BtreeBlock *orig, PageHandle *newHandle) = 0;
 };
 
 /**
@@ -30,7 +28,7 @@ public:
 class MSplitter : public Splitter
 {
 public:
-    Block* split(Block *orig, PageHandle newPh);
+    virtual BtreeBlock* split(BtreeBlock *orig, PageHandle *newHandle);
 };
 
 /**
@@ -40,7 +38,7 @@ public:
 class BSplitter : public Splitter
 {
 public:
-    Block* split(Block *orig, PageHandle newPh);
+    virtual BtreeBlock* split(BtreeBlock *orig, PageHandle *newHandle);
 
     /**
      * Constructs a splitter with fixed boundary. Each future split must occur
@@ -60,8 +58,8 @@ private:
 class RSplitter : public Splitter
 {
 public:
-    Block* split(Block *orig, PageHandle newPh);
+    virtual BtreeBlock* split(BtreeBlock *orig, PageHandle *newHandle);
     // RSplitter(u16 boundary) { this->boundary = boundary; }
 };
-}
+
 #endif

@@ -1,18 +1,20 @@
 #include "BtreeBlock.h"
+#include "BtreeIntBlock.h"
+#include "BtreeSLeafBlock.h"
+#include "BtreeDLeafBlock.h"
+
 #include "Btree.h"
 #include "../lower/BitmapPagedFile.h"
 #include "../lower/LRUPageReplacer.h"
 #include <iostream>
 
-Btree::BTree::BTree(const char *fileName, u32 endsBy,
+Btree::Btree(const char *fileName, u32 endsBy,
         Splitter *leafSp, Splitter *intSp)
 {
     file = new BitmapPagedFile(fileName, BitmapPagedFile::F_CREATE);
-    buffer = new BufferManager(file, BTreeBufferSize);
-    packer = new BtreePagePacker;
-    buffer->setPagePacker(packer);
-    assert(buffer->allocatePageWithPID(0, headerPage) == RC_OK);
-    header = (BTreeHeader*) buffer->getPageImage(headerPage);
+    buffer = new BufferManager<>(file, BtreeBufferSize);
+    assert(buffer->allocatePageWithPID(0, headerPage) == RC_SUCCESS);
+    header = (BtreeHeader*) (*headerPage.image);
     header->endsBy = endsBy;
     header->nLeaves = 0;
     header->depth = 0;
@@ -24,30 +26,26 @@ Btree::BTree::BTree(const char *fileName, u32 endsBy,
     internalSplitter = intSp;
 }
 
-Btree::BTree::BTree(const char *fileName,
+Btree::Btree(const char *fileName,
         Splitter *leafSp, Splitter *intSp)
 {
     file = new BitmapPagedFile(fileName, BitmapPagedFile::F_NO_CREATE);
-    buffer = new BufferManager(file, BTreeBufferSize);
-    packer = new BtreePagePacker;
-    buffer->setPagePacker(packer);
-
-    assert(buffer->readPage(0, headerPage) == RC_OK);
-    header = (BTreeHeader*) buffer->getPageImage(headerPage);
+    buffer = new BufferManager<>(file, BtreeBufferSize);
+    headerPage.pid = 0;
+    assert(buffer->readPage(headerPage) == RC_SUCCESS);
+    header = (BtreeHeader*) (*headerPage.image);
 
     leafSplitter = leafSp;
     internalSplitter = intSp;
 }
 
-Btree::BTree::~BTree()
+Btree::~Btree()
 {
-    releasePage(headerPage);
     delete buffer;
     delete file;
-    delete packer;
 }
 
-int Btree::BTree::search(Key_t key, Cursor *cursor)
+int Btree::search(Key_t key, BtreeCursor *cursor)
 {
     if (header->depth == 0) {
         cursor->current = -1;
@@ -56,8 +54,9 @@ int Btree::BTree::search(Key_t key, Cursor *cursor)
 
     // start with the root page
     PageHandle ph;
-    buffer->readPage(header->root, ph);
-    Block *block = new Block(this, ph, 0, header->endsBy);
+    ph.pid = header->root;
+    buffer->readPage(ph);
+    BtreeBlock *block = BtreeBlock::load(&ph, 0, header->endsBy);
     cursor->trace[0] = block;
     cursor->current = 0;
 
@@ -70,14 +69,14 @@ int Btree::BTree::search(Key_t key, Cursor *cursor)
          */
         if (ret == BT_NOT_FOUND)
             idx--;
-        Key_t l, u;
-        Value val;
-        block->get(idx, l, val);
+        Value val = block->getValue(idx);
         PID_t child = val.pid;
-        buffer->readPage(child, ph);
-        u = block->getKey(idx+1);
+        ph.pid = child;
+        buffer->readPage(ph);
+        Key_t l = block->getKey(idx);
+        Key_t u = block->getKey(idx+1);
         // load child block
-        block = new Block(this, ph, l, u);
+        block = BtreeBlock::load(&ph, l, u);
         ++(cursor->current);
         cursor->trace[cursor->current] = block;
     }
@@ -87,9 +86,19 @@ int Btree::BTree::search(Key_t key, Cursor *cursor)
     return ret;
 }
 
-int Btree::BTree::put(Key_t &key, Datum_t &datum)
+void Btree::loadPage(PageHandle &ph)
 {
-    Cursor cursor(this);
+    buffer->readPage(ph);
+}
+
+void Btree::releasePage(const PageHandle &ph)
+{
+    buffer->unpinPage(ph);
+}
+
+int Btree::put(Key_t &key, Datum_t &datum)
+{
+    BtreeCursor cursor(this);
 
     int ret = search(key, &cursor);
     if (cursor.current < 0) {
@@ -97,80 +106,86 @@ int Btree::BTree::put(Key_t &key, Datum_t &datum)
         PageHandle ph;
         buffer->allocatePage(ph);
         header->depth++;
-        header->root = buffer->getPID(ph);
+        header->root = ph.pid;
         header->nLeaves++;
-        header->firstLeaf = header->root;
+        header->firstLeaf = ph.pid;
         cursor.current = 0;
-        cursor.trace[cursor.current] = new Block(this, ph, 0, header->endsBy,
-                                                 true, Block::SparseLeaf);
+        cursor.trace[cursor.current] = new BtreeSLeafBlock(&ph, 0, header->endsBy);
         cursor.indices[cursor.current] = 0;
     }
         
-    Block *block = cursor.trace[cursor.current];
-    Value v;
-    v.datum = datum;
-    ret = block->put(key, v);
+    BtreeBlock *block = cursor.trace[cursor.current];
+    Entry e;
+    e.key = key;
+    e.value.datum = datum;
+    ret = block->put(cursor.indices[cursor.current], e);
     buffer->markPageDirty(block->getPageHandle());
     if (ret == BT_OVERFLOW) {
-        split(&cursor);
+        // first try pack (convert to another format)
+        BtreeBlock *newBlock = block->pack();
+        if (newBlock) {
+            delete cursor.trace[cursor.current];
+            cursor.trace[cursor.current] = newBlock;
+            ret = BT_OK;
+        }
+        else
+            split(&cursor);
     }
     return ret;
 }
 
-void Btree::BTree::split(Cursor *cursor)
+void Btree::split(BtreeCursor *cursor)
 {
     PageHandle newPh;
     int cur = cursor->current;
-    Block *block = cursor->trace[cur];
+    BtreeBlock *block = cursor->trace[cur];
     buffer->allocatePage(newPh);
-    Block *newBlock = leafSplitter->split(block, newPh);
-    //newPh = newBlock->getPageHandle();
+    BtreeBlock *newBlock = leafSplitter->split(block, &newPh);
     header->nLeaves++;
-    block->setNextLeaf(buffer->getPID(newPh));
+    block->setNextLeaf(newPh.pid);
     buffer->markPageDirty(block->getPageHandle());
-    Value v;
+    Entry e;
     int ret = BT_OVERFLOW;
     for (int i=cur-1; i>=0; i--) {
-        Block *parent = cursor->trace[i];
+        BtreeBlock *parent = cursor->trace[i];
         u16 pos = cursor->indices[i] + 1;
-        v.pid = buffer->getPID(newPh);
-        ret = parent->put(newBlock->getLowerBound(), v);
+        e.key = newBlock->getLowerBound();
+        e.value.pid = newPh.pid;
+        ret = parent->put(pos, e);
         buffer->markPageDirty(parent->getPageHandle());
         buffer->unpinPage(newPh);
-        delete newBlock;
         if (ret != BT_OVERFLOW)
             break;
         buffer->allocatePage(newPh);
-        newBlock = internalSplitter->split(parent, newPh);
-        //newPh = newBlock->getPageHandle();
+        newBlock = internalSplitter->split(parent, &newPh);
     }
     if (ret == BT_OVERFLOW) {
         // overflow has propagated to the root
         PageHandle rootPh;
         buffer->allocatePage(rootPh);
-        Block *newRoot = new Block(this, rootPh, 0,
-                                   header->endsBy, true, Block::Internal);
-        v.pid = buffer->getPID(cursor->trace[0]->getPageHandle());
-        newRoot->put(0, v);
-        v.pid = buffer->getPID(newPh);
-        newRoot->put(newBlock->getLowerBound(), v);
-        header->root = buffer->getPID(rootPh);
+        BtreeBlock *newRoot = new BtreeIntBlock(&rootPh, 0, header->endsBy);
+        e.key = 0;
+        e.value.pid = cursor->trace[0]->getPageHandle().pid;
+        newRoot->put(0, e);
+        e.key = newBlock->getLowerBound();
+        e.value.pid = newPh.pid;
+        newRoot->put(1, e);
+        header->root = rootPh.pid;
         header->depth++;
         buffer->unpinPage(newPh);
         buffer->unpinPage(rootPh);
-        delete newBlock;
-        delete newRoot;
     }
 }
 
-void Btree::BTree::print()
+void Btree::print()
 {
     using namespace std;
     PageHandle ph;
-    buffer->readPage(header->root, ph);
-    Block *root = new Block(this, ph, 0, header->endsBy);
+    ph.pid = header->root;
+    buffer->readPage(ph);
+    BtreeBlock *root = BtreeBlock::load(&ph, 0, header->endsBy);
     cout<<"-----------------------------------------"<<endl;
-    root->print(0);
+    root->print(0, this);
     delete root;
     buffer->unpinPage(ph);
 }

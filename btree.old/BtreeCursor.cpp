@@ -2,18 +2,15 @@
 #include "Btree.h"
 #include "BtreeBlock.h"
 
-using namespace Btree;
-
-Cursor::Cursor(BTree *t)
+BtreeCursor::BtreeCursor(Btree *t)
 {
     tree = t;
     current = -1;
 }
 
-Cursor::~Cursor()
+BtreeCursor::~BtreeCursor()
 {
     for (int i=current; i>=0; i--) {
         tree->releasePage(trace[i]->getPageHandle());
-        delete trace[i];
     }
 }

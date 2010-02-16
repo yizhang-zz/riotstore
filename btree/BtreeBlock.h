@@ -6,7 +6,10 @@
 #include <string.h>
 #include "../lower/BufferManager.h"
 #include "../lower/PageReplacer.h"
+#include "SkipList.h"
 
+namespace Btree
+{
 #define BT_OK 0
 #define BT_OVERWRITE 1
 #define BT_OVERFLOW 2
@@ -15,8 +18,8 @@
 /**
  * A value stored in a btree block. Can be either a datum or a PID.
  */
-union Value
-{
+
+union Value{
     Datum_t datum;
     PID_t pid;
 };
@@ -26,11 +29,11 @@ union Value
  */
 struct Entry
 {
-    Key_t key;
     Value value;
+    Key_t key;
 };
 
-class Btree;
+class BTree;
 
 /**
  * A block (node) of a Btree. Structure of a btree block stored on disk looks
@@ -38,12 +41,12 @@ class Btree;
  *
  * OFFSET	SIZE	DESC
  * 0		1		Flags. bit 1: is leaf, bit 2: is dense. 
- * 1		2		Number of entries.
+ * 2		2		Number of entries.
  * --- the following are optional ---
- * 3		4		Page ID of next leaf; only for leaf blocks.
- * 7        4       Key value at the head position in a dense leaf block.
- * 11       2       Head position in the circular list of a dense leaf block.
- * 13       2       Total # elements occupying a slot in a dense leaf block.
+ * 4		4		Page ID of next leaf; only for leaf blocks.
+ * 8        4       Key value at the head position in a dense leaf block.
+ * 12       2       Head position in the circular list of a dense leaf block.
+ * 14       2       Total # elements occupying a slot in a dense leaf block.
  * 
  * The lower and upper bounds of a block is not explicitly stored to save
  * space. They can be derived from the keys in the parent block.
@@ -67,85 +70,135 @@ class Btree;
  * upper_bound.
  */
 
-class BtreeBlock {
-protected:
+class Block {
+public:
+    BTree *tree;
 	u16    *nEntries;	/* how many entries */
 	Key_t  lower;		/* all keys >= lower */
 	Key_t  upper;		/* all keys < upper */
 	PageHandle	ph;
+    void   *header;
 	void   *payload;
+    PID_t *nextLeaf;
+    int capacity;
 
-    // const static u16 headerSize=12;	/* makes alignment easier */
-
-    BtreeBlock(PageHandle *pPh, Key_t beginsAt, Key_t endsBy,
-               bool create=false);
-    virtual int del(int index) = 0;
+    typedef SkipList<Key_t, Value> List;
+    SkipList<Key_t, Value> *list;
 
 public:
+    enum Type {
+        Internal = 0,
+        Leaf = 1,
+        SparseLeaf = 1,
+        DenseLeaf = 3
+    };
+
+    enum {
+        DenseHeaderSize = 12,
+        SparseHeaderSize = 8,
+        InternalHeaderSize = 4
+    };
+
+    const static size_t DenseLeafCapacity;
+    const static size_t SparseLeafCapacity;
+    const static size_t InternalCapacity;
+    static size_t initCapacity(Type t);
+    
+    int headerSize;	/* makes alignment easier */
     typedef ::Iterator<Key_t, Value> Iterator;
     
-    struct OverflowEntry {
-        /// Index of this entry if it is to be placed in the data area
-        int index;
-        /// The entry holding the key and the value
-        Entry entry;
-    } overflowEntries[2];
+    Block(BTree *tree, PageHandle pPh, Key_t beginsAt, Key_t endsBy,
+          bool create=false, Type type=SparseLeaf);
 
     /* If a key is not found in a dense leaf block, it has a default value
      * and is omitted. */
     const static Datum_t defaultValue = 0.0;
     static inline bool IS_DEFAULT(Datum_t x) { return x == defaultValue; }
 
-    static BtreeBlock *load(PageHandle *pPh, Key_t beginsAt, Key_t endsBy);
-    static BtreeBlock *createSameType(BtreeBlock *block, PageHandle *pPh, Key_t beginsAt, Key_t endsBy);
-    virtual ~BtreeBlock() {}
+    // static Block *load(PageHandle *pPh, Key_t beginsAt, Key_t endsBy);
 
-    virtual BtreeBlock* copyNew(PageHandle *pPh, Key_t beginsAt, Key_t endsBy) = 0;
+    ~Block() {}
 
-//	void syncHeader();
+    int search(Key_t key, int &index);
+    int put(Key_t key, const Value &v);
+    int get(Key_t key, Value &v);
+    int del(Key_t key);
 
-    virtual int search(Key_t key, int &index) = 0;
-
-    virtual int put(Key_t key, const void *p) = 0;
-
-    virtual int get(Key_t key, void *p) = 0;
-
-    // virtual int del(Key_t key) = 0;
-
-    virtual u16 getCapacity() = 0;
+    u16 getCapacity() { return capacity; }
 
     Key_t getLowerBound() { return lower; }
     Key_t getUpperBound() { return upper; }
-    u16 & getSize() { return *nEntries; }
-    const PageHandle & getPageHandle() { return ph; }
-    bool  isSparse() { return !(*ph.image[0] & 2); }
-    bool  isLeaf() { return *ph.image[0] & 1; }
+    int getSize() { return list->getSize(); }
+    PageHandle getPageHandle() { return ph; }
+    bool  isDense() { return *((u8*)header) & 2; }
+    bool  isLeaf() { return *((u8*)header) & 1; }
 
-    virtual bool  isDefault(const void *p) = 0;
-    virtual Key_t getKey(int index) = 0;
-    virtual Value getValue(int index) = 0;
-    virtual int   get(int index, Entry &e) = 0;
-    virtual int   put(int index, const Entry &e) = 0;
+    Key_t getKey(int index);
+    Value getValue(int index);
+    int   get(int index, Key_t &key, Value &val);
+    // int   put(int index, Key_t key, const Value &val) = 0;
 
     /**
      * The specified entry and all after it are truncated.
      *
      * @param cutoff Truncate from which entry on
      */
-    virtual void truncate(int cutoff) = 0;
+    void truncate(int cutoff);
+    Block *split(PageHandle newPh, int sp, Key_t spKey);
+    void switchToSparse();
+    void switchToDense();
 
-    virtual BtreeBlock* pack() = 0;
+    void print(int depth);
 
-    virtual void print(int depth, Btree *tree) = 0;
-
-    virtual void setNextLeaf(PID_t pid) = 0;
+    void setNextLeaf(PID_t pid) { *nextLeaf = pid; }
     
-    virtual Iterator* getSparseIterator(const Key_t &beingsAt,
-                                        const Key_t &endsBy) = 0;    
-    virtual Iterator* getDenseIterator(const Key_t &beingsAt,
-                                        const Key_t &endsBy) = 0;
-    virtual Iterator* getSparseIterator() = 0;
-    virtual Iterator* getDenseIterator() = 0;
-};
+    Iterator* getSparseIterator(int beingsAt,
+                                int endsBy); 
+    Iterator* getDenseIterator(const Key_t &beingsAt,
+                               const Key_t &endsBy);
+    Iterator* getSparseIterator();
+    Iterator* getDenseIterator();
 
+    class SparseIterator : public Iterator
+    {
+    public:
+        SparseIterator(Block *block);
+        bool moveNext();
+        bool movePrev();
+        void get(Key_t &k, Value &d);
+        void put(const Value &d);
+        void reset();
+        bool setIndexRange(int b, int e);
+    private:
+        Block *block;
+        int size;
+        int index;
+        int begin;
+        int end;
+    };
+
+    class DenseIterator : public Iterator
+    {
+    public:
+        DenseIterator(Block *block);
+        bool moveNext();
+        bool movePrev();
+        void get(Key_t &k, Value &d);
+        void put(const Value &d);
+        void reset();
+        bool setRange(const Key_t &b, const Key_t &e);
+    private:
+        Block *block;
+        int size;
+        int index;
+        //int begin;
+        //int end;
+        Key_t beginKey;
+        Key_t endKey;
+        Key_t curKey;
+        Key_t lastFetchedKey;
+        Value lastFetchedVal;
+    };
+};
+}
 #endif

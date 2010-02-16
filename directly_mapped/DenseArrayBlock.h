@@ -1,9 +1,10 @@
 #ifndef DENSE_ARRAY_BLOCK
 #define DENSE_ARRAY_BLOCK
 
-#include "../common/block.h"
+#include "Block.h"
 #include "../common/ArrayInternalIterator.h"
 
+class DirectlyMappedArray;
 /**
  * A DenseArrayBlock does not need a header for the block.  The page
  * simply stores a data array.  It stores a continuguous subrange for a
@@ -11,10 +12,11 @@
  */
 class DenseArrayBlock : public Block<Key_t, Datum_t> 
 {
-   protected:
+protected:
       /// A data array that corresponds to the portion of the
       /// DirectlyMappedArray in the index range [beginsAt, endsBy).
-      Datum_t *data;
+    Datum_t *data;
+    DirectlyMappedArray *array;
 
    public:
       const static u16 CAPACITY = PAGE_SIZE/sizeof(Datum_t);
@@ -23,7 +25,7 @@ class DenseArrayBlock : public Block<Key_t, Datum_t>
       /// with the knowledge of the overall DirectlyMappedArray, should
       /// know the exact index range that this page is responsible for.
       /// The default data value will also be supplied by the caller.
-      DenseArrayBlock(PageHandle *ph, Key_t lower, Key_t upper);
+    DenseArrayBlock(DirectlyMappedArray *array, PageHandle ph, Key_t lower, Key_t upper);
       ~DenseArrayBlock();
 
       // Datum_t getDefaultValue() const;
