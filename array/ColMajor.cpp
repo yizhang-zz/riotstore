@@ -37,7 +37,7 @@ Key_t ColMajor::linearize(const MDCoord &coord)
    Key_t key = 0;
    for (int k = nDims - 1; k >= 0; k--)
    {
-      assert(coord.coords[k] < dimSizes[k]);
+      assert(0 <= coord.coords[k] && coord.coords[k] < dimSizes[k]);
       key = key*dimSizes[k] + coord.coords[k];
    }
    return key;
@@ -57,6 +57,9 @@ MDCoord ColMajor::unlinearize(Key_t key)
 MDCoord ColMajor::move(const MDCoord &from, KeyDiff_t diff)
 {
    assert(from.nDims == nDims);
+   for (int i = 0; i < nDims; i++)
+      assert(0 <= from.coords[i] && from.coords[i] < dimSizes[i]);
+
    MDCoord to(from);
    to.coords[0] += diff;
    for (int k = 0; k < nDims-1; k++)

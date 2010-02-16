@@ -580,30 +580,84 @@ TEST(BlockBased, Move)
    permute(microOrder, nDims);
 
    BlockBased bb(nDims, arraySizes, blockSizes, blockOrder, microOrder);
-   MDCoord coord(start, nDims);
+   MDCoord cur(start, nDims);
 
-   ASSERT_EQ(0, bb.linearize(coord));
+   ASSERT_EQ(0, bb.linearize(cur));
    for (int i = 1; i < size; i++)
    {
-      coord = bb.move(coord, 1);
-      ASSERT_EQ(i, bb.linearize(coord));
+      cur = bb.move(cur, 1);
+      ASSERT_EQ(i, bb.linearize(cur));
    }
 
    for (int i = size-1; i > 0; i--)
    {
-      ASSERT_EQ(i, bb.linearize(coord));
-      coord = bb.move(coord, (KeyDiff_t)(-1));
+      ASSERT_EQ(i, bb.linearize(cur));
+      cur = bb.move(cur, -1);
    }
 
-   ASSERT_EQ(0, bb.linearize(coord));
-   coord = bb.move(coord, size-1);
-   ASSERT_EQ(size-1, bb.linearize(coord));
-   coord = bb.move(coord, -size+1);
-   ASSERT_EQ(0, bb.linearize(coord));
+   ASSERT_EQ(0, bb.linearize(cur));
+   cur = bb.move(cur, size-1);
+   ASSERT_EQ(size-1, bb.linearize(cur));
+   cur = bb.move(cur, -size+1);
+   ASSERT_EQ(0, bb.linearize(cur));
    srand(time(NULL));
    int x = rand()%size;
-   coord = bb.move(coord, x);
-   ASSERT_EQ(x, bb.linearize(coord));
+   cur = bb.move(cur, x);
+   ASSERT_EQ(x, bb.linearize(cur));
    
 }
 
+TEST(BlockBased, timing)
+{
+   FILE *file = fopen("timings.bin", "a");
+   clock_t begin, end;
+   fprintf(file, "Timing for 3-D BlockBased\n");
+   fprintf(file, "Clock ticks per second: %ld\n", CLOCKS_PER_SEC);
+
+   for (int n = 1; n < 8; n++)
+   {
+      u8 nDims = n;
+      i64 arraySizes[nDims];
+      i64 blockSizes[nDims];
+      i64 start[nDims];
+      u8 blockOrder[nDims];
+      u8 microOrder[nDims];
+      Key_t size = 1;
+
+      for (int i = 0; i < nDims; i++)
+      {
+         arraySizes[i] = (i+1)*(i+1);
+         blockSizes[i] = i+1;
+         start[i] = 0;
+         blockOrder[i] = i;
+         microOrder[i] = nDims - i - 1;
+         size *= arraySizes[i];
+      }
+
+      permute(blockOrder, nDims);
+      permute(microOrder, nDims);
+
+      BlockBased bb(nDims, arraySizes, blockSizes, blockOrder, microOrder);
+
+      MDCoord cur(start, nDims);
+      begin = clock();
+      for (int i = 1; i < size; i++)
+      {
+         cur = bb.move(cur, 1);
+      }
+      end = clock();
+      fprintf(file, "ms elapsed for 3-D array with size %d using move: %ld\n", size, (end-begin)/1000);
+
+      MDCoord cur2(start, nDims);
+      begin = clock();
+      for (int i=1; i<size; i++)
+      {
+         cur2 = bb.unlinearize(bb.linearize(cur2) + 1);
+      }
+      end = clock();
+      fprintf(file, "ms elapsed for 3-D array with size %d  using unlinearize/linearize: %ld\n", size, (end-begin)/1000);
+   }
+
+   fprintf(file, "\n\n");
+   fclose(file);
+}
