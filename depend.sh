@@ -9,6 +9,6 @@ sed -e 's@^\(.*\)\.o:@\1.d \1.o:@'
 ;;
 *)
 gcc -MM -MG "$@" | \
-sed -e 's@^\(.*\)\.o:@$DIR/\1.d $DIR/\1.o:@'
+sed -e "s@^\(.*\)\.o:@$DIR/\1.d $DIR/\1.o:@"
 ;;
 esac

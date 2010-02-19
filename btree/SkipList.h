@@ -30,7 +30,7 @@ public:
             left = right = below = NULL;
         }
 
-        void *operator new(unsigned int size, apr_pool_t *pool)
+        void *operator new(size_t size, apr_pool_t *pool)
         {
             return apr_palloc(pool, size);
         }
