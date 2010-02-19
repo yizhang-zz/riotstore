@@ -46,6 +46,8 @@ BlockBased::~BlockBased()
 Key_t BlockBased::linearize(const MDCoord &coord)
 {
    assert(coord.nDims == nDims);
+   for (int i = 0; i < nDims; i++)
+      assert(0 <= coord.coords[i] && coord.coords[i] < arraySizes[i]);
 
    i64 blockCoords[nDims];
    i64 microCoords[nDims];
@@ -109,6 +111,9 @@ MDCoord BlockBased::unlinearize(Key_t key)
 MDCoord BlockBased::move(const MDCoord &from, KeyDiff_t diff)
 {
    assert(from.nDims == nDims);
+   for (int i = 0; i < nDims; i++)
+      assert(0 <= from.coords[i] && from.coords[i] < arraySizes[i]);
+
    MDCoord to(from);
    i64 blockCoords[nDims];
    i64 microCoords[nDims];
