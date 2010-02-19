@@ -13,9 +13,9 @@ OBJ := $(patsubst %.cpp,%.o,$(filter %.cpp,$(SRC))) \
 	$(patsubst %.c,%.o,$(filter %.c,$(SRC)))
 
 
-all:riot_store.a
+all:libriot_store.a
 
-riot_store.a: $(OBJ)
+libriot_store.a: $(OBJ)
 	ar rcs $@ $^
 
 include $(OBJ:.o=.d)
