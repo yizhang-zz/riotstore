@@ -1,4 +1,4 @@
-DIRS := common lower directly_mapped btree
+DIRS := common lower directly_mapped btree array
 CXX = g++
 CXXFLAGS += -g $(patsubst %,-I%,$(DIRS))
 # `pkg-config --cflags-only-I apr-1`
