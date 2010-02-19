@@ -29,8 +29,8 @@ PageHandle getPageHandle() {return ph;}
 	virtual void flush() {}
 
     // TODO: implement these?
-	BlockType getType() const {} // leaf or internal
-	BlockFormat getFormat() const {} // dense or sparse
+	//BlockType getType() const {} // leaf or internal
+	//BlockFormat getFormat() const {} // dense or sparse
 	uint32_t getEntryCount() const {}
 	_D getDefaultValue() const {}
 

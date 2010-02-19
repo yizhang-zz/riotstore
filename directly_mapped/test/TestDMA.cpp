@@ -110,10 +110,10 @@ TEST(DirectlyMappedArray, PutGet)
     ASSERT_EQ(d, -123.456);
     k = -1;
     dma->get(k, d);
-    ASSERT_TRUE(ISNA(d));
+    ASSERT_TRUE(isNA(d));
     k = 3*cap;
     dma->get(k,d);
-    ASSERT_TRUE(ISNA(d));
+    ASSERT_TRUE(isNA(d));
     delete dma;
 
 dma = new DirectlyMappedArray("test.bin", 0);

@@ -1,7 +1,7 @@
 #ifndef BUFFER_MANAGER_H
 #define BUFFER_MANAGER_H
 
-#include <apr-1/apr_pools.h>
+#include <apr_pools.h>
 #include <tr1/unordered_map>
 #include "../common/common.h"
 #include "PagedStorageContainer.h"

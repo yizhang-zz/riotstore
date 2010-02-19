@@ -72,17 +72,16 @@ extern double	NA_DOUBLE;
 /// A special value representing NA of int type.
 extern int		NA_INT;
 
-bool R_IsNA(double x);
-/// Tests if a double value is NA.
-#define ISNA(x) R_IsNA(x)
+// Tests if a double value is NA.
+bool isNA(double x);
 
 /// Size of a disk block/page in bytes.
 const int BLOCK_SIZE = 4096;
 /// Size of a disk block/page in bytes.
 const int PAGE_SIZE = BLOCK_SIZE;
 
-enum BlockFormat { DENSE, SPARSE };
-enum BlockType { LEAF, INTERNAL};
+//enum blockformat { dense, sparse };
+//enum blocktype { leaf, internal};
 
 /// \name Unsigned integers
 //@{
@@ -205,7 +204,7 @@ inline void SetEntry(Entry& entry, Key_t k, Datum_t d)
    entry.datum = d;
 }
 */
-enum DataType { INT, DOUBLE, COMPLEX };
+enum DataType { DT_INT, DT_DOUBLE, DT_COMPLEX };
 
 /**
  * Tests if a value is of given type.
@@ -216,11 +215,11 @@ enum DataType { INT, DOUBLE, COMPLEX };
 template<class T>
 inline bool IsSameDataType(T x, DataType t) {
 	switch(t) {
-case INT:
+case DT_INT:
 	return typeid(x)==typeid(int);
-case DOUBLE:
+case DT_DOUBLE:
 	return typeid(x)==typeid(double);
-case COMPLEX:
+case DT_COMPLEX:
 	// to be implemented
 	break;
 default:
@@ -237,9 +236,9 @@ default:
 template<class T>
 inline DataType GetDataType(T x) {
 	if (typeid(x) == typeid(int))
-		return INT;
+		return DT_INT;
 	if (typeid(x) == typeid(double))
-		return DOUBLE;
+		return DT_DOUBLE;
 	// to add complex type
 	
 	assert(false);
