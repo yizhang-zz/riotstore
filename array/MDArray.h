@@ -3,7 +3,7 @@
 
 #include "../common/common.h"
 #include "MDIterator.h"
-#include "../common/LinearStorage.h"
+#include "../lower/LinearStorage.h"
 #include "../common/ArrayInternalIterator.h"
 #include "Linearization.h"
 
@@ -64,8 +64,7 @@ public:
      * stored. If omitted, a random name consisting 10 hex digits is
      * generated. Guaranteed no existing file will be overwritten.
      */
-    MDArray(u32 nDim, u32 *dims, StorageType type,
-            const char *fileName=0);
+    MDArray(u32 nDim, u32 *dims, StorageType type, const char *fileName=0);
 
     /**
      * Constructs and initializes a MDArray from a file stored on
@@ -135,6 +134,7 @@ public:
 
 private:
     
+    u32 size; // number of elements
     /**
      * Creates an internal iterator over the 1-D storage device.
      *

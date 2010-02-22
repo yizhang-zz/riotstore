@@ -2,6 +2,7 @@
 #define MD_DENSE_ITERATOR_H
 
 #include "../common/common.h"
+#include "MDArray.h"
 #include "MDIterator.h"
 #include "MDCoord.h"
 #include "Linearization.h"
@@ -102,6 +103,8 @@ public:
      * \copydoc Iterator::setRange()
      */
     virtual bool setRange(MDCoord &beginsAt, MDCoord &endsBy);
+
+    virtual void reset();
     
 protected:
     /// The array this iterator iterates through.
@@ -113,7 +116,7 @@ protected:
     /// Iteration stops by endsBy (exclusive).
     MDCoord endsBy;
 
-private:
+// private:
     MDCoord cursor;
 };
 

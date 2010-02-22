@@ -1,32 +1,6 @@
-#ifndef MD_ACCEL_DENSE_ITERATOR_H
-#define MD_ACCEL_DENSE_ITERATOR_H
 
-#include "MDDenseIterator.h"
+#include "MDAccelDenseIterator.h"
 
-/**
- * An accelerated version of MDDenseIterator.
- *
- * A major performance concern of MDDenseIterator is that an operatoin
- * such as MDDenseIterator::moveNext involves two (un)linearization
- * operations.  First, the current coordinate is linearized and
- * incremented and unlinearized back.  Second, in order to retrieve
- * the data, the new coordinate is passed to the array and linearized
- * to an index in the 1-D storage space.  This is inevitable if we
- * make no assumption about the linearization functions used by the
- * storage and the iterator.  However, there is one exception, namely
- * when the linearization of the iterator coincides with the
- * linearization of the array's storage.  In such a case, if the array
- * storage supports iteration in its 1-D space (and it should), then
- * acceleration is possible. This class provides such acceleration.
- *
- * \sa MDDenseIterator
- * \sa MDArray
- * \sa Linearization
- */
-
-class MDAccelDenseIterator: public MDDenseIterator
-{
-public:
 
     /**
      * Constructs an iterator given the associated array.  Array's
@@ -41,7 +15,17 @@ public:
      * \param array The associated MDArray.
      * \param itor An internal iterator for the array's storage.
      */
-    MDAccelDenseIterator(MDArray *array, ArrayInternalIterator *itor);
+   MDAccelDenseIterator::MDAccelDenseIterator(MDArray *array,
+         ArrayInternalIterator *itor) : MDDenseIterator::MDDenseIterator(array,
+            array->getLinearization())
+   {
+   /*   this->array = array;
+      this->linearization = array->getLinearization();*/
+      intIterator = itor;
+     /* beginsAt = MDCoord(linearization->unlinearize(0));
+      endsBy = beginsAt;
+      cursor = beginsAt;*/
+   }
     
     /**
      * Constructs a copy of the given iterator.  Base class' copy
@@ -49,7 +33,11 @@ public:
      *
      * \param src Source to be copied.
      */
-    MDAccelDenseIterator(const MDAccelDenseIterator &src);
+    MDAccelDenseIterator::MDAccelDenseIterator(const MDAccelDenseIterator &src)
+   : MDDenseIterator::MDDenseIterator(src)
+    {
+      intIterator = src.intIterator;
+    }
 
     /**
      * Moves the iterator to the previous entry in the collection.
@@ -61,7 +49,12 @@ public:
      * if already before the beginning of the collection.
      *
      */
-    virtual bool movePrev();
+    bool MDAccelDenseIterator::movePrev()
+    {
+       cursor = linearization->move(cursor, -1);
+       intIterator->movePrev();
+       return cursor == linearization->move(beginsAt, -1);
+    }
 
     /**
      * Moves the iterator to the next entry in the collection.  "Next"
@@ -73,7 +66,12 @@ public:
      * if already after the end of the collection.
      *
      */
-    virtual bool moveNext();
+    bool MDAccelDenseIterator::moveNext()
+    {
+       cursor = linearization->move(cursor, 1);
+       intIterator->moveNext();
+       return cursor == endsBy;
+    }
 
     /**
      * Gets the current coordinate and the datum the iterator points to.
@@ -81,32 +79,42 @@ public:
      * \param [out] coord The current coordinate.
      * \param [out] datum The current datum.
      */
-    virtual void get(MDCoord &coord, Datum_t &datum);
+    void MDAccelDenseIterator::get(MDCoord &coord, Datum_t &datum)
+    {
+       coord = cursor;
+       Key_t key;
+       intIterator->get(key, datum);
+    }
 
     /**
      * Replaces the current entry with the specified datum.
      * 
      * \param datum The datum to be put.
      */
-    virtual void put(Datum_t &datum);
+    void MDAccelDenseIterator::put(Datum_t &datum)
+    {
+       intIterator->put(datum);
+    }
 
     /**
      * Virtual destructor.
      */
-    virtual ~MDAccelDenseIterator();
+    MDAccelDenseIterator::~MDAccelDenseIterator()
+    {
+       // delete linearization;
+    }
 
     /**
      * \copydoc Iterator::setRange()
      */
-    virtual bool setRange(MDCoord &beginsAt, MDCoord &endsBy);
-
-    virtual void reset();
+    bool MDAccelDenseIterator::setRange(MDCoord &beginsAt, MDCoord &endsBy)
+    {
+       this->beginsAt = beginsAt;
+       this->endsBy = endsBy;
+       return linearization->linearize(beginsAt) >= linearization->linearize(endsBy);
+    }
     
-protected:
-
-    /// Iterator for the underlying storage of #array.
-    ArrayInternalIterator *intIterator;
-
-};
-
-#endif
+void MDAccelDenseIterator::reset()
+{
+   cursor = beginsAt;
+}

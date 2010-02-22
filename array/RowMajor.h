@@ -15,13 +15,13 @@ class RowMajor : public Linearization
        * each coordinate in dimension.coords corresponds to size of the matrix
        * along that dimension
        */
-      u8 nDims;
-      i64 *dimSizes;
+      u8 nDim;
+      i64 *dims;
       // MDCoord *dimension;
 
 public:
 
-      RowMajor(u8 nDims, const i64 *coords);
+      RowMajor(u8 nDim, const i64 *coords);
       RowMajor(const MDCoord &coord);
       ~RowMajor();
     /**

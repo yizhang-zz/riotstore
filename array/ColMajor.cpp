@@ -4,88 +4,88 @@
 #include <string.h>
 #include "ColMajor.h"
 
-ColMajor::ColMajor(u8 nDims, const i64* coords)
+ColMajor::ColMajor(u8 nDim, const i64* coords)
 {
-   assert(nDims != 0);
-   for (int k = 0; k < nDims; k++)
+   assert(nDim != 0);
+   for (int k = 0; k < nDim; k++)
       assert(coords[k] > 0); // cannot have dimension length of 0
 
-   this->nDims = nDims;
-   dimSizes = new i64[nDims];
-   memcpy(dimSizes, coords, nDims*sizeof(i64));
+   this->nDim = nDim;
+   dims = new i64[nDim];
+   memcpy(dims, coords, nDim*sizeof(i64));
 }
 
 ColMajor::ColMajor(const MDCoord &coord)
 {
-   assert(coord.nDims != 0);
-   for (int k = 0; k < coord.nDims; k++)
+   assert(coord.nDim != 0);
+   for (int k = 0; k < coord.nDim; k++)
       assert(coord.coords[k] > 0); // cannot have dimension length of 0
 
-   nDims = coord.nDims;
-   dimSizes = new i64[nDims];
-   memcpy(dimSizes, coord.coords, nDims*sizeof(i64));
+   nDim = coord.nDim;
+   dims = new i64[nDim];
+   memcpy(dims, coord.coords, nDim*sizeof(i64));
 }
 
 ColMajor::~ColMajor()
 {
-   delete[] dimSizes;
+   delete[] dims;
 }
 
 Key_t ColMajor::linearize(const MDCoord &coord)
 {
-   assert(coord.nDims == nDims);
+   assert(coord.nDim == nDim);
    Key_t key = 0;
-   for (int k = nDims - 1; k >= 0; k--)
+   for (int k = nDim - 1; k >= 0; k--)
    {
-      assert(0 <= coord.coords[k] && coord.coords[k] < dimSizes[k]);
-      key = key*dimSizes[k] + coord.coords[k];
+      assert(0 <= coord.coords[k] && coord.coords[k] < dims[k]);
+      key = key*dims[k] + coord.coords[k];
    }
    return key;
 }
 
 MDCoord ColMajor::unlinearize(Key_t key)
 {
-   i64 coords[nDims];
-   for (int k = 0; k < nDims; k++)
+   i64 coords[nDim];
+   for (int k = 0; k < nDim; k++)
    {
-      coords[k] = key % dimSizes[k];
-      key /= dimSizes[k];
+      coords[k] = key % dims[k];
+      key /= dims[k];
    }
-   return MDCoord(coords, nDims);
+   return MDCoord(coords, nDim);
 }
 
 MDCoord ColMajor::move(const MDCoord &from, KeyDiff_t diff)
 {
-   assert(from.nDims == nDims);
-   for (int i = 0; i < nDims; i++)
-      assert(0 <= from.coords[i] && from.coords[i] < dimSizes[i]);
+   assert(from.nDim == nDim);
+   for (int i = 0; i < nDim; i++)
+      assert(0 <= from.coords[i] && from.coords[i] < dims[i]);
 
    MDCoord to(from);
    to.coords[0] += diff;
-   for (int k = 0; k < nDims-1; k++)
+   for (int k = 0; k < nDim-1; k++)
    {
-      if (0 <= to.coords[k] && to.coords[k] < dimSizes[k]) // carry-over done propogating
+      if (0 <= to.coords[k] && to.coords[k] < dims[k]) // carry-over done propogating
          break;
 
-      to.coords[k+1] += to.coords[k]/dimSizes[k];
-      if ((to.coords[k] %= dimSizes[k]) < 0)
+      to.coords[k+1] += to.coords[k]/dims[k];
+      if ((to.coords[k] %= dims[k]) < 0)
       {
-         to.coords[k] += dimSizes[k];
+         to.coords[k] += dims[k];
          to.coords[k+1]--;
       }
    }
 
    // most significant bit
-   if (to.coords[nDims-1] < 0 || to.coords[nDims-1] >= dimSizes[nDims-1])
+   if (to.coords[nDim-1] < 0 || to.coords[nDim-1] >= dims[nDim-1])
    {
-      if ((to.coords[nDims-1] %= dimSizes[nDims-1]) < 0)
-         to.coords[nDims-1] += dimSizes[nDims-1];
+      if ((to.coords[nDim-1] %= dims[nDim-1]) < 0)
+         to.coords[nDim-1] += dims[nDim-1];
    }
    return to;
 }
 
 ColMajor* ColMajor::clone()
 {
-   return new ColMajor(nDims, dimSizes);
+   return new ColMajor(nDim, dims);
 }
 

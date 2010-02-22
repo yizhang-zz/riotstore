@@ -14,15 +14,15 @@ class BlockBased : public Linearization
        * each coordinate in dimension.coords corresponds to size of the matrix
        * along that dimension
        */
-      u8 nDims;
-      i64 *arraySizes; /// size of array in each dimension
-      i64 *blockSizes; /// size of block in each dimension
-      u8 *blockOrder; /// ordering of dimensions between blocks, descending order of significance
-      u8 *microOrder; /// ordering of elements inside a block, descending order of significance
+      u8 nDim;
+      i64 *arrayDims; /// size of array in each dimension
+      i64 *blockDims; /// size of block in each dimension
+      u8 *blockOrders; /// ordering of dimensions between blocks, descending order of significance
+      u8 *microOrders; /// ordering of elements inside a block, descending order of significance
 
 public:
 
-      BlockBased(u8 nDims, const i64 *arraySizes, const i64 *blockSizes, const u8 *blockOrder, const u8 *microOrder);
+      BlockBased(u8 nDim, const i64 *arrayDims, const i64 *blockDims, const u8 *blockOrders, const u8 *microOrders);
       ~BlockBased();
     /**
      * Linearizes the given coord.

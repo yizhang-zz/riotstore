@@ -5,32 +5,32 @@
 #include "MDCoord.h"
 using namespace std;
 
-MDCoord::MDCoord(u8 nDims, ...)
+MDCoord::MDCoord(u8 nDim, ...)
 {
-   this->nDims = nDims;
-   if (nDims == 0)
+   this->nDim = nDim;
+   if (nDim == 0)
       this->coords = NULL;
    else
    {
-      this->coords = new i64[nDims];
+      this->coords = new i64[nDim];
       va_list args;
-      va_start(args, nDims);
-      for (int k = 0; k < nDims; k++)
+      va_start(args, nDim);
+      for (int k = 0; k < nDim; k++)
          this->coords[k] = va_arg(args, i64);
       va_end(args);
    }
 }
 
-MDCoord::MDCoord(i64 *coords, u8 nDims)
+MDCoord::MDCoord(i64 *coords, u8 nDim)
 {
-   this->nDims = nDims;
-   if (nDims == 0)
+   this->nDim = nDim;
+   if (nDim == 0)
       this->coords = NULL;
    else
    {
-      this->coords = new i64[nDims];
-      memcpy(this->coords, coords, nDims*sizeof(i64));
-//      for (int k = 0; k < nDims; k++)
+      this->coords = new i64[nDim];
+      memcpy(this->coords, coords, nDim*sizeof(i64));
+//      for (int k = 0; k < nDim; k++)
   //       this->coords[k] = coords[k];
    }
 }
@@ -43,14 +43,15 @@ MDCoord::~MDCoord()
 
 MDCoord::MDCoord(const MDCoord &src)
 {
-   nDims = src.nDims;
-   if (nDims == 0)
+   nDim = src.nDim;
+   if (nDim == 0)
       coords = NULL;
    else
    {
-      coords = new i64[nDims];
-      for (int k = 0; k < nDims; k++)
-         coords[k] = src.coords[k];
+      coords = new i64[nDim];
+      memcpy(coords, src.coords, nDim*sizeof(i64));
+      /*for (int k = 0; k < nDim; k++)
+         coords[k] = src.coords[k];*/
    }
 }
 
@@ -58,23 +59,24 @@ MDCoord & MDCoord::operator=(const MDCoord &src)
 {
    if (this != &src)
    {
-      if (src.nDims == 0)
+      if (src.nDim == 0)
       {
-         nDims = 0;
+         nDim = 0;
          if (coords != NULL)
              delete[] coords;
          coords = NULL;
       }
       else 
       {
-         if (nDims != src.nDims)
+         if (nDim != src.nDim)
          {
             delete[] coords;
-            nDims = src.nDims;
-            coords = new i64[nDims];
+            nDim = src.nDim;
+            coords = new i64[nDim];
          }
-         for (int k = 0; k < nDims; k++)
-            coords[k] = src.coords[k];
+         memcpy(coords, src.coords, nDim*sizeof(i64));
+         /*for (int k = 0; k < nDim; k++)
+            coords[k] = src.coords[k];*/
       }
    }
 
@@ -83,10 +85,10 @@ MDCoord & MDCoord::operator=(const MDCoord &src)
 
 bool MDCoord::operator==(const MDCoord &other) const
 {
-   if (nDims != other.nDims)
+   if (nDim != other.nDim)
       return false;
 
-   for (int k = 0; k < nDims; k++)
+   for (int k = 0; k < nDim; k++)
    {
       if (coords[k] != other.coords[k])
          return false;
@@ -96,9 +98,9 @@ bool MDCoord::operator==(const MDCoord &other) const
 
 MDCoord & MDCoord::operator+=(const MDCoord &other)
 {
-   assert(nDims == other.nDims);
+   assert(nDim == other.nDim);
 
-   for (int k = 0; k < nDims; k++)
+   for (int k = 0; k < nDim; k++)
       coords[k] += other.coords[k];
 
    return *this;
@@ -106,9 +108,9 @@ MDCoord & MDCoord::operator+=(const MDCoord &other)
 
 MDCoord & MDCoord::operator-=(const MDCoord &other)
 {
-   assert(nDims == other.nDims);
+   assert(nDim == other.nDim);
 
-   for (int k = 0; k < nDims; k++)
+   for (int k = 0; k < nDim; k++)
       coords[k] -= other.coords[k];
 
    return *this;

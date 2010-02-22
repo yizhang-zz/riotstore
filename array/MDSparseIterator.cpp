@@ -1,10 +1,5 @@
-#ifndef MD_SPARSE_ITERATOR_H
-#define MD_SPARSE_ITERATOR_H
 
-#include "../common/common.h"
-#include "MDIterator.h"
-#include "MDCoord.h"
-#include "Linearization.h"
+#include "MDSparseIterator.h"
 
 /**
  * A class for iterating through a MDArray, skipping non-zero
@@ -33,9 +28,6 @@
  * \sa Linearization
  */
 
-class MDSparseIterator: public MDIterator
-{
-public:
     
     /**
      * Constructs an iterator given the associated array and
@@ -49,14 +41,28 @@ public:
      * \param linearization A pointer to a Linearization object that
      * defines the iterating order.
      */
-    MDSparseIterator(MDArray *array, Linearization *linearization);
+MDSparseIterator::MDSparseIterator(MDArray *array, Linearization *linearization)
+{
+   this->array = array;
+   this->linearization = linearization->clone();
+   beginsAt = MDCoord(linearization->unlinearize(-1));
+   endsBy = beginsAt;
+   cursor = beginsAt;
+}
     
     /**
      * Constructs a copy of the given iterator.
      *
      * \param src Source to be copied.
      */
-    MDSparseIterator(const MDSparseIterator &src);
+MDSparseIterator::MDSparseIterator(const MDSparseIterator &src)
+{
+   this->array = src.array;
+   this->linearization = src.linearization->clone();
+   beginsAt = src.beginsAt;
+   endsBy = src.endsBy;
+   cursor = src.cursor;
+}
 
     /**
      * Gets the current coordinate and the datum the iterator points to.
@@ -64,7 +70,11 @@ public:
      * \param [out] coord The current coordinate.
      * \param [out] datum The current datum.
      */
-    virtual void get(MDCoord &coord, Datum_t &datum);
+    void MDSparseIterator::get(MDCoord &coord, Datum_t &datum)
+{
+   coord = cursor;
+   array->get(cursor, datum);
+}
 
     /**
      * Moves the iterator to the previous entry in the collection.
@@ -74,7 +84,16 @@ public:
      * if already before the beginning of the collection.
      *
      */
-    virtual bool movePrev();
+    bool MDSparseIterator::movePrev()
+{
+   do
+   {
+      cursor = linearization->unlinearize(linearization->linearize(cursor) - 1);
+      Datum_t datum;
+      array->get(cursor, datum);
+   } while (datum == 0);
+   return cursor == beginsAt;
+}
 
     /**
      * Moves the iterator to the next entry in the collection.
@@ -84,36 +103,45 @@ public:
      * if already after the end of the collection.
      *
      */
-    virtual bool moveNext();
+    bool MDSparseIterator::moveNext()
+{
+   do
+   {
+      cursor = linearization->unlinearize(linearization->linearize(cursor) + 1);
+      Datum_t datum;
+      array->get(cursor, datum);
+   } while (datum == 0);
+   return cursor == endsBy;
+}
 
     /**
      * Replaces the current entry with the specified datum.
      * 
      * \param [out] datum The datum to be put.
      */
-    virtual void put(Datum_t &datum);
+    void MDSparseIterator::put(Datum_t &datum)
+{
+   array->put(cursor, datum);
+}
 
     /**
      * Virtual destructor.
      */
-    virtual ~MDSparseIterator();
+    MDSparseIterator::~MDSparseIterator()
+{
+   delete linearization;
+}
 
     /**
      * \copydoc Iterator::setRange()
      */
-    virtual bool setRange(MDCoord &beginsAt, MDCoord &endsBy);
-
-    virtual void reset();
-    
-protected:
-    /// The array this iterator iterates through.
-    MDArray *array;
-    /// The Linearization associated with this iterator.
-    Linearization *linearization;
-
-    MDCoord beginsAt;
-    MDCoord endsBy;
-    MDCoord cursor;
-};
-
-#endif
+    bool MDSparseIterator::setRange(MDCoord &beginsAt, MDCoord &endsBy)
+{
+   this->beginsAt = beginsAt;
+   this->endsBy = endsBy;
+}
+   
+void MDSparseIterator::reset()
+{
+   cursor = beginsAt;
+}

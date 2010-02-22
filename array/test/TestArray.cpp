@@ -14,29 +14,29 @@ using namespace std;
 TEST(MDCoord, Ctor)
 {
    MDCoord m1;
-   ASSERT_EQ(0, m1.nDims);
+   ASSERT_EQ(0, m1.nDim);
    ASSERT_TRUE(m1.coords == NULL);
 
    MDCoord m2(0);
-   ASSERT_EQ(0, m2.nDims);
+   ASSERT_EQ(0, m2.nDim);
    ASSERT_TRUE(m2.coords == NULL);
 
    // test for negative indices
    MDCoord m3(3, COORD(-1), COORD(12), COORD(123));
-   ASSERT_EQ(3, m3.nDims);
+   ASSERT_EQ(3, m3.nDim);
    ASSERT_EQ(-1, m3.coords[0]);
    ASSERT_EQ(12, m3.coords[1]);
    ASSERT_EQ(123, m3.coords[2]);
 
    i64 coords[] = {1, -12, 123};
    MDCoord m4(coords, 3);
-   ASSERT_EQ(3, m4.nDims);
+   ASSERT_EQ(3, m4.nDim);
    ASSERT_EQ(1, m4.coords[0]);
    ASSERT_EQ(-12, m4.coords[1]);
    ASSERT_EQ(123, m4.coords[2]);
 
    MDCoord m5(m4);
-   ASSERT_EQ(3, m5.nDims);
+   ASSERT_EQ(3, m5.nDim);
    ASSERT_EQ(1, m5.coords[0]);
    ASSERT_EQ(-12, m5.coords[1]);
 
@@ -69,7 +69,7 @@ TEST(MDCoord, Assignment)
    ASSERT_TRUE(m1 == m2);
 
    m1 += m2;
-   ASSERT_EQ(3, m1.nDims);
+   ASSERT_EQ(3, m1.nDim);
    ASSERT_EQ(-2, m1.coords[0]);
    ASSERT_EQ(4, m1.coords[1]);
    ASSERT_EQ(246, m1.coords[2]);
@@ -87,13 +87,13 @@ TEST(MDCoord, Arithmetic)
 
    MDCoord m3;
    m3 = (m1 + m2);
-   ASSERT_EQ(3, m3.nDims);
+   ASSERT_EQ(3, m3.nDim);
    ASSERT_EQ(-2, m3.coords[0]);
    ASSERT_EQ(4, m3.coords[1]);
    ASSERT_EQ(246, m3.coords[2]);
 
    m3 = m1 - m2;
-   ASSERT_EQ(3, m3.nDims);
+   ASSERT_EQ(3, m3.nDim);
    ASSERT_EQ(0, m3.coords[0]);
    ASSERT_EQ(0, m3.coords[1]);
    ASSERT_EQ(0, m3.coords[2]);
@@ -108,14 +108,14 @@ TEST(RowMajor, Create)
       coords[i] = i+1;
    MDCoord dim(coords, n);
    RowMajor rowMajor(dim);
-   ASSERT_EQ(n, rowMajor.nDims);
+   ASSERT_EQ(n, rowMajor.nDim);
    for (int i = 0; i < n; i++)
-      ASSERT_EQ(i+1, rowMajor.dimSizes[i]);
+      ASSERT_EQ(i+1, rowMajor.dims[i]);
 
    RowMajor *rm = rowMajor.clone();
-   ASSERT_EQ(n, rm->nDims);
+   ASSERT_EQ(n, rm->nDim);
    for (int i = 0; i < n; i++)
-      ASSERT_EQ(i+1, rm->dimSizes[i]);
+      ASSERT_EQ(i+1, rm->dims[i]);
    delete rm;
 }
 
@@ -286,14 +286,14 @@ TEST(ColMajor, Create)
       coords[i] = i+1;
    MDCoord dim(coords, n);
    ColMajor colMajor(dim);
-   ASSERT_EQ(n, colMajor.nDims);
+   ASSERT_EQ(n, colMajor.nDim);
    for (int i = 0; i < n; i++)
-      ASSERT_EQ(i+1, colMajor.dimSizes[i]);
+      ASSERT_EQ(i+1, colMajor.dims[i]);
 
    ColMajor *cm = colMajor.clone();
-   ASSERT_EQ(n, cm->nDims);
+   ASSERT_EQ(n, cm->nDim);
    for (int i = 0; i < n; i++)
-      ASSERT_EQ(i+1, cm->dimSizes[i]);
+      ASSERT_EQ(i+1, cm->dims[i]);
    delete cm;
 }
 
@@ -461,33 +461,33 @@ TEST(BlockBased, Create)
    int n = rand() % 30 + 20;
    i64 array[n];
    i64 block[n];
-   u8 blockOrder[n];
-   u8 microOrder[n];
+   u8 blockOrders[n];
+   u8 microOrders[n];
    for (int i = 0; i < n; i++)
    {
       array[i] = i+4;
       block[i] = i+2;
-      blockOrder[i] = i;
-      microOrder[i] = n-i-1;
+      blockOrders[i] = i;
+      microOrders[i] = n-i-1;
    }
-   BlockBased bb(n, array, block, blockOrder, microOrder);
-   ASSERT_EQ(n, bb.nDims);
+   BlockBased bb(n, array, block, blockOrders, microOrders);
+   ASSERT_EQ(n, bb.nDim);
    for (int i = 0; i < n; i++)
    {
-      ASSERT_EQ(i+4, bb.arraySizes[i]);
-      ASSERT_EQ(i+2, bb.blockSizes[i]);
-      ASSERT_EQ(i, bb.blockOrder[i]);
-      ASSERT_EQ(n-i-1, bb.microOrder[i]);
+      ASSERT_EQ(i+4, bb.arrayDims[i]);
+      ASSERT_EQ(i+2, bb.blockDims[i]);
+      ASSERT_EQ(i, bb.blockOrders[i]);
+      ASSERT_EQ(n-i-1, bb.microOrders[i]);
    }
 
    BlockBased *bbptr = bb.clone();
-   ASSERT_EQ(n, bb.nDims);
+   ASSERT_EQ(n, bb.nDim);
    for (int i = 0; i < n; i++)
    {
-      ASSERT_EQ(i+4, bb.arraySizes[i]);
-      ASSERT_EQ(i+2, bb.blockSizes[i]);
-      ASSERT_EQ(i, bb.blockOrder[i]);
-      ASSERT_EQ(n-i-1, bb.microOrder[i]);
+      ASSERT_EQ(i+4, bb.arrayDims[i]);
+      ASSERT_EQ(i+2, bb.blockDims[i]);
+      ASSERT_EQ(i, bb.blockOrders[i]);
+      ASSERT_EQ(n-i-1, bb.microOrders[i]);
    }
 
    delete bbptr;
@@ -495,14 +495,14 @@ TEST(BlockBased, Create)
 
 TEST(BlockBased, Linearize)
 {
-   u8 nDims = 2;
-   i64 arraySizes[] = {6, 6};
-   i64 blockSizes[] = {3, 3};
-   u8 blockOrder[] = {0, 1};
-   u8 microOrder[] = {1, 0};
+   u8 nDim = 2;
+   i64 arrayDims[] = {6, 6};
+   i64 blockDims[] = {3, 3};
+   u8 blockOrders[] = {0, 1};
+   u8 microOrders[] = {1, 0};
    Key_t size = 36;
 
-   BlockBased bb(nDims, arraySizes, blockSizes, blockOrder, microOrder);
+   BlockBased bb(nDim, arrayDims, blockDims, blockOrders, microOrders);
    for (int i = 0; i < 18; i++)
    {
       i64 coords[2];
@@ -558,29 +558,29 @@ TEST(BlockBased, Linearize)
 
 TEST(BlockBased, Move)
 {
-   u8 nDims = 5;
-   i64 arraySizes[nDims];
-   i64 blockSizes[nDims];
-   i64 start[nDims];
-   u8 blockOrder[nDims];
-   u8 microOrder[nDims];
+   u8 nDim = 5;
+   i64 arrayDims[nDim];
+   i64 blockDims[nDim];
+   i64 start[nDim];
+   u8 blockOrders[nDim];
+   u8 microOrders[nDim];
    Key_t size = 1;
 
-   for (int i = 0; i < nDims; i++)
+   for (int i = 0; i < nDim; i++)
    {
-      arraySizes[i] = 2*(i+1)*(i+1);
-      blockSizes[i] = i+1;
+      arrayDims[i] = 2*(i+1)*(i+1);
+      blockDims[i] = i+1;
       start[i] = 0;
-      blockOrder[i] = i;
-      microOrder[i] = nDims - i - 1;
-      size *= arraySizes[i];
+      blockOrders[i] = i;
+      microOrders[i] = nDim - i - 1;
+      size *= arrayDims[i];
    }
 
-   permute(blockOrder, nDims);
-   permute(microOrder, nDims);
+   permute(blockOrders, nDim);
+   permute(microOrders, nDim);
 
-   BlockBased bb(nDims, arraySizes, blockSizes, blockOrder, microOrder);
-   MDCoord cur(start, nDims);
+   BlockBased bb(nDim, arrayDims, blockDims, blockOrders, microOrders);
+   MDCoord cur(start, nDim);
 
    ASSERT_EQ(0, bb.linearize(cur));
    for (int i = 1; i < size; i++)
@@ -616,30 +616,30 @@ TEST(BlockBased, timing)
 
    for (int n = 1; n < 8; n++)
    {
-      u8 nDims = n;
-      i64 arraySizes[nDims];
-      i64 blockSizes[nDims];
-      i64 start[nDims];
-      u8 blockOrder[nDims];
-      u8 microOrder[nDims];
+      u8 nDim = n;
+      i64 arrayDims[nDim];
+      i64 blockDims[nDim];
+      i64 start[nDim];
+      u8 blockOrders[nDim];
+      u8 microOrders[nDim];
       Key_t size = 1;
 
-      for (int i = 0; i < nDims; i++)
+      for (int i = 0; i < nDim; i++)
       {
-         arraySizes[i] = (i+1)*(i+1);
-         blockSizes[i] = i+1;
+         arrayDims[i] = (i+1)*(i+1);
+         blockDims[i] = i+1;
          start[i] = 0;
-         blockOrder[i] = i;
-         microOrder[i] = nDims - i - 1;
-         size *= arraySizes[i];
+         blockOrders[i] = i;
+         microOrders[i] = nDim - i - 1;
+         size *= arrayDims[i];
       }
 
-      permute(blockOrder, nDims);
-      permute(microOrder, nDims);
+      permute(blockOrders, nDim);
+      permute(microOrders, nDim);
 
-      BlockBased bb(nDims, arraySizes, blockSizes, blockOrder, microOrder);
+      BlockBased bb(nDim, arrayDims, blockDims, blockOrders, microOrders);
 
-      MDCoord cur(start, nDims);
+      MDCoord cur(start, nDim);
       begin = clock();
       for (int i = 1; i < size; i++)
       {
@@ -648,7 +648,7 @@ TEST(BlockBased, timing)
       end = clock();
       fprintf(file, "ms elapsed for 3-D array with size %d using move: %ld\n", size, (end-begin)/1000);
 
-      MDCoord cur2(start, nDims);
+      MDCoord cur2(start, nDim);
       begin = clock();
       for (int i=1; i<size; i++)
       {
