@@ -45,7 +45,7 @@ public:
      * \param [out] datum Datum to be returned.
      * \return OK if successful, OutOfRange if index out of range.
      */
-    virtual int get(Key_t &key, Datum_t &datum) = 0;
+    virtual int get(const Key_t &key, Datum_t &datum) = 0;
 
     /**
      * Sets the datum for the specified key.
@@ -54,7 +54,7 @@ public:
      * \param [in] datum New datum to be put.
      * \return OK if successful, OutOfRange if index out of range.
      */
-    virtual int put(Key_t &key, Datum_t &datum) = 0;
+    virtual int put(const Key_t &key, const Datum_t &datum) = 0;
 
     /**
      * Creates an internal iterator.

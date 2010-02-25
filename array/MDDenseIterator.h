@@ -92,7 +92,7 @@ public:
      * 
      * \param  datum The datum to be put.
      */
-    virtual void put(Datum_t &datum);
+    void put(const Datum_t &datum);
 
     /**
      * Virtual destructor.

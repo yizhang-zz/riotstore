@@ -37,7 +37,7 @@ bool MDDenseIterator::moveNext()
    return cursor == endsBy;
 }
 
-void MDDenseIterator::put(Datum_t &datum)
+void MDDenseIterator::put(const Datum_t &datum)
 {
    array->put(cursor, datum);
 }

@@ -12,6 +12,8 @@
 #include "MDSparseIterator.h"
 #include "MDAccelSparseIterator.h"
 
+using namespace Btree;
+
 MDArray::MDArray(u32 nDim, u32 *dims, StorageType type, const char *fileName)
 {
    assert(nDim != 0);
@@ -26,15 +28,19 @@ MDArray::MDArray(u32 nDim, u32 *dims, StorageType type, const char *fileName)
    memcpy(this->dims, dims, nDim*sizeof(i64));
    linearization = NULL;
    // TODO: generate random hex filename if fileName=0
+   // Remember to add break for cases in switch
+   MSplitter msp;
    switch (type)
    {
       case DMA:
          storage = new DirectlyMappedArray(fileName, 0);
+         break;
       case BTREE:
-         MSplitter msp;
-         storage = new BTree(fileName, 0, msp, msp); 
+         //storage = new BTree(fileName, 0, &msp, &msp); 
+         break;
       default:
          storage = NULL;
+         break;
    }
 }
 
@@ -68,7 +74,7 @@ MDIterator* MDArray::createIterator(IteratorType t, Linearization *lnrztn)
    switch (t)
    {
       case Dense:
-         return MDDenseIterator(storage, lnrztn);
+         return new MDDenseIterator(this, lnrztn);
       case Sparse:
          // return MDSparseIterator(storage, lnrztn);
       default:
@@ -81,7 +87,7 @@ MDIterator* MDArray::createNaturalIterator(IteratorType t)
    switch (t)
    {
       case Dense:
-         return MDAccelDenseIterator(storage, createInternalIterator(Dense));
+         return new MDAccelDenseIterator(this, createInternalIterator(Dense));
       case Sparse:
          // return MDAccelSparseIterator(storage, createInternalIterator(Sparse));
       default:
@@ -97,7 +103,7 @@ AccessCode MDArray::get(MDCoord &coord, Datum_t &datum)
    return AC_OutOfRange;
 }
 
-AccessCode MDArray::put(MDCoord &coord, Datum_t &datum)
+AccessCode MDArray::put(MDCoord &coord, const Datum_t &datum)
 {
    Key_t key = linearization->linearize(coord);
    if (storage->put(key, datum) == AC_OK)
@@ -107,6 +113,7 @@ AccessCode MDArray::put(MDCoord &coord, Datum_t &datum)
 
 ArrayInternalIterator* MDArray::createInternalIterator(IteratorType t)
 {
-   return storage->createIterator(t, 0, size);
+    Key_t start = 0;
+   return storage->createIterator(t, start, size);
 }
 

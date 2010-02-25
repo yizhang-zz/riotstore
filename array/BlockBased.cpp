@@ -182,3 +182,12 @@ BlockBased* BlockBased::clone()
          microOrders);
 }
 
+bool BlockBased::equals(Linearization *l)
+{
+    if (typeid(*this)!=typeid(*l))
+        return false;
+    BlockBased *ll = (BlockBased*)l;
+    return (nDim==ll->nDim && isSameArray(nDim,arrayDims,ll->arrayDims)
+            && isSameArray(nDim,blockDims,ll->blockDims)
+            && isSameArray(nDim, blockOrders, ll->microOrders));
+}

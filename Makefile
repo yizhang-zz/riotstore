@@ -1,6 +1,6 @@
 DIRS := common lower directly_mapped btree array
 CXX = g++
-CXXFLAGS += -g $(patsubst %,-I%,$(DIRS))
+CXXFLAGS += -g -fPIC $(patsubst %,-I%,$(DIRS))
 # `pkg-config --cflags-only-I apr-1`
 LDFLAGS += -lgtest `pkg-config --libs apr-1`
 
@@ -27,4 +27,4 @@ include $(OBJ:.o=.d)
 clean:
 	@rm -f $(OBJ)
 	@rm -f $(OBJ:.o=.d)
-	@rm -f riot_store.a
+	@rm -f libriot_store.a

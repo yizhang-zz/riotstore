@@ -53,7 +53,7 @@ DirectlyMappedArray::~DirectlyMappedArray()
    delete file;
 }
 
-int DirectlyMappedArray::get(Key_t &key, Datum_t &datum) 
+int DirectlyMappedArray::get(const Key_t &key, Datum_t &datum) 
 {
    if (key < 0 || numElements <= key) 
    {
@@ -74,7 +74,7 @@ int DirectlyMappedArray::get(Key_t &key, Datum_t &datum)
    return AC_OK;
 }
 
-int DirectlyMappedArray::put(Key_t &key, Datum_t &datum) 
+int DirectlyMappedArray::put(const Key_t &key, const Datum_t &datum) 
 {
    PageHandle ph;
    PID_t pid;
@@ -102,7 +102,7 @@ ArrayInternalIterator *DirectlyMappedArray::createIterator(IteratorType t, Key_t
    // return new DMASparseIterator(beginsAt, endsBy, this);
 }
 
-void DirectlyMappedArray::findPage(Key_t &key, PID_t *pid) 
+void DirectlyMappedArray::findPage(const Key_t &key, PID_t *pid) 
 {
    Key_t CAPACITY = DenseArrayBlock::CAPACITY;
    *pid = key/CAPACITY + 1;

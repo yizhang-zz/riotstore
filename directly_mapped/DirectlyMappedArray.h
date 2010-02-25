@@ -33,11 +33,11 @@ class DirectlyMappedArray : public LinearStorage
       DirectlyMappedArray(const char* fileName, uint32_t numElements);
       virtual ~DirectlyMappedArray();
 
-      virtual int get(Key_t &key, Datum_t &datum);
-      virtual int put(Key_t &key, Datum_t &datum);
+      virtual int get(const Key_t &key, Datum_t &datum);
+      virtual int put(const Key_t &key, const Datum_t &datum);
       virtual ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);
 
-      void findPage(Key_t &key, PID_t *pid);
+      void findPage(const Key_t &key, PID_t *pid);
       RC_t loadBlock(PID_t pid, DenseArrayBlock** block);
     RC_t loadNextBlock(PageHandle ph, DenseArrayBlock** block);
       RC_t releaseBlock(DenseArrayBlock* block);

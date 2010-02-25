@@ -4,6 +4,7 @@
 #include "../common/common.h"
 #include "MDIterator.h"
 #include "MDCoord.h"
+#include "MDArray.h"
 #include "Linearization.h"
 
 /**
@@ -91,7 +92,7 @@ public:
      * 
      * \param [out] datum The datum to be put.
      */
-    virtual void put(Datum_t &datum);
+    virtual void put(const Datum_t &datum);
 
     /**
      * Virtual destructor.

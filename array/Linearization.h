@@ -89,6 +89,8 @@ Linearization() {}
      * \return A pointer to a clone of subclass type.
      */
     virtual Linearization* clone() = 0;
+
+    virtual bool equals(Linearization*) { return false; }
     
 protected:
     /*

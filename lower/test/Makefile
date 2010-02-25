@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -g 
+CXXFLAGS = -g `pkg-config --cflags-only-I apr-1`
 LDFLAGS = -lgtest
 
 .PHONY: all clean lower

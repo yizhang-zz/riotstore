@@ -50,7 +50,7 @@ public:
      * \return true if successfully moved to the previous entry; false
      * if already before the beginning of the collection.
      */
-    virtual bool movePrev() = 0;
+    virtual bool movePrev() { return false ; }
 
     /**
      * Gets the key and datum the iterator currently points to.

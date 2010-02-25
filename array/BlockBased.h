@@ -75,11 +75,19 @@ public:
      * \return A pointer to a clone of subclass type.
      */
     BlockBased* clone();
+
+    bool equals(Linearization *);
     
 private:
     i64 blockSize;
     i64 *blocksPerArray;
-
+    template<class T>
+    bool isSameArray(int n, T *a, T *b) {
+        for (int i=0; i<n; i++)
+            if (a[i]!=b[i])
+                return false;
+        return true;
+    }
 };
 
 

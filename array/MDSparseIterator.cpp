@@ -86,10 +86,10 @@ MDSparseIterator::MDSparseIterator(const MDSparseIterator &src)
      */
     bool MDSparseIterator::movePrev()
 {
+    Datum_t datum;
    do
    {
       cursor = linearization->unlinearize(linearization->linearize(cursor) - 1);
-      Datum_t datum;
       array->get(cursor, datum);
    } while (datum == 0);
    return cursor == beginsAt;
@@ -105,10 +105,10 @@ MDSparseIterator::MDSparseIterator(const MDSparseIterator &src)
      */
     bool MDSparseIterator::moveNext()
 {
+      Datum_t datum;
    do
    {
       cursor = linearization->unlinearize(linearization->linearize(cursor) + 1);
-      Datum_t datum;
       array->get(cursor, datum);
    } while (datum == 0);
    return cursor == endsBy;
@@ -119,7 +119,7 @@ MDSparseIterator::MDSparseIterator(const MDSparseIterator &src)
      * 
      * \param [out] datum The datum to be put.
      */
-    void MDSparseIterator::put(Datum_t &datum)
+void MDSparseIterator::put(const Datum_t &datum)
 {
    array->put(cursor, datum);
 }

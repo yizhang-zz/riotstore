@@ -130,7 +130,7 @@ public:
      * \param [in] datum Datum at coord.
      * \result OK if successful, OutOfRange if coord is out of range.
      */
-    AccessCode put(MDCoord &coord, Datum_t &datum);
+    AccessCode put(MDCoord &coord, const Datum_t &datum);
 
 private:
     
