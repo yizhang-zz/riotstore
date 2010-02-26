@@ -1,6 +1,6 @@
 CXX = g++
 CXXFLAGS = -g 
-LDFLAGS = -lgtest
+LDFLAGS = -lgtest `pkg-config --libs apr-1`
 
 .PHONY: all clean lower
 
@@ -25,8 +25,7 @@ include $(objects:.o=.d)
 lower:
 	cd .. ; $(MAKE)
 
-test: $(objects) $(par_objects) ../../common/common.o ../../lower/BitmapPagedFile.o 
-#../../lower/LRUPageReplacer.o 
+test: $(objects) $(par_objects) ../../common/common.o ../../lower/BitmapPagedFile.o ../../lower/LRUPageReplacer.o ../../lower/BufferManager.o ../../directly_mapped/DirectlyMappedArray.o ../../directly_mapped/DenseArrayBlock.o ../../directly_mapped/DMADenseIterator.o ../../directly_mapped/DABIterator.o
 	echo $(par_objects)
 	$(CXX) $(LDFLAGS) -o test $^ 
 

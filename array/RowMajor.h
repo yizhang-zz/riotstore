@@ -6,6 +6,7 @@
 class RowMajor : public Linearization
 
 {
+      static const LinearizationType linType = ROW;
    // make sure none of the dimension sizes are equal to 0!!
 //   private:
    public:
@@ -76,6 +77,7 @@ public:
      */
     RowMajor* clone();
     
+    LinearizationType getType();
 
 };
 

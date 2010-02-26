@@ -191,3 +191,8 @@ bool BlockBased::equals(Linearization *l)
             && isSameArray(nDim,blockDims,ll->blockDims)
             && isSameArray(nDim, blockOrders, ll->microOrders));
 }
+
+LinearizationType BlockBased::getType()
+{
+   return linType;
+}

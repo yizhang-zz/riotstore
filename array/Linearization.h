@@ -4,6 +4,14 @@
 #include "../common/common.h"
 #include "MDCoord.h"
 
+enum LinearizationType 
+{
+   NONE,
+   ROW,
+   COL,
+   BLOCK
+};
+
 /**
  * A class representing the linearization that translates n-D
  * coordinates into 1-D linear space. Linearization is used by MDArray
@@ -42,6 +50,7 @@
 class Linearization
 {
 public:
+
 Linearization() {}
     /**
      * Linearizes the given coord.
@@ -91,6 +100,8 @@ Linearization() {}
     virtual Linearization* clone() = 0;
 
     virtual bool equals(Linearization*) { return false; }
+
+    virtual LinearizationType getType() = 0;
     
 protected:
     /*

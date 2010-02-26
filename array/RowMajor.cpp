@@ -91,3 +91,7 @@ RowMajor* RowMajor::clone()
    return new RowMajor(nDim, dims);
 }
 
+LinearizationType RowMajor::getType()
+{
+   return linType;
+}

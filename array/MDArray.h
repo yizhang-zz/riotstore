@@ -54,6 +54,7 @@ protected:
     i64 *dims;
     
 public:
+    u32 size; // number of elements
     /**
      * Constructs a new MDArray with given dimensions.
      *
@@ -64,7 +65,7 @@ public:
      * stored. If omitted, a random name consisting 10 hex digits is
      * generated. Guaranteed no existing file will be overwritten.
      */
-    MDArray(u32 nDim, u32 *dims, StorageType type, const char *fileName=0);
+    MDArray(u8 nDim, i64 *dims, StorageType type, Linearization *lrnztn, const char *fileName=0);
 
     /**
      * Constructs and initializes a MDArray from a file stored on
@@ -80,13 +81,6 @@ public:
      * Destructor.
      */
     ~MDArray();
-
-    /**
-     * Sets the linearization of the array.
-     *
-     * \param lnrztn Specified linearization.
-     */
-    void setLinearization(Linearization *lnrztn);
 
     /**
      * Gets the linearization of the array.
@@ -134,7 +128,6 @@ public:
 
 private:
     
-    u32 size; // number of elements
     /**
      * Creates an internal iterator over the 1-D storage device.
      *

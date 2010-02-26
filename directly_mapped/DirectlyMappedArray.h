@@ -44,6 +44,7 @@ class DirectlyMappedArray : public LinearStorage
       uint32_t getLowerBound();
       uint32_t getUpperBound();
     void *getPageImage(PageHandle ph);
+
 };
 
 #endif

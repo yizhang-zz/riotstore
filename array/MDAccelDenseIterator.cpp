@@ -53,7 +53,7 @@
     {
        cursor = linearization->move(cursor, -1);
        intIterator->movePrev();
-       return cursor == linearization->move(beginsAt, -1);
+       return cursor != beginsAt;
     }
 
     /**
@@ -70,7 +70,7 @@
     {
        cursor = linearization->move(cursor, 1);
        intIterator->moveNext();
-       return cursor == endsBy;
+       return cursor != endsBy;
     }
 
     /**

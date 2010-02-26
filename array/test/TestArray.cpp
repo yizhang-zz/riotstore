@@ -8,6 +8,7 @@
 #include "../ColMajor.h"
 #include "../MDCoord.h"
 #include "../BlockBased.h"
+#include "../MDArray.h"
 
 using namespace std;
 
@@ -614,7 +615,7 @@ TEST(BlockBased, timing)
    fprintf(file, "Timing for 3-D BlockBased\n");
    fprintf(file, "Clock ticks per second: %ld\n", CLOCKS_PER_SEC);
 
-   for (int n = 1; n < 8; n++)
+   for (int n = 1; n < 5; n++)
    {
       u8 nDim = n;
       i64 arrayDims[nDim];
@@ -660,4 +661,86 @@ TEST(BlockBased, timing)
 
    fprintf(file, "\n\n");
    fclose(file);
+}
+
+TEST(MDArray, Create)
+{
+   u8 nDim = 2;
+   i64 arrayDims[] = {1000, 1000};
+   StorageType type = DMA;
+   Linearization *row = new RowMajor(nDim, arrayDims);
+   Linearization *col = new ColMajor(nDim, arrayDims);
+   i64 blockDims[] = {200, 200};
+   u8 blockOrders[] = {0, 1};
+   u8 microOrders[] = {0, 1};
+   permute(blockOrders, nDim);
+   permute(microOrders, nDim);
+   Linearization *block = new BlockBased(nDim, arrayDims, blockDims,
+         blockOrders, microOrders);
+   const char *fileName = "test.bin";
+
+   MDArray *array = new MDArray(nDim, arrayDims, type, row, fileName);
+   MDCoord coord1 = MDCoord(2, 120, 19);
+   ASSERT_TRUE(AC_OK == array->put(coord1, 12345));
+   MDCoord coord2 = MDCoord(2, 500, 500);
+   ASSERT_TRUE(AC_OK == array->put(coord2, 12.345));
+   MDCoord coord3 = MDCoord(2, 999, 999);
+   ASSERT_TRUE(AC_OK == array->put(coord3, 1000));
+   Datum_t datum;
+   ASSERT_TRUE(AC_OK == array->get(coord1, datum));
+   ASSERT_TRUE(12345 == datum);
+   ASSERT_TRUE(AC_OK == array->get(coord2, datum));
+   ASSERT_TRUE(12.345 == datum);
+   ASSERT_TRUE(AC_OK == array->get(coord3, datum));
+   ASSERT_TRUE(1000 == datum);
+
+/*   delete array;
+   array = new MDArray(fileName);
+   ASSERT_TRUE(AC_OK == array->get(coord1, datum));
+   ASSERT_TRUE(12345 == datum);
+   ASSERT_TRUE(AC_OK == array->get(coord2, datum));
+   ASSERT_TRUE(12.345 == datum);
+   ASSERT_TRUE(AC_OK == array->get(coord3, datum));
+   ASSERT_TRUE(1000 == datum);*/
+   MDIterator *it = array->createIterator(Dense, col);
+   MDCoord coord;
+   int i = 0;
+   do 
+   {
+      it->put(i);
+      i++;
+   } while(it->moveNext());
+   ASSERT_EQ(1000*1000, i);
+   delete it;
+/*   it = array->createIterator(Dense, block);
+   i = 0;
+   do
+   {
+      it->get(coord, datum);
+      ASSERT_EQ(i, col->linearize(coord));
+      if (coord == coord1)
+         ASSERT_EQ(12345, datum);
+      else if (coord == coord2)
+         ASSERT_EQ(12.345, datum);
+      else if (coord == coord3)
+         ASSERT_EQ(1000, datum);
+      else
+         ASSERT_EQ(0, datum);
+      i++;
+   } while (it->moveNext());
+   ASSERT_EQ(1000*1000, i);
+
+   delete it;
+
+   it = array->createNaturalIterator(Dense);
+   i = 0;
+   do
+   {
+      it->get(coord, datum);
+      ASSERT_EQ(i, row->linearize(coord));
+      ASSERT_EQ(i, datum);
+      i++;
+   } while (it->moveNext());
+   ASSERT_EQ(1000*1000, i);
+   delete it;*/
 }

@@ -6,6 +6,7 @@
 class ColMajor : public Linearization
 
 {
+   static const LinearizationType linType = COL;
 //   private:
    public:
       /**
@@ -75,7 +76,7 @@ public:
      */
     ColMajor* clone();
     
-
+    LinearizationType getType();
 };
 
 

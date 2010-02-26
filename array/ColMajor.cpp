@@ -89,3 +89,7 @@ ColMajor* ColMajor::clone()
    return new ColMajor(nDim, dims);
 }
 
+LinearizationType ColMajor::getType()
+{
+   return linType;
+}

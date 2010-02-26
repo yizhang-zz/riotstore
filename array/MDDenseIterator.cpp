@@ -5,8 +5,8 @@ MDDenseIterator::MDDenseIterator(MDArray *array, Linearization *linearization)
 {
    this->array = array;
    this->linearization = linearization->clone();
-   beginsAt = MDCoord(linearization->unlinearize(-1));
-   endsBy = MDCoord(beginsAt);
+   beginsAt = MDCoord(linearization->unlinearize(0));
+   endsBy = MDCoord(linearization->unlinearize(array->size));
    cursor = MDCoord(beginsAt);
 }
 
@@ -28,13 +28,13 @@ void MDDenseIterator::get(MDCoord &coord, Datum_t &datum)
 bool MDDenseIterator::movePrev()
 {
    cursor = linearization->unlinearize(linearization->linearize(cursor) - 1);
-   return cursor == beginsAt;
+   return cursor != beginsAt;
 }
 
 bool MDDenseIterator::moveNext()
 {
    cursor = linearization->unlinearize(linearization->linearize(cursor) + 1);
-   return cursor == endsBy;
+   return cursor != endsBy;
 }
 
 void MDDenseIterator::put(const Datum_t &datum)
@@ -51,6 +51,7 @@ bool MDDenseIterator::setRange(MDCoord &beginsAt, MDCoord &endsBy)
 {
    this->beginsAt = beginsAt;
    this->endsBy = endsBy;
+   reset();
 }
 
 void MDDenseIterator::reset()
