@@ -1,19 +1,8 @@
-
 #include <assert.h>
 #include <math.h>
 #include <string.h>
 #include "ColMajor.h"
 
-ColMajor::ColMajor(u8 nDim, const i64* coords)
-{
-   assert(nDim != 0);
-   for (int k = 0; k < nDim; k++)
-      assert(coords[k] > 0); // cannot have dimension length of 0
-
-   this->nDim = nDim;
-   dims = new i64[nDim];
-   memcpy(dims, coords, nDim*sizeof(i64));
-}
 
 ColMajor::ColMajor(const MDCoord &coord)
 {
@@ -21,18 +10,17 @@ ColMajor::ColMajor(const MDCoord &coord)
    for (int k = 0; k < coord.nDim; k++)
       assert(coord.coords[k] > 0); // cannot have dimension length of 0
 
-   nDim = coord.nDim;
-   dims = new i64[nDim];
-   memcpy(dims, coord.coords, nDim*sizeof(i64));
+   this->dim = coord;
 }
 
 ColMajor::~ColMajor()
 {
-   delete[] dims;
 }
 
 Key_t ColMajor::linearize(const MDCoord &coord)
 {
+    u8 nDim = dim.nDim;
+    i64 *dims = dim.coords;
    assert(coord.nDim == nDim);
    Key_t key = 0;
    for (int k = nDim - 1; k >= 0; k--)
@@ -45,6 +33,9 @@ Key_t ColMajor::linearize(const MDCoord &coord)
 
 MDCoord ColMajor::unlinearize(Key_t key)
 {
+    u8 nDim = dim.nDim;
+    i64 *dims = dim.coords;
+
    i64 coords[nDim];
    for (int k = 0; k < nDim; k++)
    {
@@ -56,6 +47,9 @@ MDCoord ColMajor::unlinearize(Key_t key)
 
 MDCoord ColMajor::move(const MDCoord &from, KeyDiff_t diff)
 {
+    u8 nDim = dim.nDim;
+    i64 *dims = dim.coords;
+
    assert(from.nDim == nDim);
    for (int i = 0; i < nDim; i++)
       assert(0 <= from.coords[i] && from.coords[i] < dims[i]);
@@ -86,10 +80,18 @@ MDCoord ColMajor::move(const MDCoord &from, KeyDiff_t diff)
 
 ColMajor* ColMajor::clone()
 {
-   return new ColMajor(nDim, dims);
+   return new ColMajor(dim);
 }
 
 LinearizationType ColMajor::getType()
 {
-   return linType;
+   return COL;
+}
+
+bool ColMajor::equals(Linearization *l)
+{
+    if (typeid(*l)!=typeid(*this))
+        return false;
+    ColMajor *ll = (ColMajor*) l;
+    return ll->dim == this->dim;
 }

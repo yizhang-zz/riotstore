@@ -176,7 +176,7 @@ MDCoord BlockBased::move(const MDCoord &from, KeyDiff_t diff)
   // return unlinearize(linearize(from) + diff);
 }
 
-BlockBased* BlockBased::clone()
+Linearization* BlockBased::clone()
 {
    return new BlockBased(nDim, arrayDims, blockDims, blockOrders,
          microOrders);
@@ -194,5 +194,5 @@ bool BlockBased::equals(Linearization *l)
 
 LinearizationType BlockBased::getType()
 {
-   return linType;
+   return BLOCK;
 }

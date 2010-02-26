@@ -374,7 +374,7 @@ void Btree::Block::SparseIterator::reset()
     index = begin - 1;
 }
 
-bool Btree::Block::SparseIterator::setIndexRange(int b, int e)
+bool Btree::Block::SparseIterator::setIndexRange(Key_t b, Key_t e)
 {
     begin = b;
     end = e;
@@ -386,6 +386,11 @@ bool Btree::Block::SparseIterator::setIndexRange(int b, int e)
     return true;
 }
 
+bool Btree::Block::SparseIterator::setRange(const Key_t &b, const Key_t &e)
+{
+    throw("not implemented");
+    return false;
+}
 /////////////////// dense iterator ////////////////////////
 
 
@@ -472,3 +477,8 @@ bool Btree::Block::DenseIterator::setRange(const Key_t &b, const Key_t &e)
     return true;
 }
 
+bool Btree::Block::DenseIterator::setIndexRange(Key_t b, Key_t e)
+{
+    throw("not implemented");
+    return false;
+}

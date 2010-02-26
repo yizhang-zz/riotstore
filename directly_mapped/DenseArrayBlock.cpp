@@ -6,10 +6,10 @@ DenseArrayBlock::DenseArrayBlock(DirectlyMappedArray *arr,
                                  PageHandle ph, Key_t lower, Key_t upper) 
 {
     this->array = arr;
-   this->ph = ph;
-   this->lowerBound = lower;
-   this->upperBound = upper;
-   this->data = (Datum_t *) array->getPageImage(ph);
+    this->ph = ph;
+    this->lowerBound = lower;
+    this->upperBound = upper;
+    this->data = (Datum_t *) array->getPageImage(ph);
 }
 
 DenseArrayBlock::~DenseArrayBlock() {}

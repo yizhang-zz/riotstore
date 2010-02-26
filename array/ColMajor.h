@@ -6,8 +6,6 @@
 class ColMajor : public Linearization
 
 {
-   static const LinearizationType linType = COL;
-//   private:
    public:
       /**
        * Storage structure to store state on matrix being linearized
@@ -15,13 +13,10 @@ class ColMajor : public Linearization
        * each coordinate in dimension.coords corresponds to size of the matrix
        * along that dimension
        */
-      u8 nDim;
-      i64 *dims;
-      // MDCoord *dimension;
+      MDCoord dim;
 
 public:
 
-      ColMajor(u8 nDim, const i64 *coords);
       ColMajor(const MDCoord &coord);
       ~ColMajor();
     /**
@@ -75,6 +70,7 @@ public:
      * \return A pointer to a clone of subclass type.
      */
     ColMajor* clone();
+    bool equals(Linearization *l);
     
     LinearizationType getType();
 };

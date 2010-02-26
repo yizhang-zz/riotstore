@@ -74,7 +74,12 @@ public:
             list->_locate(begin-1, path, dists);
             entry = path[0];       
         }
-        bool setIndexRange(int begin, int end)
+        bool setRange(const Key &b, const Key &e)
+        {
+            throw("not implemented");
+            return false;
+        }
+        bool setIndexRange(Key_t begin, Key_t end)
         {
             if (begin >= end || begin <0 || end > list->getSize())
                 return false;

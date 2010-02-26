@@ -4,25 +4,20 @@
 #include "Linearization.h"
 
 class RowMajor : public Linearization
-
 {
-      static const LinearizationType linType = ROW;
-   // make sure none of the dimension sizes are equal to 0!!
+public:
+    // make sure none of the dimension sizes are equal to 0!!
 //   private:
-   public:
       /**
        * Storage structure to store state on matrix being linearized
        * dimension.nDim corresponds to number of dimensions in matrix
        * each coordinate in dimension.coords corresponds to size of the matrix
        * along that dimension
        */
-      u8 nDim;
-      i64 *dims;
-      // MDCoord *dimension;
+    MDCoord dim;
 
 public:
 
-      RowMajor(u8 nDim, const i64 *coords);
       RowMajor(const MDCoord &coord);
       ~RowMajor();
     /**
@@ -76,6 +71,7 @@ public:
      * \return A pointer to a clone of subclass type.
      */
     RowMajor* clone();
+    bool equals(Linearization *l);
     
     LinearizationType getType();
 

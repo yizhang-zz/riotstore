@@ -30,8 +30,6 @@ MDCoord::MDCoord(i64 *coords, u8 nDim)
    {
       this->coords = new i64[nDim];
       memcpy(this->coords, coords, nDim*sizeof(i64));
-//      for (int k = 0; k < nDim; k++)
-  //       this->coords[k] = coords[k];
    }
 }
 
@@ -43,15 +41,13 @@ MDCoord::~MDCoord()
 
 MDCoord::MDCoord(const MDCoord &src)
 {
-   nDim = src.nDim;
-   if (nDim == 0)
+   this->nDim = src.nDim;
+   if (this->nDim == 0)
       coords = NULL;
    else
    {
-      coords = new i64[nDim];
-      memcpy(coords, src.coords, nDim*sizeof(i64));
-      /*for (int k = 0; k < nDim; k++)
-         coords[k] = src.coords[k];*/
+      this->coords = new i64[nDim];
+      memcpy(this->coords, src.coords, nDim*sizeof(i64));
    }
 }
 
@@ -116,3 +112,18 @@ MDCoord & MDCoord::operator-=(const MDCoord &other)
    return *this;
 }
 
+string MDCoord::toString() const
+{
+    char buf[256] = "[";
+    char num[20];
+    if (nDim > 0) {
+        sprintf(num, "%lld", coords[0]);
+        strcat(buf, num);
+    }
+    for (int i=1; i<nDim; i++) {
+        sprintf(num, " %lld", coords[i]); 
+        strcat(buf, num);
+    }
+    strcat(buf, "]");
+    return string(buf);
+}

@@ -25,6 +25,7 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numEleme
       header->numElements = numElements;
       Datum_t x;
       header->dataType = GetDataType(x);
+      header->ch = 'z';
       buffer->markPageDirty(ph);
       buffer->unpinPage(ph);
    }
@@ -57,38 +58,43 @@ int DirectlyMappedArray::get(const Key_t &key, Datum_t &datum)
 {
    if (key < 0 || numElements <= key) 
    {
-      datum =  NA_DOUBLE; // key out of range
-      return AC_OK;
+      return AC_OutOfRange;
    }
 
-   PageHandle ph;
    PID_t pid;
-   findPage(key, &pid);
-   buffer->readPage(pid, ph);
-   Key_t CAPACITY = DenseArrayBlock::CAPACITY;
-   DenseArrayBlock *dab = new DenseArrayBlock(this, ph, 
-         (key/CAPACITY)*CAPACITY, (key/CAPACITY+1)*CAPACITY);
+   DenseArrayBlock *dab;
+   RC_t ret;
+   findPage(key, &(pid));
+   if ((ret=readBlock(pid, &dab)) != RC_OK) {
+       if (ret == RC_NotAllocated) {
+           datum = DefaultValue;
+           return AC_OK;
+       }
+       else {
+           Error("cannot read page %d", pid);
+           exit(ret);
+       }
+   }
+
    datum = dab->get(key);
-   buffer->unpinPage(ph);
+   buffer->unpinPage(dab->getPageHandle());
    delete dab;
    return AC_OK;
 }
 
 int DirectlyMappedArray::put(const Key_t &key, const Datum_t &datum) 
 {
-   PageHandle ph;
    PID_t pid;
+   DenseArrayBlock *dab;
    findPage(key, &(pid));
-   if (buffer->allocatePageWithPID(pid, ph) != RC_OK) 
-   { /* page containing pid already exists */
-       buffer->readPage(pid, ph);
-   }
-   Key_t CAPACITY = DenseArrayBlock::CAPACITY;
-   DenseArrayBlock *dab = new DenseArrayBlock(this, ph, 
-         (key/CAPACITY)*CAPACITY, (key/CAPACITY+1)*CAPACITY);
+   if (readBlock(pid, &dab) != RC_OK && newBlock(pid, &dab) != RC_OK) {
+       Error("cannot read/allocate page %d",pid);
+       exit(1);
+   }   
+   
    dab->put(key, datum);
-   buffer->markPageDirty(ph);
-   buffer->unpinPage(ph);
+   buffer->markPageDirty(dab->getPageHandle());
+   buffer->unpinPage(dab->getPageHandle());
    delete dab;
    return AC_OK;
 }
@@ -99,6 +105,7 @@ ArrayInternalIterator *DirectlyMappedArray::createIterator(IteratorType t, Key_t
       return new DMADenseIterator(beginsAt, endsBy, this);
    else if (t == Sparse)
       return NULL;
+   return NULL;
    // return new DMASparseIterator(beginsAt, endsBy, this);
 }
 
@@ -108,29 +115,41 @@ void DirectlyMappedArray::findPage(const Key_t &key, PID_t *pid)
    *pid = key/CAPACITY + 1;
 }
 
-RC_t DirectlyMappedArray::loadBlock(PID_t pid, DenseArrayBlock** block) 
+RC_t DirectlyMappedArray::readBlock(PID_t pid, DenseArrayBlock** block) 
 {
    PageHandle ph;
    RC_t ret;
-   if ((ret=buffer->readOrAllocatePage(pid, ph)) != RC_OK)
+   if ((ret=buffer->readPage(pid, ph)) != RC_OK)
       return ret;
    Key_t CAPACITY = DenseArrayBlock::CAPACITY;
    *block = new DenseArrayBlock(this, ph, CAPACITY*(pid-1), CAPACITY*pid);
    return RC_OK;
 }
 
-RC_t DirectlyMappedArray::loadNextBlock(PageHandle ph, DenseArrayBlock** block) 
+RC_t DirectlyMappedArray::readNextBlock(PageHandle ph, DenseArrayBlock** block) 
 {
     PID_t pid = buffer->getPID(ph);
     if (DenseArrayBlock::CAPACITY*pid >= numElements)
         return RC_OutOfRange;
     RC_t ret;
-    if ((ret=buffer->readOrAllocatePage(pid+1, ph)) != RC_OK)
+    if ((ret=buffer->readPage(pid+1, ph)) != RC_OK)
         return ret;
    Key_t CAPACITY = DenseArrayBlock::CAPACITY;
    *block = new DenseArrayBlock(this, ph, CAPACITY*(pid), CAPACITY*(pid+1));
    return RC_OK;
 }
+
+RC_t DirectlyMappedArray::newBlock(PID_t pid, DenseArrayBlock** block) 
+{
+   PageHandle ph;
+   RC_t ret;
+   if ((ret=buffer->allocatePageWithPID(pid, ph)) != RC_OK)
+      return ret;
+   Key_t CAPACITY = DenseArrayBlock::CAPACITY;
+   *block = new DenseArrayBlock(this, ph, CAPACITY*(pid-1), CAPACITY*pid);
+   return RC_OK;
+}
+
 RC_t DirectlyMappedArray::releaseBlock(DenseArrayBlock* block) 
 {
     return buffer->unpinPage((block->getPageHandle()));
@@ -148,5 +167,5 @@ uint32_t DirectlyMappedArray::getUpperBound()
 
 void *DirectlyMappedArray::getPageImage(PageHandle ph)
 {
-    buffer->getPageImage(ph);
+    return buffer->getPageImage(ph);
 }

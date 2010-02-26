@@ -74,14 +74,13 @@ public:
      *
      * \return A pointer to a clone of subclass type.
      */
-    BlockBased* clone();
+    Linearization* clone();
 
     bool equals(Linearization *);
 
     LinearizationType getType();
     
 private:
-    static const LinearizationType linType = BLOCK;
     i64 blockSize;
     i64 *blocksPerArray;
     template<class T>

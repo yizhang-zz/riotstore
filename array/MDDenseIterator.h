@@ -102,8 +102,8 @@ public:
     /**
      * \copydoc Iterator::setRange()
      */
-    virtual bool setRange(MDCoord &beginsAt, MDCoord &endsBy);
-
+    virtual bool setRange(const MDCoord &beginsAt, const MDCoord &endsBy);
+    virtual bool setIndexRange(Key_t begin, Key_t end);
     virtual void reset();
     
 protected:
@@ -112,12 +112,17 @@ protected:
     /// The Linearization associated with this iterator.
     Linearization *linearization;
     /// Iteration begins at beginsAt (inclusive).
-    MDCoord beginsAt;
+    //MDCoord beginsAt;
     /// Iteration stops by endsBy (exclusive).
-    MDCoord endsBy;
+    //MDCoord endsBy;
 
 // private:
-    MDCoord cursor;
+    //MDCoord cursor;
+
+    i64 beginIndex;
+    i64 endIndex;
+    i64 cur;
+    bool accel;
 };
 
 #endif

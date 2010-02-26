@@ -57,7 +57,7 @@ RC_t BufferManager::allocatePage(PageHandle &ph) {
     PID_t pid;
     PageRec *rec;
     if ((ret=storage->allocatePage(pid)) != RC_OK) {
-        fprintf(stderr, "Physical storage cannot allocate page; error %d\n", ret);
+        debug(stderr, "Physical storage cannot allocate page; error %d", ret);
         return ret;
     }
 
@@ -81,7 +81,7 @@ RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
     RC_t ret = storage->allocatePageWithPID(pid);
     PageRec *rec;
     if (ret != RC_OK) {
-        fprintf(stderr, "Physical storage cannot allocate pid %d, error %d.\n",pid,ret);
+        debug(stderr, "Physical storage cannot allocate pid %d, error %d",pid,ret);
         return ret;
     }
 
@@ -137,14 +137,16 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
         }
         
         rec->pid = pid;
-        rec->dirty = false;
-        rec->pinCount = 1;
-        pageHash->insert(PageHashMap::value_type(pid, rec));
-        ph = rec;
-        if (storage->readPage(ph) != RC_OK) {
-            fprintf(stderr, "Physical storage cannot read pid %d, error %d.\n", rec->pid, ret);
+        if ((ret=storage->readPage(rec)) != RC_OK) {
+            debug("Physical storage cannot read pid %d, error %d.\n", rec->pid, ret);
+            rec->pid = INVALID_PID;
+            pageReplacer->add(rec);  //recycle
             return ret;
         }
+        rec->dirty = false;
+        rec->pinCount = 1;
+        ph = rec;
+        pageHash->insert(PageHashMap::value_type(pid, rec));
     }
     return RC_OK;
 }
@@ -167,16 +169,21 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
         }
         
         rec->pid = pid;
-        rec->dirty = false;
+        ret = storage->readPage(rec);
+        if (ret != RC_OK) {
+            ret = storage->allocatePageWithPID(pid);
+            if (ret != RC_OK) {
+                rec->pid = INVALID_PID;
+                pageReplacer->add(rec);
+                debug("Read/Alloc: Physical storage cannot allocate page %u\n"
+                      , pid);
+                return ret;
+            }
+            rec->dirty = true;
+        }
         rec->pinCount = 1;
         pageHash->insert(PageHashMap::value_type(pid, rec));
         ph = rec;
-        ret = storage->readPage(ph);
-        if (ret != RC_OK) {
-            ret = storage->allocatePageWithPID(pid);
-            rec->dirty = true;
-            return ret;
-        }
     }
     return RC_OK;
 }

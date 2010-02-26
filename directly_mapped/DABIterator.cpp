@@ -3,13 +3,13 @@
 
 DABIterator::DABIterator(Datum_t *_cur, Key_t _beginsAt, Key_t _endsBy)
 {
-   beginsAt = _beginsAt;
-   endsBy = _endsBy;
-   cur = _cur-1;
-   begin = cur;
-   end = _cur + (_endsBy - _beginsAt);
+    data = _cur;
+    beginsAt = _beginsAt;
+    endsBy = _endsBy;
+    reset();
 }
 
+/*
 // need to make deep copy?
 // still need this?
 DABIterator::DABIterator(const DABIterator& obj) 
@@ -20,6 +20,7 @@ DABIterator::DABIterator(const DABIterator& obj)
    begin = cur;
    end = obj.end;
 }
+*/
 
 DABIterator::~DABIterator() {}
 
@@ -28,36 +29,41 @@ DABIterator::~DABIterator() {}
 bool DABIterator::moveNext() 
 {
    cur++;
-   return cur != end;
+   return cur < endsBy;
 }
 
 bool DABIterator::movePrev()
 {
    cur--;
-   return cur != begin;
+   return cur >= beginsAt;
 }
 
 void DABIterator::get(Key_t &k, Datum_t &d)
 {
-   if (cur == begin)
-   {
-      // k = NA_INT;
-      d = NA_DOUBLE;
-   }
-   else
-   {
-      k = beginsAt + cur - begin - 1;
-      d = *cur;
-   }
+    k = cur+beginsAt;
+    d = data[cur];
 }
 
 void DABIterator::put(const Datum_t &d)
 {
-   if (cur != begin)
-      *cur = d;
+    data[cur] = d;
 }
 
 void DABIterator::reset()
 {
-   cur = begin;
+   cur = beginsAt-1;
+}
+
+bool DABIterator::setIndexRange(Key_t b, Key_t e)
+{
+    beginsAt = b;
+    endsBy = e;
+    reset();
+    return true;
+}
+
+bool DABIterator::setRange(const Key_t &b, const Key_t &e)
+{
+    throw("setRange of DABIterator not implemented");
+    return false;
 }

@@ -4,6 +4,7 @@
 #include "../common/common.h"
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string>
 
 #define COORD(x) ((i64)(x))
 
@@ -137,6 +138,8 @@ public:
     }
 
     //@}
+
+    std::string toString() const;
     
 };
 

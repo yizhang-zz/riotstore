@@ -11,6 +11,7 @@ struct DirectlyMappedArrayHeader
 {
    uint32_t numElements;
    enum DataType dataType;
+    char ch;
 };
 
 /**
@@ -24,27 +25,28 @@ struct DirectlyMappedArrayHeader
  */
 class DirectlyMappedArray : public LinearStorage 
 {
-   protected:
-      uint32_t numElements;
+protected:
+    u32 numElements;
 
-   public:
-      /// If numElements > 0, create a new array; otherwise read from disk.
-      /// Whether file exists is ignored.
-      DirectlyMappedArray(const char* fileName, uint32_t numElements);
-      virtual ~DirectlyMappedArray();
-
-      virtual int get(const Key_t &key, Datum_t &datum);
-      virtual int put(const Key_t &key, const Datum_t &datum);
-      virtual ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);
-
-      void findPage(const Key_t &key, PID_t *pid);
-      RC_t loadBlock(PID_t pid, DenseArrayBlock** block);
-    RC_t loadNextBlock(PageHandle ph, DenseArrayBlock** block);
-      RC_t releaseBlock(DenseArrayBlock* block);
-      uint32_t getLowerBound();
-      uint32_t getUpperBound();
+public:
+    const static double DefaultValue = 0.0;
+    /// If numElements > 0, create a new array; otherwise read from disk.
+    /// Whether file exists is ignored.
+    DirectlyMappedArray(const char* fileName, uint32_t numElements);
+    virtual ~DirectlyMappedArray();
+    
+    virtual int get(const Key_t &key, Datum_t &datum);
+    virtual int put(const Key_t &key, const Datum_t &datum);
+    virtual ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);
+    
+    void findPage(const Key_t &key, PID_t *pid);
+    RC_t readBlock(PID_t pid, DenseArrayBlock** block);
+    RC_t newBlock(PID_t pid, DenseArrayBlock** block);
+    RC_t readNextBlock(PageHandle ph, DenseArrayBlock** block);
+    RC_t releaseBlock(DenseArrayBlock* block);
+    uint32_t getLowerBound();
+    uint32_t getUpperBound();
     void *getPageImage(PageHandle ph);
-
 };
 
 #endif

@@ -14,7 +14,8 @@ class DMASparseIterator : public ArrayInternalIterator
       DenseArrayBlock *block;
       ArrayInternalIterator *iter;
       bool atLastBlock;
-
+    Key_t beginsAt;
+    Key_t endsBy;
       bool nextBlockIterator();
       bool isZero();
 
@@ -27,6 +28,16 @@ class DMASparseIterator : public ArrayInternalIterator
       void get(Key_t &k, Datum_t &d);
       void put(const Datum_t &d);
       void reset();
+        bool setRange(const Key_t &b, const Key_t &e)
+    {
+        throw("not implemented");
+        return false;
+    }
+    bool setIndexRange(i64 b, i64 e)
+    {
+        throw("not implemented");
+        return false;
+    }
 };
 
 #endif

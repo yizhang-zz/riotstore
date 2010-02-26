@@ -51,7 +51,7 @@ class Linearization
 {
 public:
 
-Linearization() {}
+    Linearization() {}
     /**
      * Linearizes the given coord.
      *
@@ -99,7 +99,7 @@ Linearization() {}
      */
     virtual Linearization* clone() = 0;
 
-    virtual bool equals(Linearization*) { return false; }
+    virtual bool equals(Linearization*) = 0;
 
     virtual LinearizationType getType() = 0;
     

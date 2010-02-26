@@ -10,7 +10,7 @@ bool DMASparseIterator::nextBlockIterator()
    PageHandle ph = block->getPageHandle();
    array->releaseBlock(block);
    delete block;
-   int ret = array->loadNextBlock(ph, &block);
+   int ret = array->readNextBlock(ph, &block);
    if (ret != RC_OK) 
       return false;
 
@@ -48,7 +48,7 @@ DMASparseIterator::DMASparseIterator(Key_t _beginsAt, Key_t _endsBy, DirectlyMap
    Key_t upper = endsBy;
    PID_t pid;
    array->findPage(beginsAt, &pid);
-   array->loadBlock(pid, &block);
+   array->readBlock(pid, &block);
 
    atLastBlock = true;
    if (block->getUpperBound() < endsBy) 
@@ -108,7 +108,7 @@ void DMASparseIterator::reset()
    Key_t upper = endsBy;
    PID_t pid;
    array->findPage(beginsAt, &pid);
-   array->loadBlock(pid, &block);
+   array->readBlock(pid, &block);
 
    atLastBlock = true;
    if (block->getUpperBound() < endsBy) 

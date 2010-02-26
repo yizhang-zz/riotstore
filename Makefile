@@ -1,6 +1,6 @@
-DIRS := common lower directly_mapped btree array array/test
+DIRS := common lower directly_mapped btree array
 CXX = g++
-CXXFLAGS += -g -fPIC $(patsubst %,-I%,$(DIRS))
+CXXFLAGS += -Wall -g -fPIC $(patsubst %,-I%,$(DIRS))
 # `pkg-config --cflags-only-I apr-1`
 LDFLAGS += -lgtest `pkg-config --libs apr-1`
 
@@ -18,6 +18,10 @@ all:libriot_store.a
 libriot_store.a: $(OBJ)
 	ar rcs $@ $^
 
+libriot_store.so: $(OBJ)
+	#ar rcs $@ $^
+	$(CXX) -shared $(LDFLAGS) -o $@ $^
+
 include $(OBJ:.o=.d)
 
 %.d:%.cpp
@@ -25,6 +29,6 @@ include $(OBJ:.o=.d)
 	./depend.sh `dirname $*` $(CXXFLAGS) $< > $@
 
 clean:
-	@rm -f $(OBJ)
-	@rm -f $(OBJ:.o=.d)
-	@rm -f libriot_store.a
+	rm -f $(OBJ)
+	rm -f $(OBJ:.o=.d)
+	rm -f libriot_store.a

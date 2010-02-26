@@ -168,7 +168,8 @@ public:
         void get(Key_t &k, Value &d);
         void put(const Value &d);
         void reset();
-        bool setIndexRange(int b, int e);
+        bool setIndexRange(Key_t b, Key_t e);
+        bool setRange(const Key_t &b, const Key_t &e);
     private:
         Block *block;
         int size;
@@ -187,6 +188,8 @@ public:
         void put(const Value &d);
         void reset();
         bool setRange(const Key_t &b, const Key_t &e);
+        bool setIndexRange(Key_t b, Key_t e);
+
     private:
         Block *block;
         int size;

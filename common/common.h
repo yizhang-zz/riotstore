@@ -5,9 +5,6 @@
 
 #include <stdlib.h>
 
-/// Print error message like printf.
-void riot_error(const char *s, ...);
-
 /* Direct I/O, no caching by the OS */
 #if defined(linux)
 #define RIOT_LINUX
@@ -263,5 +260,12 @@ void permute(T* array, const int size)
     }
 }
 
-//#include "PageHandle.h"
+void Error(const char *format, ...);
+
+#ifdef DEBUG
+void debug(const char *format, ...);
+#else
+#define debug(...)
+#endif
+
 #endif

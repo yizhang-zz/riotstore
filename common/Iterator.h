@@ -50,7 +50,7 @@ public:
      * \return true if successfully moved to the previous entry; false
      * if already before the beginning of the collection.
      */
-    virtual bool movePrev() { return false ; }
+    //virtual bool movePrev() { return false ; }
 
     /**
      * Gets the key and datum the iterator currently points to.
@@ -92,23 +92,10 @@ public:
      * \return true if successful; false if out of range or beginsAt
      * is not before endsBy.
      */
-    virtual bool setRange(const K &beginsAt, const K &endsBy)
-    {
-        this->beginsAt = beginsAt;
-        this->endsBy = endsBy;
-        return false;
-    }
+    virtual bool setRange(const K &beginsAt, const K &endsBy) = 0;
 
-    virtual bool setIndexRange(int begin, int end)
-    {
-        return false;
-    }
+    virtual bool setIndexRange(Key_t begin, Key_t end)  = 0;
 
-protected:
-    /// Where the iteration should begin (inclusive).
-    K beginsAt;
-    /// Where the iteration should end (exclusive).
-    K endsBy;
 };
 
 #endif

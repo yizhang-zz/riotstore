@@ -139,6 +139,7 @@ void MDSparseIterator::put(const Datum_t &datum)
 {
    this->beginsAt = beginsAt;
    this->endsBy = endsBy;
+   return true;
 }
    
 void MDSparseIterator::reset()

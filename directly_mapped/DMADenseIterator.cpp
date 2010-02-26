@@ -9,7 +9,7 @@ bool DMADenseIterator::nextBlockIterator()
       return false;
 
    DenseArrayBlock *next;
-   int ret = array->loadNextBlock(block->getPageHandle(), &next);
+   int ret = array->readNextBlock(block->getPageHandle(), &next);
    array->releaseBlock(block);
    delete block;
    block = next;
@@ -43,7 +43,7 @@ DMADenseIterator::DMADenseIterator(Key_t _beginsAt, Key_t _endsBy, DirectlyMappe
    Key_t upper = _endsBy;
    PID_t pid;
    array->findPage(beginsAt, &pid);
-   array->loadBlock(pid, &block);
+   array->readBlock(pid, &block);
 
    atLastBlock = true;
    if (block->getUpperBound() < _endsBy) 
@@ -96,7 +96,7 @@ void DMADenseIterator::reset()
    Key_t upper = endsBy;
    PID_t pid;
    array->findPage(beginsAt, &pid);
-   array->loadBlock(pid, &block);
+   array->readBlock(pid, &block);
 
    atLastBlock = true;
    if (block->getUpperBound() < endsBy) 

@@ -48,12 +48,11 @@ protected:
     LinearStorage *storage;
     /// The Linearization tied to the underlying 1-D storage.
     Linearization *linearization;
-    /// Number of dimensions.
-    u8 nDim;
-    /// Array of sizes of each dimension.
-    i64 *dims;
+    MDCoord dim;
     
 public:
+    static MDCoord peekDim(const char *fileName);
+    
     u32 size; // number of elements
     /**
      * Constructs a new MDArray with given dimensions.
@@ -65,7 +64,7 @@ public:
      * stored. If omitted, a random name consisting 10 hex digits is
      * generated. Guaranteed no existing file will be overwritten.
      */
-    MDArray(u8 nDim, i64 *dims, StorageType type, Linearization *lrnztn, const char *fileName=0);
+    MDArray(MDCoord &dim, StorageType type, Linearization *lrnztn, const char *fileName=0);
 
     /**
      * Constructs and initializes a MDArray from a file stored on

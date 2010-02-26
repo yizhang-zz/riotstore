@@ -5,41 +5,56 @@ MDDenseIterator::MDDenseIterator(MDArray *array, Linearization *linearization)
 {
    this->array = array;
    this->linearization = linearization->clone();
-   beginsAt = MDCoord(linearization->unlinearize(0));
-   endsBy = MDCoord(linearization->unlinearize(array->size));
-   cursor = MDCoord(beginsAt);
+   if (array->getLinearization()->equals(this->linearization))
+       accel = true;
+   else
+       accel = false;
+   //beginsAt = linearization->unlinearize(0);
+   //endsBy = linearization->unlinearize(array->size);
+   beginIndex = 0;
+   endIndex = array->size;
+   reset();
 }
 
 MDDenseIterator::MDDenseIterator(const MDDenseIterator &src)
 {
    array = src.array;
    linearization = src.linearization->clone();
-   beginsAt = src.beginsAt;
-   endsBy = src.endsBy;
-   cursor = src.cursor;
+   //beginsAt = src.beginsAt;
+   //endsBy = src.endsBy;
+   beginIndex = src.beginIndex;
+   endIndex = src.endIndex;
+   reset();
 }
 
 void MDDenseIterator::get(MDCoord &coord, Datum_t &datum)
 {
-   coord = cursor;
-   array->get(cursor, datum);
+    //coord = cursor;
+    //array->get(cursor, datum);
+    coord = linearization->unlinearize(cur);
+    array->get(coord, datum);
 }
 
 bool MDDenseIterator::movePrev()
 {
-   cursor = linearization->unlinearize(linearization->linearize(cursor) - 1);
-   return cursor != beginsAt;
+    //cursor = linearization->unlinearize(linearization->linearize(cursor) - 1);
+    //return cursor != beginsAt;
+    cur--;
+    return cur != beginIndex;
 }
 
 bool MDDenseIterator::moveNext()
 {
-   cursor = linearization->unlinearize(linearization->linearize(cursor) + 1);
-   return cursor != endsBy;
+    //cursor = linearization->unlinearize(linearization->linearize(cursor) + 1);
+    //return cursor != endsBy;
+    cur++;
+    return cur!=endIndex;
 }
 
 void MDDenseIterator::put(const Datum_t &datum)
 {
-   array->put(cursor, datum);
+    MDCoord d = linearization->unlinearize(cur);
+    array->put(d, datum);
 }
 
 MDDenseIterator::~MDDenseIterator()
@@ -47,14 +62,24 @@ MDDenseIterator::~MDDenseIterator()
    delete linearization;
 }
 
-bool MDDenseIterator::setRange(MDCoord &beginsAt, MDCoord &endsBy)
+bool MDDenseIterator::setRange(const MDCoord &beginsAt, const MDCoord &endsBy)
 {
-   this->beginsAt = beginsAt;
-   this->endsBy = endsBy;
-   reset();
+    beginIndex = linearization->linearize(beginsAt);
+    endIndex = linearization->linearize(endsBy);
+    reset();
+    return true;
+}
+
+bool MDDenseIterator::setIndexRange(Key_t begin, Key_t end)
+{
+    beginIndex = begin;
+    endIndex = end;
+    reset();
+    return true;
 }
 
 void MDDenseIterator::reset()
 {
-   cursor = beginsAt;
+    //cursor = linearization->move(beginsAt, -1);
+    cur = beginIndex-1;
 }

@@ -2,13 +2,18 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 
-void riot_error(const char *s, ...)
+
+void Error(const char *s, ...)
 {
 	va_list(arg);
 	va_start(arg, s);
-	vfprintf(stderr, s, arg);
+    char *buf = new char[strlen(s)+16];
+    sprintf(buf, "[ERROR] %s\n", s);
+	vfprintf(stderr, buf, arg);
 	va_end(arg);
+    delete[] buf;
 }
 
 static double R_ValueOfNA()
@@ -42,7 +47,7 @@ int open_direct_bsd(const char *pathname, int flags)
 	if (fd < 0) return fd;
 	int ret = fcntl(fd, F_NOCACHE, 1);
 	if (ret == -1)
-		riot_error("Cannot open %s in direct I/O mode.\n", pathname);
+		Error("Cannot open %s in direct I/O mode", pathname);
 	return fd;
 }
 PageImage allocPageImage(size_t num)
@@ -87,5 +92,18 @@ PageImage allocPageImage(size_t num)
 void freePageImage(PageImage p)
 {
     free(p);
+}
+#endif
+
+#ifdef DEBUG
+void debug(const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    char *buf = new char[strlen(format)+12];
+    sprintf(buf, "[DEBUG] %s\n", format);
+    vfprintf(stderr, buf, args);
+    va_end(args);
+    delete[] buf;
 }
 #endif
