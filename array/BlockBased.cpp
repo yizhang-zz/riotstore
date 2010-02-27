@@ -196,3 +196,20 @@ LinearizationType BlockBased::getType()
 {
    return BLOCK;
 }
+
+Linearization *BlockBased::transpose()
+{
+    i64 ad[nDim];
+    for (int i=0; i<nDim; i++)
+        ad[i] = arrayDims[nDim-1-i];
+    i64 bd[nDim];
+    for (int i=0; i<nDim; i++)
+        bd[i] = blockDims[nDim-1-i];
+    u8 bo[nDim];
+    for (int i=0; i<nDim; i++)
+        bo[i] = blockOrders[nDim-1-i];
+    u8 mo[nDim];
+    for (int i=0; i<nDim; i++)
+        mo[i] = microOrders[nDim-1-i];
+    return new BlockBased(nDim, ad, bd, bo, mo);
+}

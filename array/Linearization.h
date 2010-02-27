@@ -102,6 +102,8 @@ public:
     virtual bool equals(Linearization*) = 0;
 
     virtual LinearizationType getType() = 0;
+
+    virtual Linearization* transpose() { return NULL; }
     
 protected:
     /*

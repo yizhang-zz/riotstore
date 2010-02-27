@@ -79,6 +79,8 @@ public:
     bool equals(Linearization *);
 
     LinearizationType getType();
+
+    Linearization *transpose();
     
 private:
     i64 blockSize;
