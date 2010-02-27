@@ -32,11 +32,11 @@ void DenseArrayBlock::put(Key_t key, Datum_t datum)
 /// assume beginsAt and endsBy are within upperBound and lowerBound
 ArrayInternalIterator *DenseArrayBlock::getIterator(Key_t beginsAt, Key_t endsBy) 
 {
-   return new DABIterator(data + (beginsAt - lowerBound), beginsAt, endsBy);
+   return new DABIterator(data+(beginsAt-lowerBound), beginsAt, endsBy);
 }
 
 ArrayInternalIterator *DenseArrayBlock::getIterator() 
 {
-   return new DABIterator(data, this->lowerBound, this->upperBound);
+   return new DABIterator(data, lowerBound, upperBound);
 }
 

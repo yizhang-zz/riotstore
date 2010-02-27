@@ -44,6 +44,8 @@ public:
     RC_t newBlock(PID_t pid, DenseArrayBlock** block);
     RC_t readNextBlock(PageHandle ph, DenseArrayBlock** block);
     RC_t releaseBlock(DenseArrayBlock* block);
+    Key_t getPageLowerBound(PID_t pid);
+    Key_t getPageUpperBound(PID_t pid);
     uint32_t getLowerBound();
     uint32_t getUpperBound();
     void *getPageImage(PageHandle ph);

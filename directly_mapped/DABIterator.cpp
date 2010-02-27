@@ -1,9 +1,8 @@
-
 #include "DABIterator.h"
 
-DABIterator::DABIterator(Datum_t *_cur, Key_t _beginsAt, Key_t _endsBy)
+DABIterator::DABIterator(Datum_t *_data, Key_t _beginsAt, Key_t _endsBy)
 {
-    data = _cur;
+    data = _data;
     beginsAt = _beginsAt;
     endsBy = _endsBy;
     reset();
@@ -29,13 +28,12 @@ DABIterator::~DABIterator() {}
 bool DABIterator::moveNext() 
 {
    cur++;
-   return cur < endsBy;
+   return cur != size;
 }
 
 bool DABIterator::movePrev()
 {
-   cur--;
-   return cur >= beginsAt;
+   return (cur--) != 0;
 }
 
 void DABIterator::get(Key_t &k, Datum_t &d)
@@ -51,7 +49,8 @@ void DABIterator::put(const Datum_t &d)
 
 void DABIterator::reset()
 {
-   cur = beginsAt-1;
+   cur = -1;
+   size = endsBy - beginsAt;
 }
 
 bool DABIterator::setIndexRange(Key_t b, Key_t e)

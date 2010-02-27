@@ -1,0 +1,115 @@
+
+#include <string>
+#include "DirectlyMappedArray.h"
+#include "DMADenseIterator.h"
+
+bool DMADenseIterator::nextBlockIterator() 
+{
+   if (atLastBlock)
+      return false;
+
+   DenseArrayBlock *next;
+   int ret = array->readNextBlock(block->getPageHandle(), &next);
+   array->releaseBlock(block);
+   delete block;
+   block = next;
+   
+   if (ret != RC_OK) 
+      return false;
+
+   if (block->getUpperBound() < endsBy) 
+   {
+      atLastBlock = false;
+      delete iter;
+      iter = block->getIterator();
+   }
+   else 
+   {
+      atLastBlock = true;
+      delete iter;
+      iter = block->getIterator(block->getLowerBound(), endsBy);
+   }
+   return true;
+}
+
+DMADenseIterator::DMADenseIterator(Key_t _beginsAt, Key_t _endsBy, DirectlyMappedArray* array) 
+{
+    block = NULL;
+    iter = NULL;
+   this->array = array;
+   if (array->getLowerBound() > _beginsAt || array->getUpperBound() < _endsBy)
+      throw std::string("Iterator range out of array range.");
+   setIndexRange(_beginsAt, _endsBy);
+}
+
+DMADenseIterator::~DMADenseIterator() 
+{
+    if (block) {
+        array->releaseBlock(block);
+        delete block;
+    }
+    if (iter)
+        delete iter;
+}
+
+
+bool DMADenseIterator::moveNext()
+{
+   if (iter->moveNext())
+      return true;
+   return nextBlockIterator();
+}
+
+void DMADenseIterator::get(Key_t &k, Datum_t &d)
+{
+   iter->get(k, d);
+}
+
+void DMADenseIterator::put(const Datum_t &d)
+{
+    if (!iter) {
+        array->newBlock(curPid, block);
+        iter = block->getIterator(pBegin, pEnd);
+        currentExists = true;
+    }
+    iter->put(d);
+}
+
+void DMADenseIterator::reset()
+{
+   if (block) {
+       array->releaseBlock(block);
+       delete block;
+       block = NULL;
+   }
+
+   PID_t pid;
+   array->findPage(beginsAt, &pid);
+   Key_t plb = array->getPageLowerBound(pid);
+   Key_t pub = array->getPageUpperBound(pid);
+   
+   currentExists = (RC_OK == array->readBlock(pid, &block));
+
+   atLastBlock = true;
+   Key_t upper = endsBy;
+   if (pub < endsBy) 
+   {
+      atLastBlock = false;
+      upper = pub;
+   }
+
+   if (iter) {
+       delete iter;
+       iter = NULL;
+   }
+   if (currentExists)
+       iter = block->getIterator(beginsAt, upper);
+}
+
+bool DMADenseIterator::setIndexRange(Key_t b, Key_t e)
+{
+   this->beginsAt = b;
+   this->endsBy = e;
+   reset();
+   return true;
+}

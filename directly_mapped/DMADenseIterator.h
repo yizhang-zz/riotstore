@@ -15,16 +15,19 @@ private:
     ArrayInternalIterator *iter;
     bool atLastBlock;
 
-    bool nextBlockIterator();
+    bool nextBlock();
     Key_t beginsAt;
     Key_t endsBy;
+    i64 curKey;
+    PID_t curPid;
+    Key_t plb, pub;
 
 public:
     DMADenseIterator(Key_t _beginsAt, Key_t _endsBy, DirectlyMappedArray* array);
     ~DMADenseIterator();
 
     bool moveNext();
-    bool movePrev();
+    //bool movePrev();
     void get(Key_t &k, Datum_t &d);
     void put(const Datum_t &d);
     void reset();
@@ -33,11 +36,7 @@ public:
         throw("not implemented");
         return false;
     }
-    bool setIndexRange(Key_t b, Key_t e)
-    {
-        throw("not implemented");
-        return false;
-    }
+    bool setIndexRange(Key_t b, Key_t e);
 };
 
 #endif

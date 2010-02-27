@@ -3,107 +3,98 @@
 #include "DirectlyMappedArray.h"
 #include "DMADenseIterator.h"
 
-bool DMADenseIterator::nextBlockIterator() 
+bool DMADenseIterator::nextBlock() 
 {
    if (atLastBlock)
       return false;
 
-   DenseArrayBlock *next;
-   int ret = array->readNextBlock(block->getPageHandle(), &next);
-   array->releaseBlock(block);
-   delete block;
-   block = next;
-   
-   if (ret != RC_OK) 
-      return false;
+   curPid++;
+   plb = array->getPageLowerBound(curPid);
+   pub = array->getPageUpperBound(curPid);
 
-   if (block->getUpperBound() < endsBy) 
-   {
-      atLastBlock = false;
-      delete iter;
-      iter = block->getIterator();
+   if (block) {
+       array->releaseBlock(block);
+       delete block;
+       block = NULL;
    }
-   else 
-   {
-      atLastBlock = true;
-      delete iter;
-      iter = block->getIterator(block->getLowerBound(), endsBy);
-   }
+
+   array->readBlock(curPid, &block);
+
+   atLastBlock = (pub >= endsBy);
+   if (atLastBlock)
+       pub = endsBy;
    return true;
 }
 
 DMADenseIterator::DMADenseIterator(Key_t _beginsAt, Key_t _endsBy, DirectlyMappedArray* array) 
 {
-   this->array = array;
-   if (array->getLowerBound() > _beginsAt || array->getUpperBound() < _endsBy)
-      throw std::string("Iterator range out of array range.");
-   this->beginsAt = _beginsAt;
-   this->endsBy = _endsBy;
-
-   Key_t upper = _endsBy;
-   PID_t pid;
-   array->findPage(beginsAt, &pid);
-   array->readBlock(pid, &block);
-
-   atLastBlock = true;
-   if (block->getUpperBound() < _endsBy) 
-   {
-      atLastBlock = false;
-      upper = block->getUpperBound();
-   }
-   iter = block->getIterator(_beginsAt, upper);
+    block = NULL;
+    this->array = array;
+    if (array->getLowerBound() > _beginsAt || array->getUpperBound() < _endsBy)
+        throw std::string("Iterator range out of array range.");
+    setIndexRange(_beginsAt, _endsBy);
 }
 
 DMADenseIterator::~DMADenseIterator() 
 {
-   array->releaseBlock(block);
-   delete block;
-   delete iter;
+    if (block) {
+        array->releaseBlock(block);
+        delete block;
+    }
 }
-
 
 bool DMADenseIterator::moveNext()
 {
-   if (iter->moveNext())
-      return true;
-   return nextBlockIterator();
-}
-
-/// unimplemented
-bool DMADenseIterator::movePrev()
-{
-   /*if (iter->movePrev())
-      return true;
-   return false; // incomplete!*/
+    curKey++;
+    if (curKey < pub)
+        return true;
+    return nextBlock();
 }
 
 void DMADenseIterator::get(Key_t &k, Datum_t &d)
 {
-   iter->get(k, d);
+    k = curKey;
+    if (!block) {
+        d = DirectlyMappedArray::DefaultValue;
+    }
+    else {
+        d = block->get(curKey);
+    }
 }
 
 void DMADenseIterator::put(const Datum_t &d)
 {
-   iter->put(d);
+    if (!block) {
+        array->newBlock(curPid, &block);
+    }
+    block->put(curKey, d);
 }
 
 void DMADenseIterator::reset()
 {
-   array->releaseBlock(block);
-   delete block;
-   delete iter;
-
-   Key_t upper = endsBy;
-   PID_t pid;
-   array->findPage(beginsAt, &pid);
-   array->readBlock(pid, &block);
-
-   atLastBlock = true;
-   if (block->getUpperBound() < endsBy) 
-   {
-      atLastBlock = false;
-      upper = block->getUpperBound();
+   if (block) {
+       array->releaseBlock(block);
+       delete block;
+       block = NULL;
    }
-   iter = block->getIterator(beginsAt, upper);
+
+   array->findPage(beginsAt, &curPid);
+   plb = array->getPageLowerBound(curPid);
+   pub = array->getPageUpperBound(curPid);
+   
+   array->readBlock(curPid, &block);
+
+   atLastBlock = (pub >= endsBy);
+
+   if (atLastBlock)
+       pub = endsBy;
+   curKey = (i64)beginsAt-1;
 }
 
+bool DMADenseIterator::setIndexRange(Key_t b, Key_t e)
+{
+   this->beginsAt = b;
+   this->endsBy = e;
+   reset();
+   return true;
+}

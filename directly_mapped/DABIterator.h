@@ -11,6 +11,7 @@ class DABIterator : public ArrayInternalIterator
       Datum_t *data;
       Key_t beginsAt;
       Key_t endsBy;
+      i64 size;
       i64 cur;
 
    public:

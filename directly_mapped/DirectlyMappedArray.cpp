@@ -165,6 +165,16 @@ uint32_t DirectlyMappedArray::getUpperBound()
    return numElements;
 }
 
+uint32_t DirectlyMappedArray::getPageLowerBound(PID_t pid) 
+{
+    return DenseArrayBlock::CAPACITY*(pid-1);
+}
+
+uint32_t DirectlyMappedArray::getPageUpperBound(PID_t pid) 
+{
+    return DenseArrayBlock::CAPACITY*(pid);
+}
+
 void *DirectlyMappedArray::getPageImage(PageHandle ph)
 {
     return buffer->getPageImage(ph);
