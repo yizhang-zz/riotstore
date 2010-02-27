@@ -96,6 +96,7 @@ public:
      * \return An iterator for this array.
      */
     MDIterator* createIterator(IteratorType t, Linearization *lnrztn);
+    //ArrayInternalIterator *getStorageIterator();
 
     /**
      * Creates a new iterator with "natural" linearization--same as
@@ -125,8 +126,6 @@ public:
      */
     AccessCode put(MDCoord &coord, const Datum_t &datum);
 
-private:
-    
     /**
      * Creates an internal iterator over the 1-D storage device.
      *

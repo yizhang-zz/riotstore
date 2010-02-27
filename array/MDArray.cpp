@@ -161,7 +161,7 @@ MDArray::~MDArray()
 
 Linearization* MDArray::getLinearization()
 {
-   return linearization->clone(); // clone or not?
+   return linearization; // clone or not?
 }
 
 MDIterator* MDArray::createIterator(IteratorType t, Linearization *lnrztn)
@@ -209,6 +209,6 @@ AccessCode MDArray::put(MDCoord &coord, const Datum_t &datum)
 ArrayInternalIterator* MDArray::createInternalIterator(IteratorType t)
 {
     Key_t start = 0;
-   return storage->createIterator(t, start, size);
+    return storage->createIterator(t, start, size);
 }
 
