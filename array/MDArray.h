@@ -6,6 +6,7 @@
 #include "../lower/LinearStorage.h"
 #include "../common/ArrayInternalIterator.h"
 #include "Linearization.h"
+#include <string>
 
 /**
  * A class for multi-dimensional arrays.  A MDArray presents a logical
@@ -49,6 +50,7 @@ protected:
     /// The Linearization tied to the underlying 1-D storage.
     Linearization *linearization;
     MDCoord dim;
+    std::string fileName;
     
 public:
     static MDCoord peekDim(const char *fileName);
@@ -134,6 +136,7 @@ public:
      */
     ArrayInternalIterator* createInternalIterator(IteratorType t);
     
+    const char* getFileName() { return fileName.c_str(); }
 };
 
 #endif

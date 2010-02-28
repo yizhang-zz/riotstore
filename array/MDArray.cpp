@@ -15,6 +15,7 @@
 #include "ColMajor.h"
 #include "RowMajor.h"
 
+using namespace std;
 using namespace Btree;
 
 
@@ -95,6 +96,7 @@ MDArray::MDArray(MDCoord &dim, StorageType type, Linearization *lnrztn, const ch
     }
     storage->buffer->markPageDirty(ph);
     storage->buffer->unpinPage(ph);
+    this->fileName = fileName;
 }
 
 MDArray::MDArray(const char *fileName)
@@ -151,6 +153,7 @@ MDArray::MDArray(const char *fileName)
   //    MSplitter msp;
       // storage = new BTree(fileName, 0, &msp, &msp); 
    }
+   this->fileName = fileName;
 }
 
 MDArray::~MDArray()

@@ -81,10 +81,13 @@ public:
     LinearizationType getType();
 
     Linearization *transpose();
+    void getBlock(Key_t key, Key_t &begin, Key_t &end);
+    void getBlock(Key_t key, MDCoord &begin, MDCoord &end);
     
 private:
     i64 blockSize;
     i64 *blocksPerArray;
+    i64 *remainders;
     template<class T>
     bool isSameArray(int n, T *a, T *b) {
         for (int i=0; i<n; i++)

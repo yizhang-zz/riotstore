@@ -7,8 +7,6 @@
 #include "PagedStorageContainer.h"
 #include "PageRec.h"
 
-using namespace std;
-
 // forward declaration
 class PageReplacer;
 

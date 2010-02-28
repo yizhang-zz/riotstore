@@ -13,7 +13,7 @@
 
 using namespace std;
 
-TEST(MDArray, Create)
+TEST(DISABLED_MDArray, Create)
 {
     i64 rows = 500L;
     i64 cols = 500L;
@@ -91,20 +91,22 @@ TEST(MDArray, Create)
     delete array;
 }
 
-TEST(MDArray, GenerateData)
+TEST(Gen, GenerateData)
 {
-    i64 rows = 20L;
-    i64 cols = 20L;
+    i64 rows = 5L;
+    i64 cols = 5L;
     MDCoord dim(2, rows, cols);
     StorageType type = DMA;
-    i64 blockDims[] = {10L, 10L};
-    u8 blockOrders[] = {0, 1};
+    i64 blockDims[] = {3L, 2L};
+    u8 blockOrders[] = {1, 0};
     u8 microOrders[] = {0, 1};
     //permute(blockOrders, dim.nDim);
     //permute(microOrders, dim.nDim);
     Linearization *block = new BlockBased(dim.nDim, dim.coords, blockDims,
                                           blockOrders, microOrders);
-    const char *fileName = "a.bin";
+    //Linearization *block = new BlockBased(dim.nDim, dim.coords, blockDims,
+    //                                      blockOrders, microOrders);
+    const char *fileName = "b.bin";
     MDCoord key;
     Datum_t datum = 0.0;
 
