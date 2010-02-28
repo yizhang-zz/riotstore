@@ -137,6 +137,7 @@ public:
     ArrayInternalIterator* createInternalIterator(IteratorType t);
     
     const char* getFileName() { return fileName.c_str(); }
+    int getNDim() { return dim.nDim; }
 };
 
 #endif

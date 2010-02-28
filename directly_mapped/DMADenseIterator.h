@@ -14,6 +14,7 @@ private:
     DenseArrayBlock *block;
     ArrayInternalIterator *iter;
     bool atLastBlock;
+    bool dirty;
 
     bool nextBlock();
     Key_t beginsAt;

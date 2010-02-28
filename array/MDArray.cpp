@@ -96,7 +96,7 @@ MDArray::MDArray(MDCoord &dim, StorageType type, Linearization *lnrztn, const ch
     }
     storage->buffer->markPageDirty(ph);
     storage->buffer->unpinPage(ph);
-    this->fileName = fileName;
+    this->fileName = path;
 }
 
 MDArray::MDArray(const char *fileName)

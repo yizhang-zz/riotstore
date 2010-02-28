@@ -43,7 +43,7 @@ public:
     RC_t readBlock(PID_t pid, DenseArrayBlock** block);
     RC_t newBlock(PID_t pid, DenseArrayBlock** block);
     RC_t readNextBlock(PageHandle ph, DenseArrayBlock** block);
-    RC_t releaseBlock(DenseArrayBlock* block);
+    RC_t releaseBlock(DenseArrayBlock* block, bool dirty=false);
     Key_t getPageLowerBound(PID_t pid);
     Key_t getPageUpperBound(PID_t pid);
     uint32_t getLowerBound();

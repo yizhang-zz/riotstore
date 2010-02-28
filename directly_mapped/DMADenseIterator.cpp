@@ -13,7 +13,7 @@ bool DMADenseIterator::nextBlock()
    pub = array->getPageUpperBound(curPid);
 
    if (block) {
-       array->releaseBlock(block);
+       array->releaseBlock(block, dirty);
        delete block;
        block = NULL;
    }
@@ -23,11 +23,13 @@ bool DMADenseIterator::nextBlock()
    atLastBlock = (pub >= endsBy);
    if (atLastBlock)
        pub = endsBy;
+   dirty = false;
    return true;
 }
 
 DMADenseIterator::DMADenseIterator(Key_t _beginsAt, Key_t _endsBy, DirectlyMappedArray* array) 
 {
+    dirty = false;
     block = NULL;
     this->array = array;
     if (array->getLowerBound() > _beginsAt || array->getUpperBound() < _endsBy)
@@ -38,7 +40,7 @@ DMADenseIterator::DMADenseIterator(Key_t _beginsAt, Key_t _endsBy, DirectlyMappe
 DMADenseIterator::~DMADenseIterator() 
 {
     if (block) {
-        array->releaseBlock(block);
+        array->releaseBlock(block, dirty);
         delete block;
     }
 }
@@ -68,14 +70,16 @@ void DMADenseIterator::put(const Datum_t &d)
         array->newBlock(curPid, &block);
     }
     block->put(curKey, d);
+    dirty = true;
 }
 
 void DMADenseIterator::reset()
 {
    if (block) {
-       array->releaseBlock(block);
+       array->releaseBlock(block, dirty);
        delete block;
        block = NULL;
+       dirty = false;
    }
 
    array->findPage(beginsAt, &curPid);
