@@ -11,12 +11,8 @@ Block* MSplitter::split(Block *orig, PageHandle newPh)
      * range is no larger than a dense node's capacity, then the dense
      * format is used.
      */
-    Key_t beginsAt, endsBy; // bounds of new block
-    u16 size = orig->getSize();
-    u16 sp = size / 2;
-    beginsAt = orig->getKey(sp);
-    //endsBy = orig->getUpperBound();
-    Block *block = orig->split(newPh, sp, beginsAt);
+    int sp = orig->getSize() / 2;
+    Block *block = orig->split(newPh, sp, orig->getKey(sp));
     return block;
     /*
     if (!orig->isLeaf())
@@ -43,12 +39,12 @@ Block* MSplitter::split(Block *orig, PageHandle newPh)
     */
 }
 
-/*
-BtreeBlock* BSplitter::split(BtreeBlock *orig, PageHandle *newHandle)
+
+Block* BSplitter::split(Block *orig, PageHandle newPh)
 {
     // start from the middle and find the closest boundary
-    Key_t left, right, sp;
-    u16 size = orig->getSize();
+    int left, right, sp;
+    int size = orig->getSize();
     if (size % 2 == 0) {
         right = size / 2;
         left = right - 1;
@@ -56,32 +52,32 @@ BtreeBlock* BSplitter::split(BtreeBlock *orig, PageHandle *newHandle)
     else {
         left = right = size / 2;
     }
-    Entry e1,e2;
+    
     while(true) {
         // test if can split in front of left/right position
         // loop is terminated once a split point is found
-        orig->get(right-1, e1);
-        orig->get(right, e2);
-        if (e1.key/boundary < e2.key/boundary) { // integer comparison
+        Key_t k1, k2;
+        k1 = orig->getKey(right-1);
+        k2 = orig->getKey(right);
+        if (k1/boundary < k2/boundary) { // integer comparison
             sp = right;
             break;
         }
         right++;
 
-        orig->get(left-1, e1);
-        orig->get(left, e2);
-        if (e1.key/boundary < e2.key/boundary) {
+        k1 = orig->getKey(left-1);
+        k2 = orig->getKey(left);
+        if (k1/boundary < k2/boundary) {
             sp = left;
             break;
         }
         left--;
     }
 
-    Key_t beginsAt, endsBy; // bounds of new block
-    beginsAt = orig->getKey(sp);
-    endsBy = orig->getUpperBound();
-    BtreeBlock *block;
-    
+    Key_t mid = (orig->getKey(sp)/boundary)*boundary;
+    return orig->split(newPh, sp, mid);
+
+    /*
     // orig is guaranteed to be leaf, as internal blocks always use
     // MSplitter.
     // 
@@ -103,8 +99,10 @@ BtreeBlock* BSplitter::split(BtreeBlock *orig, PageHandle *newHandle)
     
     orig->truncate(sp);
     return block;
+    */
 }
 
+/*
 BtreeBlock* RSplitter::split(BtreeBlock *orig, PageHandle *newHandle)
 {
     Key_t beginsAt, endsBy;

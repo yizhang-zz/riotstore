@@ -68,6 +68,7 @@ void freePageImage(PageImage p)
 int open_direct_sol(const char *pathname, int flags)
 {
 	int fd = open(pathname, flags, 0660);
+    return fd;
 	if (fd < 0)
 		return fd;
 	return directio(fd, DIRECTIO_ON);

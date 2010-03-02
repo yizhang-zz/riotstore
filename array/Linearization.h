@@ -52,6 +52,7 @@ class Linearization
 public:
 
     Linearization() {}
+    virtual ~Linearization() {}
     /**
      * Linearizes the given coord.
      *

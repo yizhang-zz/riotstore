@@ -1,6 +1,6 @@
 CXX = g++
-CXXFLAGS = -g 
-LDFLAGS = -lgtest -lapr-1
+CXXFLAGS = -g `pkg-config --cflags-only-I apr-1`
+LDFLAGS = -L/usr/local/lib -lgtest `pkg-config --libs apr-1` -R/usr/apr/1.3/lib
 
 .PHONY: all clean lower
 

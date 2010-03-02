@@ -1,12 +1,11 @@
 #ifndef BTREE_H
 #define BTREE_H
 
+#include "../lower/LinearStorage.h"
 #include "BtreeBlock.h"
 #include "BtreeCursor.h"
 #include "Splitter.h"
 #include "BtreePagePacker.h"
-#include "../lower/PagedStorageContainer.h"
-#include "../lower/BufferManager.h"
 
 namespace Btree
 {
@@ -26,13 +25,9 @@ struct BTreeHeader {
  * BitmapPagedFile. The first (PID=0) page in the file contains the header
  * of the entire BTree, as defined in struct BTreeHeader.
  */
-class BTree {
-protected:
-	// the underlying file storing the B-tree
-	PagedStorageContainer *file;
+class BTree : public LinearStorage {
 
-	// buffer manager for this array; default LRU
-	BufferManager *buffer;
+protected:
     BtreePagePacker *packer;
     Splitter *internalSplitter;
     Splitter *leafSplitter;
@@ -71,13 +66,15 @@ public:
 
     int search(Key_t key, Cursor *cursor);
 
-	int put(Key_t &key, Datum_t &datum);
-	int put(Key_t begin, Key_t end, Datum_t *data);
-	int put(Key_t *keys, Datum_t *data, int length);
+	int put(const Key_t &key, const Datum_t &datum);
+	//int put(Key_t begin, Key_t end, Datum_t *data);
+	//int put(Key_t *keys, Datum_t *data, int length);
 
-	int get(Key_t key, Datum_t *datum);
-	int get(Key_t begin, Key_t end, Datum_t *data);
-	int get(Key_t *keys, Datum_t *data, int length);
+	int get(const Key_t &key, Datum_t &datum);
+	//int get(Key_t begin, Key_t end, Datum_t *data);
+	//int get(Key_t *keys, Datum_t *data, int length);
+
+    ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);
 
     void setInternalSplitter(Splitter *sp) {internalSplitter = sp; }
     void setLeafSplitter(Splitter *sp) { leafSplitter = sp; }

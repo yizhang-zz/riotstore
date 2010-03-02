@@ -1,6 +1,9 @@
+#include <iostream>
 #include "BtreeBlock.h"
 #include "Btree.h"
 #include "BtreeConfig.h"
+
+using namespace std;
 
 const size_t Btree::Block::DenseLeafCapacity = initCapacity(Btree::Block::DenseLeaf);
 const size_t Btree::Block::SparseLeafCapacity = initCapacity(Btree::Block::SparseLeaf);

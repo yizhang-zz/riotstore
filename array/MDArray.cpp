@@ -43,6 +43,8 @@ MDCoord MDArray::peekDim(const char *fileName)
 
 MDArray::MDArray(MDCoord &dim, StorageType type, Linearization *lnrztn, const char *fileName)
 {
+    this->leafsp = NULL;
+    this->intsp = NULL;
     this->dim = dim;
     assert(dim.nDim != 0);
     size = 1;
@@ -65,17 +67,20 @@ MDArray::MDArray(MDCoord &dim, StorageType type, Linearization *lnrztn, const ch
     {
         strcpy(path, fileName);
     }
-//   MSplitter msp;
+
     switch (type)
     {
     case DMA:
         storage = new DirectlyMappedArray(path, size);
         break;
     case BTREE:
-        // storage = new BTree(path, size, &msp, &msp); 
+        leafsp = new MSplitter();
+        intsp = new MSplitter();
+        storage = new BTree(path, size, leafsp, intsp); 
         break;
     default:
         storage = NULL;
+        assert(false);
         break;
     }
     PageHandle ph;
@@ -101,6 +106,8 @@ MDArray::MDArray(MDCoord &dim, StorageType type, Linearization *lnrztn, const ch
 
 MDArray::MDArray(const char *fileName)
 {
+    this->intsp = NULL;
+    this->leafsp = NULL;
    if (access(fileName, F_OK) != 0)
       throw ("File for array does not exist.");
    FILE *file = fopen(fileName, "rb");
@@ -150,21 +157,26 @@ MDArray::MDArray(const char *fileName)
    }
    else if (type == BTREE)
    {
-  //    MSplitter msp;
-      // storage = new BTree(fileName, 0, &msp, &msp); 
+       leafsp = new MSplitter();
+       intsp = new MSplitter();
+       storage = new BTree(fileName, leafsp, intsp);
    }
    this->fileName = fileName;
 }
 
 MDArray::~MDArray()
 {
+    if (intsp)
+        delete intsp;
+    if (leafsp)
+        delete leafsp;
    delete linearization;
    delete storage;
 }
 
 Linearization* MDArray::getLinearization()
 {
-   return linearization; // clone or not?
+   return linearization;
 }
 
 MDIterator* MDArray::createIterator(IteratorType t, Linearization *lnrztn)
@@ -174,10 +186,10 @@ MDIterator* MDArray::createIterator(IteratorType t, Linearization *lnrztn)
       case Dense:
          return new MDDenseIterator(this, lnrztn);
       case Sparse:
-         // return MDSparseIterator(storage, lnrztn);
-      default:
-         return NULL;
+          assert(false);
+          // return MDSparseIterator(storage, lnrztn);
    }
+   return NULL;
 }
 
 MDIterator* MDArray::createNaturalIterator(IteratorType t)

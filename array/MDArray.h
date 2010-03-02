@@ -6,6 +6,7 @@
 #include "../lower/LinearStorage.h"
 #include "../common/ArrayInternalIterator.h"
 #include "Linearization.h"
+#include "../btree/Splitter.h"
 #include <string>
 
 /**
@@ -51,6 +52,10 @@ protected:
     Linearization *linearization;
     MDCoord dim;
     std::string fileName;
+
+private:
+    Btree::Splitter *intsp;
+    Btree::Splitter *leafsp;
     
 public:
     static MDCoord peekDim(const char *fileName);

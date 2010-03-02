@@ -96,13 +96,13 @@ TEST(SkipList, All)
 
     // removeAt
     cout<<"before removeAt(0)"<<endl;
-    sl.print();
+    cout<<sl.toString()<<endl;
     cout<<"after removeAt(0)"<<endl;
     sl.removeAt(0);
-    sl.print();
+    cout<<sl.toString()<<endl;
     cout<<"after removeAt(num/3)"<<endl;
     sl.removeAt(num/3);
-    sl.print();
+    cout<<sl.toString()<<endl;
     
 
     //sl.print();
@@ -116,11 +116,3 @@ TEST(SkipList, All)
     //apr_pool_destroy(pool);
     //apr_terminate();
 }
-
-int main(int argc, char **argv) {
-    srand(103948);
-    apr_initialize();
-	testing::InitGoogleTest(&argc, argv);
-	return RUN_ALL_TESTS();
-}
-

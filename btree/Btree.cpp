@@ -1,8 +1,11 @@
+#include <iostream>
+
+#include "../lower/BitmapPagedFile.h"
 #include "BtreeBlock.h"
 #include "Btree.h"
-#include "../lower/BitmapPagedFile.h"
-#include "../lower/LRUPageReplacer.h"
-#include <iostream>
+#include "BtreeDenseIterator.h"
+
+using namespace Btree;
 
 Btree::BTree::BTree(const char *fileName, u32 endsBy,
         Splitter *leafSp, Splitter *intSp)
@@ -12,7 +15,7 @@ Btree::BTree::BTree(const char *fileName, u32 endsBy,
     packer = new BtreePagePacker;
     buffer->setPagePacker(packer);
     assert(buffer->allocatePageWithPID(0, headerPage) == RC_OK);
-    header = (BTreeHeader*) buffer->getPageImage(headerPage);
+    header = (BTreeHeader*) getPagePacked(headerPage);
     header->endsBy = endsBy;
     header->nLeaves = 0;
     header->depth = 0;
@@ -33,7 +36,7 @@ Btree::BTree::BTree(const char *fileName,
     buffer->setPagePacker(packer);
 
     assert(buffer->readPage(0, headerPage) == RC_OK);
-    header = (BTreeHeader*) buffer->getPageImage(headerPage);
+    header = (BTreeHeader*) getPagePacked(headerPage);
 
     leafSplitter = leafSp;
     internalSplitter = intSp;
@@ -87,7 +90,22 @@ int Btree::BTree::search(Key_t key, Cursor *cursor)
     return ret;
 }
 
-int Btree::BTree::put(Key_t &key, Datum_t &datum)
+int Btree::BTree::get(const Key_t &key, Datum_t &datum)
+{
+    Cursor cursor(this);
+    int ret = search(key, &cursor);
+    if (ret != BT_OK) {
+        datum = Block::defaultValue;
+        return BT_OK;
+    }
+    Block *block = cursor.trace[cursor.current];
+    Value v;
+    block->get(key, v);
+    datum = v.datum;
+    return ret;
+}
+
+int Btree::BTree::put(const Key_t &key, const Datum_t &datum)
 {
     Cursor cursor(this);
 
@@ -100,6 +118,8 @@ int Btree::BTree::put(Key_t &key, Datum_t &datum)
         header->root = buffer->getPID(ph);
         header->nLeaves++;
         header->firstLeaf = header->root;
+        buffer->markPageDirty(headerPage);
+
         cursor.current = 0;
         cursor.trace[cursor.current] = new Block(this, ph, 0, header->endsBy,
                                                  true, Block::SparseLeaf);
@@ -156,6 +176,7 @@ void Btree::BTree::split(Cursor *cursor)
         newRoot->put(newBlock->getLowerBound(), v);
         header->root = buffer->getPID(rootPh);
         header->depth++;
+        buffer->markPageDirty(headerPage);
         buffer->unpinPage(newPh);
         buffer->unpinPage(rootPh);
         delete newBlock;
@@ -173,4 +194,12 @@ void Btree::BTree::print()
     root->print(0);
     delete root;
     buffer->unpinPage(ph);
+}
+
+ArrayInternalIterator *BTree::createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy)
+{
+    if (t == Dense)
+        return new BTreeDenseIterator(beginsAt, endsBy, this);
+    else
+        return NULL;
 }

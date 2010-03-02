@@ -2,7 +2,7 @@
 #define BUFFER_MANAGER_H
 
 #include <apr_pools.h>
-#include <tr1/unordered_map>
+#include <map>
 #include "../common/common.h"
 #include "PagedStorageContainer.h"
 #include "PageRec.h"
@@ -35,7 +35,7 @@ class BufferManager {
 
 private:
 
-    typedef std::tr1::unordered_map<PID_t, PageRec*> PageHashMap;
+    typedef std::map<PID_t, PageRec*> PageHashMap;
 
     // The underlying storage.
     PagedStorageContainer *storage;

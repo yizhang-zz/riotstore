@@ -2,8 +2,9 @@
 #define SKIPLIST_H
 #include <stdlib.h>
 #include <apr_pools.h>
-#include <fstream>
-#include <iostream>
+#include <string>
+//#include <fstream>
+//#include <iostream>
 #include "../common/Iterator.h"
 
 template<class Key, class Value>
@@ -94,7 +95,7 @@ public:
         int end;
         SkipList<Key, Value> *list;
         //int current;
-        SkipList<Key, Value>::Entry *entry;
+        Entry *entry;
     };
     friend class SkipList<Key, Value>::Iterator;
 
@@ -288,23 +289,25 @@ public:
     }
 
     
-    void print()
+    std::string toString()
     {
-        using namespace std;
-        cout<<"--------------------------------\n";
+        std::string s;
+        char buf[32];
         Entry* start = head;
         for (int i=head->level; i>=0; i--) {
             Entry *e = start;
 
             while (e) {
-                cout<<e->key;
+                sprintf(buf, "%ud", e->key);
+                s += buf;
                 for (int k=0; k<e->dist; k++)
-                    cout<<"\t";
+                    s+= "\t";
                 e = e->right;
             }
-            cout<<endl;
+            s += "\n";
             start = start->below;
         }
+        return s;
     }
     
     int getSize() {return size;}

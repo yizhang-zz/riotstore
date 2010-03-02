@@ -47,7 +47,7 @@ public:
      * on multiples of the given boundary.
      * @param boundary The splitting boundary.
      */
-    BSplitter(u16 boundary) { this->boundary = boundary; }
+    BSplitter(u16 b):boundary(b) { }
 
 private:
     u16 boundary;

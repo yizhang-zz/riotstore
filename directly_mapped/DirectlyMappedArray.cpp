@@ -153,7 +153,6 @@ RC_t DirectlyMappedArray::newBlock(PID_t pid, DenseArrayBlock** block)
 RC_t DirectlyMappedArray::releaseBlock(DenseArrayBlock* block, bool dirty) 
 {
     if (dirty) {
-        printf("page %d", buffer->getPID(block->getPageHandle()));
         buffer->markPageDirty(block->getPageHandle());
     }
     return buffer->unpinPage((block->getPageHandle()));

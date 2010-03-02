@@ -193,7 +193,7 @@ RC_t BitmapPagedFile::writePage(PageHandle ph) {
     }
     */
     lseek(fd, (1 + pid)*PAGE_SIZE, SEEK_SET); // +1 for header page
-    write(fd, rec->image, PAGE_SIZE);
+    assert(write(fd, rec->image, PAGE_SIZE)>=0);
     writeCount++;
     return RC_OK;
 }
