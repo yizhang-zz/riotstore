@@ -9,7 +9,6 @@
 
 namespace Btree
 {
-const int BTreeBufferSize = 100;
 
 struct BTreeHeader {
     u32 endsBy;		/// all keys >=0 and < endsBy
@@ -26,6 +25,9 @@ struct BTreeHeader {
  * of the entire BTree, as defined in struct BTreeHeader.
  */
 class BTree : public LinearStorage {
+public:
+    static int BufferSize;
+    static int getBufferSize();
 
 protected:
     BtreePagePacker *packer;

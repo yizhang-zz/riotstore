@@ -7,11 +7,21 @@
 
 using namespace Btree;
 
+int BTree::BufferSize = BTree::getBufferSize();
+int BTree::getBufferSize() {
+    int n = 5000;
+    if (getenv("RIOT_BTREE_BUFFER") != NULL) {
+        n = atoi(getenv("RIOT_BTREE_BUFFER"));
+    }
+    debug("Using buffer size %dKB for Btree", n*4);
+    return n;
+}
+
 Btree::BTree::BTree(const char *fileName, u32 endsBy,
         Splitter *leafSp, Splitter *intSp)
 {
     file = new BitmapPagedFile(fileName, BitmapPagedFile::F_CREATE);
-    buffer = new BufferManager(file, BTreeBufferSize);
+    buffer = new BufferManager(file, BufferSize);
     packer = new BtreePagePacker;
     buffer->setPagePacker(packer);
     assert(buffer->allocatePageWithPID(0, headerPage) == RC_OK);
@@ -31,7 +41,7 @@ Btree::BTree::BTree(const char *fileName,
         Splitter *leafSp, Splitter *intSp)
 {
     file = new BitmapPagedFile(fileName, BitmapPagedFile::F_NO_CREATE);
-    buffer = new BufferManager(file, BTreeBufferSize);
+    buffer = new BufferManager(file, BufferSize);
     packer = new BtreePagePacker;
     buffer->setPagePacker(packer);
 

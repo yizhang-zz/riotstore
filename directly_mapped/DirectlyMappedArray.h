@@ -5,8 +5,6 @@
 #include "../lower/LinearStorage.h"
 #include "DenseArrayBlock.h"
 
-const int BUFFER_SIZE = 100;
-
 struct DirectlyMappedArrayHeader 
 {
    uint32_t numElements;
@@ -29,6 +27,8 @@ protected:
     u32 numElements;
 
 public:
+    static int BufferSize;
+    static int getBufferSize();
     const static double DefaultValue = 0.0;
     /// If numElements > 0, create a new array; otherwise read from disk.
     /// Whether file exists is ignored.
