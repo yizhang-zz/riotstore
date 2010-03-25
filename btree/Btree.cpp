@@ -74,7 +74,7 @@ int Btree::BTree::search(Key_t key, Cursor *cursor)
     cursor->trace[0] = block;
     cursor->current = 0;
 
-    for (int i=1; i<header->depth; i++) {
+    for (u32 i=1; i<header->depth; i++) {
         int &idx = cursor->indices[cursor->current];
         int ret = block->search(key, idx);
         /* idx is the position where the key should be inserted at.
@@ -162,7 +162,7 @@ void Btree::BTree::split(Cursor *cursor)
     int ret = BT_OVERFLOW;
     for (int i=cur-1; i>=0; i--) {
         Block *parent = cursor->trace[i];
-        u16 pos = cursor->indices[i] + 1;
+        //u16 pos = cursor->indices[i] + 1;
         v.pid = buffer->getPID(newPh);
         ret = parent->put(newBlock->getLowerBound(), v);
         buffer->markPageDirty(parent->getPageHandle());

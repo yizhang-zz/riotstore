@@ -240,7 +240,6 @@ public:
         // distance between the i-th turning point and the (i+1)-th
         int dists[MAX_LEVEL];
 
-        Entry *p, *q;
         _search(key, path, dists);
 
         if (path[0]->key != key) {

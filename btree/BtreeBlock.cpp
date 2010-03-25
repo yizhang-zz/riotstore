@@ -13,7 +13,7 @@ size_t Btree::Block::initCapacity(Type t)
 {
     size_t unit;
     size_t headerSize;
-    char *name;
+    const char *name;
     switch(t) {
     case SparseLeaf:
         unit = (sizeof(Key_t)+sizeof(Datum_t));
@@ -35,7 +35,7 @@ size_t Btree::Block::initCapacity(Type t)
     BtreeConfig *config = BtreeConfig::getInstance();
     if (config) {
         const char *val;
-        if (val=config->get(name)) {
+        if ((val=config->get(name))) {
             cap = atoi(val);
         }
     }
@@ -261,7 +261,6 @@ void Btree::Block::print(int depth)
 
         if (tree != NULL && size > 0) {
             PageHandle ph;
-            int i = 0;
             List::Iterator *it = list->getIterator();
             Key_t key1, key2;
             Value val1, val2;
@@ -292,7 +291,6 @@ void Btree::Block::print(int depth)
 Btree::Block *Btree::Block::split(PageHandle newPh, int sp, Key_t spKey)
 {
     Block *newBlock;
-    PID_t pid;
     if (!isLeaf()) { // internal
         newBlock = new Block(tree, newPh, spKey, upper, true, Internal);
     }
