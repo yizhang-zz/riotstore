@@ -1,6 +1,11 @@
 CXX = g++
 CXXFLAGS = -g `pkg-config --cflags-only-I apr-1`
-LDFLAGS = -L/usr/local/lib -lgtest `pkg-config --libs apr-1` -R/usr/apr/1.3/lib
+LDFLAGS = -L/usr/local/lib -lgtest `pkg-config --libs apr-1`
+
+OSTYPE = $(shell uname)
+ifeq ($(OSTYPE), SunOS)
+	LDFLAGS += -R/usr/apr/1.3/lib
+endif
 
 .PHONY: all clean lower
 
