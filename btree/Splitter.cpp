@@ -1,4 +1,7 @@
 #include <math.h>
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_sf_gamma.h>
+#include <gsl/gsl_sf_exp.h>
 #include "Splitter.h"
 #include "BtreeBlock.h"
 #include <limits>
@@ -79,15 +82,20 @@ Block* BSplitter::split(Block *orig, PageHandle newPh)
 Block* RSplitter::split(Block *orig, PageHandle newPh)
 {
   int size = orig->getSize();
-  double lower = orig->getLowerBound();
-  double upper = orig->getUpperBound();
+  Key_t lower = orig->getLowerBound();
+  Key_t upper = orig->getUpperBound();
   double min = std::numeric_limits<double>::max();
   int sp;
-  for (int i=1; i<size; i++) {
+  for (int i=1; i<size-1; i++) {
 	// try to split before the i-th element
 	double r1, r2;
-	r1 = (orig->getKey(i)-lower-(i)) / (orig->capacity-i);
-	r2 = (upper-orig->getKey(i)-(size-i)) / (orig->capacity-(size-i));
+	// capacity of left child is the same as orig (node reuse)
+	int rcapacity = 0;
+	Block::Type t1, t2;
+	orig->splitTypes(i, orig->getKey(i), t1, t2);
+	rcapacity = Block::BlockCapacity[t2];
+	r1 = ((orig->getKey(i)-lower)-i) / (orig->capacity-i);
+	r2 = ((upper-orig->getKey(i))-(size-i)) / (rcapacity-(size-i));
 	double diff = fabs(r1-r2);
 	if (diff < min) {
 	  min = diff;
@@ -95,4 +103,58 @@ Block* RSplitter::split(Block *orig, PageHandle newPh)
 	}
   }
   return orig->split(newPh, sp, orig->getKey(sp));
+}
+
+Block* SSplitter::split(Block *orig, PageHandle newPh)
+{
+  int size = orig->getSize();
+  Key_t lower = orig->getLowerBound();
+  Key_t upper = orig->getUpperBound();
+  int sp = 0;
+  double max = std::numeric_limits<double>::min();
+  for (int i=1; i < size-1; i++) {
+	Block::Type t1, t2;
+	orig->splitTypes(i, orig->getKey(i), t1, t2);
+	int lcap = Block::BlockCapacity[t1];
+	int rcap = Block::BlockCapacity[t2];
+	Key_t key = orig->getKey(i);
+	double x = sValue(lcap-i, rcap-(size-i), (key-lower)-i, 
+					  (upper-key)-(size-i));
+	if (x > max) {
+	  max = x;
+	  sp = i;
+	}
+  }
+  
+  return orig->split(newPh, sp, orig->getKey(sp));
+}
+
+double SSplitter::sValue(int b1, int b2, int d1, int d2)
+{
+  double v1, v2;
+  int d = d1+d2;
+  double den = gsl_sf_lnchoose(d, d1);
+
+  if (d1 <= b1)
+	v1 = std::numeric_limits<double>::max();
+  else {
+	int stop = b1+GSL_MIN(b2, d2);
+	double re = 0;
+	for (int k=b1; k <= stop; k++) {
+	  re += k * gsl_sf_exp(gsl_sf_lnchoose(k,b1)+gsl_sf_lnchoose(d-k-1,d1-b1-1)-den);
+	}
+	v1 = re;
+  }
+
+  if (d2 <= b2)
+	v2 = std::numeric_limits<double>::max();
+  else { 
+	int stop = b2+GSL_MIN(b1, d1);
+	double re = 0;
+	for (int k=b2; k <= stop; k++) {
+	  re += k * gsl_sf_exp(gsl_sf_lnchoose(k,b2)+gsl_sf_lnchoose(d-k-1,d2-b2-1)-den);
+	}
+	v2 = re;
+  }
+  return GSL_MIN(v1, v2);
 }

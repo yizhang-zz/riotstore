@@ -9,7 +9,8 @@ endif
 
 .PHONY: all clean lower
 
-objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp))
+SRC := main.cpp TestSplitter.cpp
+objects := $(patsubst %.cpp, %.o, $(SRC))
 par_objects := $(patsubst %.cpp, %.o, $(wildcard ../*.cpp))
 lower_objects := $(wildcard ../../lower/*.o)
 

@@ -63,5 +63,13 @@ public:
     Block* split(Block *orig, PageHandle newPh);
     // RSplitter(u16 boundary) { this->boundary = boundary; }
 };
+
+class SSplitter : public Splitter
+{
+public:
+    Block* split(Block *orig, PageHandle newPh);
+private:
+    double sValue(int b1, int b2, int d1, int d2);
+};
 }
 #endif
