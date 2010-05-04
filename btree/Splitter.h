@@ -19,6 +19,7 @@ public:
      * returned.
      *
      * @param orig The original node.
+     * @param newPh The page handle where the new node should be stored.
      * @return The new node on the right after split.
      */
     virtual Block* split(Block *orig, PageHandle newPh) = 0;
@@ -67,9 +68,26 @@ public:
 class SSplitter : public Splitter
 {
 public:
+  /**
+   * Split to maximize the S metric.
+   */
     Block* split(Block *orig, PageHandle newPh);
 private:
     double sValue(int b1, int b2, int d1, int d2);
+};
+
+class TSplitter : public Splitter
+{
+public:
+  /**
+   * If any of the two child nodes after split has a density greater
+   * than the given threshold, then split so as to achieve the best
+   * density; otherwise fallback to the M scheme.
+   */
+  Block* split(Block *orig, PageHandle newPh);
+  TSplitter(double threshold) { this->threshold = threshold; }
+  private:
+  double threshold;
 };
 }
 #endif

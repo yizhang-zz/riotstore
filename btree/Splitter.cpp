@@ -158,3 +158,45 @@ double SSplitter::sValue(int b1, int b2, int d1, int d2)
   }
   return GSL_MIN(v1, v2);
 }
+
+Block* TSplitter::split(Block *orig, PageHandle newPh)
+{
+  int size = orig->getSize();
+  Key_t lower = orig->getLowerBound();
+  Key_t upper = orig->getUpperBound();
+  int sp = 0;
+
+  // all elements in the left node should be < marker0,
+  // all elements in the right node should be >= marker1
+  // relative order: lower ... marker1 ... marker0 ... upper
+  int marker0, marker1;
+  int index0, index1;
+  double r0, r1;
+  // left node always inherits the original format
+  if (!orig->isDense()) {
+	marker0 = lower+Block::BlockCapacity[Block::SparseLeaf];
+	orig->search(marker0, index0);
+	r0 = ((double) index0)/Block::BlockCapacity[Block::SparseLeaf];
+  }
+  else {
+	marker0 = lower+Block::BlockCapacity[Block::DenseLeaf];
+	orig->search(marker0, index0);
+	r0 = ((double) index0)/Block::BlockCapacity[Block::DenseLeaf];
+  }
+
+  // right child should be dense to accommodate more elements
+  marker1 = upper-Block::BlockCapacity[Block::DenseLeaf];
+  orig->search(marker1, index1);
+  r1 = ((double) (size-index1))/Block::BlockCapacity[Block::DenseLeaf];
+  
+  // if any child is dense enough, then pick the one that results in
+  // the maximum density; otherwise split in the middle
+  if (r0 < threshold && r1 < threshold)
+	sp = size/2;
+  else if (r0 > r1)
+	sp = index0;
+  else
+	sp = index1;
+
+  return orig->split(newPh, sp, orig->getKey(sp));
+}
