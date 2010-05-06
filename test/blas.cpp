@@ -12,9 +12,8 @@
 
 using namespace std;
 
-#define n 300L
-#define blk_size 30L
-
+int n = 300;
+i64 blk_size = 30;
 i64 sparsity = 50L; // 50% sparsity
 
 int readCount = 0;
@@ -220,7 +219,7 @@ int main()
 {
 
    pFile = fopen(resultFile, "ab+");
-   fprintf(pFile, "\nn = %li\t\t\treads\t\twrites\t\taccess time\t\texecution time\n", n);
+   fprintf(pFile, "\nn = %i\t\t\treads\t\twrites\t\taccess time\t\texecution time\n", n);
 
    i64 k[n*n];
    for (int i = 0; i < n*n; i++)

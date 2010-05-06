@@ -10,8 +10,7 @@
 
 using namespace std;
 
-#define n 512L
-
+int n = 300;
 i64 rows = n;
 i64 cols = n;
 MDCoord dim(2, rows, cols);
@@ -21,7 +20,6 @@ Linearization *col = new ColMajor(dim);
 const char *fileName = "/var/tmp/local/array.bin";
 MDCoord coord;
 Datum_t datum;
-i64 k[n*n];
 
 int readCount = 0;
 int writeCount = 0;
@@ -121,6 +119,11 @@ void stridedIteratorInsert()
 /// random insertion into nxn array, all indices are written to once
 void randomInsert()
 {
+   i64 k[n*n];
+   for (int i = 0; i < n*n; i++)
+   {
+      k[i] = i;
+   }
    MDArray *array = new MDArray(dim, type, row, fileName);
    PagedStorageContainer::resetCounts();
    permute(k, n*n);
@@ -175,6 +178,11 @@ void sequentialRead()
 /// random read from nxn array. all indices are read once
 void randomRead()
 {
+   i64 k[n*n];
+   for (int i = 0; i < n*n; i++)
+   {
+      k[i] = i;
+   }
    MDArray *array = new MDArray(fileName);
    PagedStorageContainer::resetCounts();
    permute(k, n*n);
@@ -200,13 +208,9 @@ void randomRead()
 
 int main()
 {
-   for (int i = 0; i < n*n; i++)
-   {
-      k[i] = i;
-   }
 
    pFile = fopen(resultFile, "ab+");
-   fprintf(pFile, "\nn = %li\t\t\treads\t\twrites\t\taccess time\t\texecution time\n", n);
+   fprintf(pFile, "\nn = %i\t\t\treads\t\twrites\t\taccess time\t\texecution time\n", n);
 
    sequentialInsert();
    stridedInsert();
