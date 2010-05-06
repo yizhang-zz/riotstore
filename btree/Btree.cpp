@@ -35,6 +35,9 @@ Btree::BTree::BTree(const char *fileName, u32 endsBy,
 
     leafSplitter = leafSp;
     internalSplitter = intSp;
+
+#ifdef USE_BATCH_BUFFER
+#endif
 }
 
 Btree::BTree::BTree(const char *fileName,

@@ -1,6 +1,7 @@
 DIRS := common lower directly_mapped btree array
 CXX = g++
 CXXFLAGS += -Wall -g -fPIC $(patsubst %,-I%,$(DIRS))
+CXXFLAGS += -DUSE_BATCH_BUFFER
 # `pkg-config --cflags-only-I apr-1`
 LDFLAGS += -lgtest `pkg-config --libs apr-1` -R/usr/apr/1.3/lib
 

@@ -10,6 +10,11 @@
 namespace Btree
 {
 
+#ifdef USE_BATCH_BUFFER
+  class BatchBuffer;
+  class BtreeStat;
+#endif
+
 struct BTreeHeader {
     u32 endsBy;		/// all keys >=0 and < endsBy
 	u32 nLeaves;	/// number of leaf nodes
@@ -45,6 +50,10 @@ private:
 public:
 	// points to the data in the header page
 	BTreeHeader *header;
+#ifdef USE_BATCH_BUFFER
+  BatchBuffer *batbuf;
+  BtreeStat *stat;
+#endif
 
 public:
 	/**
@@ -102,6 +111,7 @@ public:
     void *getPageUnpacked(PageHandle ph) {
         return buffer->getUnpackedPageImage(ph);
     }
+
 };
 }
 #endif
