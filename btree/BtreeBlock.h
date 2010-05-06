@@ -99,10 +99,14 @@ public:
         InternalHeaderSize = 4
     };
 
-    const static size_t DenseLeafCapacity;
-    const static size_t SparseLeafCapacity;
-    const static size_t InternalCapacity;
-    static size_t initCapacity(Type t);
+  const static int HeaderSize[4];
+  static size_t BlockCapacity[4];
+  static bool capacityInitialized;
+  //const static size_t DenseLeafCapacity;
+  //  const static size_t SparseLeafCapacity;
+  //  const static size_t InternalCapacity;
+  static bool initCapacity();
+  static size_t initCapacity(Type t);
     
     int headerSize;	/* makes alignment easier */
     typedef ::Iterator<Key_t, Value> Iterator;
@@ -144,9 +148,9 @@ public:
      * @param cutoff Truncate from which entry on
      */
     void truncate(int cutoff);
+    void splitTypes(int sp, Key_t spKey, Type &left, Type &right);
     Block *split(PageHandle newPh, int sp, Key_t spKey);
-    void switchToSparse();
-    void switchToDense();
+    void switchTo(Type t);
 
     void print(int depth);
 

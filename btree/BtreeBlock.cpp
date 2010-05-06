@@ -5,9 +5,17 @@
 
 using namespace std;
 
-const size_t Btree::Block::DenseLeafCapacity = initCapacity(Btree::Block::DenseLeaf);
-const size_t Btree::Block::SparseLeafCapacity = initCapacity(Btree::Block::SparseLeaf);
-const size_t Btree::Block::InternalCapacity = initCapacity(Btree::Block::Internal);
+const int Btree::Block::HeaderSize[4] = {4,8,0,12};
+size_t Btree::Block::BlockCapacity[4];
+bool Btree::Block::capacityInitialized = initCapacity();
+
+bool Btree::Block::initCapacity()
+{
+  BlockCapacity[DenseLeaf] = initCapacity(Btree::Block::DenseLeaf);
+  BlockCapacity[SparseLeaf] = initCapacity(Btree::Block::SparseLeaf);
+  BlockCapacity[Internal] = initCapacity(Btree::Block::Internal);
+  return true;
+}
 
 size_t Btree::Block::initCapacity(Type t)
 {
@@ -62,19 +70,14 @@ Btree::Block::Block(BTree *tree, PageHandle ph, Key_t beginsAt, Key_t endsBy,
     }
     else {
     }
+
+	headerSize = HeaderSize[*flags];
+	capacity = BlockCapacity[*flags];
     if (*flags & 1) {
-        headerSize = 8;
         nextLeaf = (PID_t*)(flags + 4);
-        capacity = SparseLeafCapacity;
-        if (*flags & 2) {
-            headerSize = 12;
-            capacity = DenseLeafCapacity;
-        }
     }
     else {
-        headerSize = 4;
         nextLeaf = 0;
-        capacity = InternalCapacity;
     }
     list = (List*) tree->getPageUnpacked(ph);
     // payload = flags + headerSize;
@@ -137,8 +140,8 @@ int Btree::Block::put(Key_t key, const Value &val)
             Value v;
             list->locate(0, min, v);
             list->locate(size-1, max, v);
-            if (max-min+1 <= DenseLeafCapacity) {
-                switchToDense();
+            if (max-min+1 <= BlockCapacity[DenseLeaf]) {
+                switchTo(DenseLeaf);
                 return BT_OK;
             }
             return BT_OVERFLOW;
@@ -151,9 +154,9 @@ int Btree::Block::put(Key_t key, const Value &val)
         Value v;
         list->locate(0, min, v);
         list->locate(size-1, max, v);
-        if (max-min+1 > DenseLeafCapacity) {
-            if (size <= SparseLeafCapacity) {
-                switchToSparse();
+        if (max-min+1 > BlockCapacity[DenseLeaf]) {
+            if (size <= BlockCapacity[SparseLeaf]) {
+                switchTo(SparseLeaf);
                 return BT_OK;
             }
             return BT_OVERFLOW;
@@ -208,20 +211,12 @@ void Btree::Block::truncate(int cutoff)
     list->truncate(cutoff);
 }
 
-void Btree::Block::switchToSparse()
+void Btree::Block::switchTo(Type t)
 {
-    u8 *flags = ((u8*)header);
-    *flags = 1;
-    headerSize = SparseHeaderSize;
-    capacity = SparseLeafCapacity;
-}
-
-void Btree::Block::switchToDense()
-{
-    u8 *flags = (u8*) header;
-    *flags = 3;
-    headerSize = DenseHeaderSize;
-    capacity = DenseLeafCapacity;
+    u8 *flags = (u8*)header;
+    *flags = t;
+    headerSize = HeaderSize[t];
+    capacity = BlockCapacity[t];
 }
 
 void Btree::Block::print(int depth)
@@ -287,27 +282,34 @@ void Btree::Block::print(int depth)
     }
 }
 
+void Btree::Block::splitTypes(int sp, Key_t spKey, Type &left, Type &right)
+{
+  if (!isLeaf()) {
+	left = Internal;
+	right = Internal;
+  }
+  else if (!isDense()) {
+	left = SparseLeaf;
+	right = SparseLeaf;
+	if (upper-spKey <= BlockCapacity[DenseLeaf])
+	  right = DenseLeaf;
+  }
+  else {
+	left = DenseLeaf;
+	right = DenseLeaf;
+	if (getSize()-sp <= BlockCapacity[SparseLeaf]
+		&& upper-spKey > BlockCapacity[DenseLeaf])
+	  right = SparseLeaf;
+  }
+}
 
 Btree::Block *Btree::Block::split(PageHandle newPh, int sp, Key_t spKey)
 {
     Block *newBlock;
-    if (!isLeaf()) { // internal
-        newBlock = new Block(tree, newPh, spKey, upper, true, Internal);
-    }
-    else if (!isDense()) { // sparse leaf
-        if (upper-spKey <= DenseLeafCapacity)
-            newBlock = new Block(tree, newPh, spKey, upper, true, DenseLeaf);
-        else
-            newBlock = new Block(tree, newPh, spKey, upper, true, SparseLeaf);
-    }
-    else { // dense leaf
-        if (getSize()-sp > SparseLeafCapacity
-            || upper-spKey <= DenseLeafCapacity) {
-            newBlock = new Block(tree, newPh, spKey, upper, true, DenseLeaf);
-        }
-        else
-            newBlock = new Block(tree, newPh, spKey, upper, true, SparseLeaf);
-    }
+	Type left, right;
+	splitTypes(sp, spKey, left, right);
+
+	newBlock = new Block(tree, newPh, spKey, upper, true, right);
 
     List::Iterator *it = list->getIterator(sp, list->getSize());
     Key_t key;

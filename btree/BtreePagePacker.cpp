@@ -10,7 +10,7 @@ void BtreePagePacker::pack(void *unpacked, void *packed)
     // PageInfo *info = (PageInfo*) unpacked;
     SkipList<Key_t, Value> *list = (SkipList<Key_t, Value>*) unpacked;
     SkipList<Key_t, Value>::Iterator *it = list->getIterator();
-    if (p[0] & 2 == 0) { // sparse format
+    if ((p[0] & 2) == 0) { // sparse format
         u8 *payload;
         int skip;
         int size;
@@ -40,7 +40,7 @@ void BtreePagePacker::pack(void *unpacked, void *packed)
         Datum_t *payload = (Datum_t*)(p + 12);
         Key_t *headKey = (Key_t*)(p + 8);
         int size = sizeof(Datum_t);
-        int skip = sizeof(Key_t)+size;
+        //int skip = sizeof(Key_t)+size;
         Key_t key;
         Value val;
         list->locate(0, key, val);
@@ -98,7 +98,7 @@ void BtreePagePacker::unpack(void *packed, void *&unpacked)
     else { // dense leaf
         Datum_t *payload = (Datum_t*)(p + 12);
         Key_t headKey = *((Key_t*)(p + 8));
-        Key_t key;
+        //Key_t key;
         Value val;
         for (int i=0; i<num; i++) {
             val.datum = payload[i];
