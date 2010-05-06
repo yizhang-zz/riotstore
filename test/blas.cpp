@@ -12,8 +12,8 @@
 
 using namespace std;
 
-#define n 4L
-#define blk_size 2L
+#define n 300L
+#define blk_size 30L
 
 i64 sparsity = 50L; // 50% sparsity
 
@@ -21,11 +21,13 @@ int readCount = 0;
 int writeCount = 0;
 double accessTime = 0.0;
 double execTime = 0.0;
+double blasTime = 0.0;
 FILE *pFile;
 const char *resultFile = "blas.bin";
 
 timeval tim;
 double t1, t2;
+double t3, t4;
 
 i64 rows = n;
 i64 cols = n;
@@ -46,6 +48,7 @@ MDCoord coord;
 //time to compute 1 value of C at a time.
 void matVecMult()
 {
+   blasTime = 0;
    double m[n];
    double v[n];
    double y;
@@ -68,7 +71,12 @@ void matVecMult()
          coord = MDCoord(2, i, j);
          A->get(coord, m[j]);
       }
+      gettimeofday(&tim, NULL);
+      t3 = tim.tv_sec + tim.tv_usec/1000000.0;
       cblas_dgemv(CblasRowMajor, CblasNoTrans, 1, n, 1.0, m, n, v, 1, 0.0, &y, 1);
+      gettimeofday(&tim, NULL);
+      t4 = tim.tv_sec + tim.tv_usec/1000000.0;
+      blasTime += (t4 - t3);
       coord = MDCoord(2, i, 0);
       C->put(coord, y);
    }
@@ -80,7 +88,7 @@ void matVecMult()
    writeCount += PagedStorageContainer::writeCount;
    accessTime += PagedStorageContainer::accessTime;
 
-   fprintf(pFile, "mat-vec multiplication\t\t%i\t\t%i\t\t%f\t\t%f\n", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
+   fprintf(pFile, "mat-vec multiplication\t\t%i\t\t%i\t\t%f\t\t%f\t\t%f\n", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1, blasTime);
 
    delete A;
    delete x;
@@ -91,6 +99,7 @@ void matVecMult()
 //B, iterate through each row in A and store the result in C.
 void matMatMultRowMajor()
 {
+   blasTime = 0;
    double m[n];
    double v[n];
    double y;
@@ -115,7 +124,12 @@ void matMatMultRowMajor()
             coord = MDCoord(2, i, j);
             A->get(coord, m[j]);
          }
+         gettimeofday(&tim, NULL);
+         t3 = tim.tv_sec + tim.tv_usec/1000000.0;
          cblas_dgemv(CblasRowMajor, CblasNoTrans, 1, n, 1.0, m, n, v, 1, 0.0, &y, 1);
+         gettimeofday(&tim, NULL);
+         t4 = tim.tv_sec + tim.tv_usec/1000000.0;
+         blasTime += (t4 - t3);
          coord = MDCoord(2, i, k);
          C->put(coord, y);
       }
@@ -128,7 +142,7 @@ void matMatMultRowMajor()
    writeCount += PagedStorageContainer::writeCount;
    accessTime += PagedStorageContainer::accessTime;
 
-   fprintf(pFile, "mat-mat multiplication\t\t%i\t\t%i\t\t%f\t\t%f\n", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
+   fprintf(pFile, "mat-mat multiplication\t\t%i\t\t%i\t\t%f\t\t%f\t\t%f\n", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1, blasTime);
 
    delete A;
    delete B;
@@ -141,6 +155,7 @@ void matMatMultRowMajor()
 //do the appropriate multiplication, and save intermediate result in C.
 void matMatMultBlock()
 {
+   blasTime = 0;
    double m[blk_size*blk_size];
    double v[blk_size*blk_size];
    double y[blk_size*blk_size];
@@ -170,7 +185,12 @@ void matMatMultBlock()
                B->get(coord, v[k]);
             }
             memset(y, 0, blk_size*blk_size*sizeof(double));
+            gettimeofday(&tim, NULL);
+            t3 = tim.tv_sec + tim.tv_usec/1000000.0;
             cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, blk_size, blk_size, blk_size, 1.0, m, blk_size, v, blk_size, 0.0, y, blk_size);
+            gettimeofday(&tim, NULL);
+            t4 = tim.tv_sec + tim.tv_usec/1000000.0;
+            blasTime += (t4 - t3);
             for (int k = 0; k < blk_size*blk_size; k++)
             {
                coord = MDCoord(2, blk_size*i + k/blk_size, blk_size*j + k%blk_size);
@@ -189,7 +209,7 @@ void matMatMultBlock()
    writeCount += PagedStorageContainer::writeCount;
    accessTime += PagedStorageContainer::accessTime;
 
-   fprintf(pFile, "mat-mat multiplication\t\t%i\t\t%i\t\t%f\t\t%f\n", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
+   fprintf(pFile, "mat-mat multiplication\t\t%i\t\t%i\t\t%f\t\t%f\t\t%f\n", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1, blasTime);
 
    delete A;
    delete B;

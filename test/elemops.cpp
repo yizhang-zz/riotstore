@@ -10,7 +10,7 @@
 
 using namespace std;
 
-#define n 300L
+#define n 512L
 
 i64 rows = n;
 i64 cols = n;
@@ -124,13 +124,15 @@ void randomInsert()
    MDArray *array = new MDArray(dim, type, row, fileName);
    PagedStorageContainer::resetCounts();
    permute(k, n*n);
+   i64 *i = k;
 
    gettimeofday(&tim, NULL);
    t1 = tim.tv_sec + tim.tv_usec/1000000.0;
-   for (int i = 0; i < n*n; i++)
+   while (i < k + n*n)
    {
-      coord = MDCoord(2, k[i]/n, k[i]%n);
+      coord = MDCoord(2, *i/n, *i%n);
       array->put(coord, 12345);
+      i++;
    }
    gettimeofday(&tim, NULL);
    t2 = tim.tv_sec + tim.tv_usec/1000000.0;
