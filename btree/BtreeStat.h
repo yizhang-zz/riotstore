@@ -18,6 +18,7 @@ namespace Btree
 	 */
 	BtreeStat(int range, int nBins);
 	
+	void add(int current);
 	void update(int old, int current);
 	double getTotal();
 	std::map<int, int> histogram;

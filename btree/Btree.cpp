@@ -4,6 +4,8 @@
 #include "BtreeBlock.h"
 #include "Btree.h"
 #include "BtreeDenseIterator.h"
+#include "BtreeStat.h"
+#include "BatchBuffer.h"
 
 using namespace Btree;
 
@@ -37,6 +39,7 @@ Btree::BTree::BTree(const char *fileName, u32 endsBy,
     internalSplitter = intSp;
 
 #ifdef USE_BATCH_BUFFER
+	stat = new BtreeStat(Block::BlockCapacity[Block::DenseLeaf], 20);
 #endif
 }
 
@@ -53,6 +56,9 @@ Btree::BTree::BTree(const char *fileName,
 
     leafSplitter = leafSp;
     internalSplitter = intSp;
+
+	// TODO : should materialize BtreeStat when the tree is stored on disk
+	// and read it back when the tree is loaded
 }
 
 Btree::BTree::~BTree()
@@ -61,6 +67,9 @@ Btree::BTree::~BTree()
     delete buffer;
     delete file;
     delete packer;
+#ifdef USE_BATCH_BUFFER
+	delete stat;
+#endif
 }
 
 int Btree::BTree::search(Key_t key, Cursor *cursor)
@@ -118,8 +127,15 @@ int Btree::BTree::get(const Key_t &key, Datum_t &datum)
     return ret;
 }
 
+// TODO : get() should look up batch buffer first if batch insertion is
+// enabled
+
 int Btree::BTree::put(const Key_t &key, const Datum_t &datum)
 {
+#ifdef USE_BATCH_BUFFER
+  batbuf->insert(key, datum, this);
+  return BT_OK;
+#endif
     Cursor cursor(this);
 
     int ret = search(key, &cursor);
@@ -149,6 +165,72 @@ int Btree::BTree::put(const Key_t &key, const Datum_t &datum)
     }
     return ret;
 }
+
+#ifdef USE_BATCH_BUFFER
+int Btree::BTree::putBatch(std::vector<Entry> &batch)
+{
+  lastPageInBatch = INVALID_PID;
+  std::vector<Entry>::iterator it = batch.begin();
+  for (; it != batch.end(); ++it) {
+	Key_t key = it->key;
+	Datum_t datum = it->value.datum;
+
+	Cursor cursor(this);
+    int ret = search(key, &cursor);
+    if (cursor.current < 0) {
+        // tree empty, create it
+        PageHandle ph;
+        buffer->allocatePage(ph);
+        header->depth++;
+        header->root = buffer->getPID(ph);
+        header->nLeaves++;
+        header->firstLeaf = header->root;
+        buffer->markPageDirty(headerPage);
+
+        cursor.current = 0;
+        cursor.trace[cursor.current] = new Block(this, ph, 0, header->endsBy,
+                                                 true, Block::SparseLeaf);
+        cursor.indices[cursor.current] = 0;
+		
+		int remain = Block::BlockCapacity[Block::SparseLeaf];
+		stat->add(remain);
+		lastPageInBatch = buffer->getPID(ph);
+		lastPageCapacity = remain;
+		lastPageChange = 0;
+    }
+    
+    Block *block = cursor.trace[cursor.current];
+	PID_t curPID = buffer->getPID(block->ph);
+	if ( curPID != lastPageInBatch && lastPageInBatch != INVALID_PID) {
+	  // udpate statistics
+	  stat->update(lastPageCapacity, lastPageCapacity-lastPageChange);
+	  lastPageInBatch = curPID;
+	  lastPageCapacity = block->getCapacity() - block->getSize();
+	  lastPageChange = 0;
+	}
+
+    Value v;
+    v.datum = datum;
+    ret = block->put(key, v);
+	Key_t origUpper = block->getUpperBound();
+    buffer->markPageDirty(block->getPageHandle());
+	lastPageChange++;
+
+    if (ret == BT_OVERFLOW) {
+        split(&cursor);
+		// stat for current page will be udpated later
+		lastPageChange = lastPageCapacity-block->getSize();
+		// stat for right sibling is new, so add it now
+		PageHandle rph;
+		buffer->readPage(*block->nextLeaf, rph);
+		Block *rb = new Block(this, rph, block->getUpperBound(), origUpper);
+		stat->add(rb->getCapacity()-rb->getSize());
+		delete rb;
+    }
+  } // end of for(it)
+  return BT_OK;
+}
+#endif
 
 void Btree::BTree::split(Cursor *cursor)
 {

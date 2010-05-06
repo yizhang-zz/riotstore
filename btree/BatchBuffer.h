@@ -18,7 +18,7 @@ namespace Btree
 	BatchBuffer(u32 size);
 	~BatchBuffer();
 	void registerBTree(BTree *tree);
-	void insert(Key_t key, Datum_t datum, BTree *where);
+	void insert(const Key_t &key, const Datum_t &datum, BTree *where);
 	
 	typedef std::map<BTree*, std::vector<Entry>*> Buffers;
   private:

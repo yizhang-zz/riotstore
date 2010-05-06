@@ -21,3 +21,14 @@ double BtreeStat::getTotal()
 	r += it->second * (it->first + interval/2);
   return r;
 }
+
+void BtreeStat::add(int current)
+{
+  histogram[current/interval*interval]++;
+}
+
+void BtreeStat::update(int old, int current)
+{
+  histogram[old/interval*interval]--;
+  histogram[current/interval*interval]++;
+}

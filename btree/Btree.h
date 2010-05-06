@@ -6,6 +6,7 @@
 #include "BtreeCursor.h"
 #include "Splitter.h"
 #include "BtreePagePacker.h"
+#include <vector>
 
 namespace Btree
 {
@@ -44,18 +45,22 @@ private:
 	// BTreeBlock *headerBlock;
     PageHandle headerPage;
     static const PID_t headerPID = 0;
-
+  
     void split(Cursor *cursor);
+  
+  PID_t lastPageInBatch; // for batch insertion
+  int   lastPageCapacity;
+  int   lastPageChange;
 
 public:
-	// points to the data in the header page
-	BTreeHeader *header;
+  // points to the data in the header page
+  BTreeHeader *header;
 #ifdef USE_BATCH_BUFFER
   BatchBuffer *batbuf;
   BtreeStat *stat;
+  int putBatch(std::vector<Entry> &batch);
 #endif
 
-public:
 	/**
 	 * Creates a new BTree with the given file name and dimension
 	 * size. If the file exists, it is overwritten. Given dim, all
@@ -77,13 +82,8 @@ public:
 
     int search(Key_t key, Cursor *cursor);
 
-	int put(const Key_t &key, const Datum_t &datum);
-	//int put(Key_t begin, Key_t end, Datum_t *data);
-	//int put(Key_t *keys, Datum_t *data, int length);
-
-	int get(const Key_t &key, Datum_t &datum);
-	//int get(Key_t begin, Key_t end, Datum_t *data);
-	//int get(Key_t *keys, Datum_t *data, int length);
+  int put(const Key_t &key, const Datum_t &datum);
+  int get(const Key_t &key, Datum_t &datum);
 
     ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);
 

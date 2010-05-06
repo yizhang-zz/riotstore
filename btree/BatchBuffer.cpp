@@ -19,7 +19,7 @@ void BatchBuffer::registerBTree(BTree *tree)
   assignBuffers();
 }
 
-void BatchBuffer::insert(Key_t key, Datum_t datum, BTree *where)
+void BatchBuffer::insert(const Key_t &key, const Datum_t &datum, BTree *where)
 {
   std::vector<Entry> *v = buffers[where];
   if (capacities[where] == v->size()) {
@@ -58,10 +58,7 @@ void BatchBuffer::flushBuffer(Buffers::iterator it)
 	std::vector<Entry> *v = it->second;
 	std::sort(v->begin(), v->end(), compare_entry);
 	BTree *tree = it->first;
-	for (std::vector<Entry>::const_iterator j = v->begin();
-		 j != v->end(); ++j) {
-	  tree->put((*j).key, (*j).value.datum);
-	}
+	tree->putBatch(*v);
 	// clear buffers
 	v->clear();
   }
