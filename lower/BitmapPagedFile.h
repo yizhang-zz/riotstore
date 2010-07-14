@@ -21,14 +21,6 @@ public:
   int fd;	// file descriptor
   uint32_t numContentPages;
 
-  static int readCount;
-  static int writeCount;
-
-  static void resetCounts()
-  {
-      readCount = writeCount = 0;
-  }
-
 public:
 
   BitmapPagedFile(const char *pathname, int flag);

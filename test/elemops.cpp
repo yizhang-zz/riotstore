@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include "../lower/PagedStorageContainer.h"
 #include "../array/MDCoord.h"
 #include "../array/RowMajor.h"
 #include "../array/ColMajor.h"
@@ -10,7 +11,7 @@
 
 using namespace std;
 
-int n = 300;
+int n = 100;
 i64 rows = n;
 i64 cols = n;
 MDCoord dim(2, rows, cols);
@@ -26,7 +27,7 @@ int writeCount = 0;
 double accessTime = 0.0;
 double execTime = 0.0;
 FILE *pFile;
-const char *resultFile = "elemops.bin";
+const char resultFile[] = "elemops.log";
 
 timeval tim;
 double t1, t2;
@@ -35,7 +36,7 @@ double t1, t2;
 void sequentialInsert()
 {
    MDArray *array = new MDArray(dim, type, row, fileName);
-   PagedStorageContainer::resetCounts();
+   PagedStorageContainer::resetPerfCounts();
 
    gettimeofday(&tim, NULL);
    t1 = tim.tv_sec + tim.tv_usec/1000000.0;
@@ -55,7 +56,7 @@ void sequentialInsert()
    accessTime += PagedStorageContainer::accessTime;
    execTime += (t2 - t1);
 
-   fprintf(pFile, "seq inst\t\t%i\t\t%i\t\t%f\t\t%f\n", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
+   fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "seq insert", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
    
    delete array;
 }
@@ -65,7 +66,7 @@ void sequentialInsert()
 void stridedInsert()
 {
    MDArray *array = new MDArray(dim, type, row, fileName);
-   PagedStorageContainer::resetCounts();
+   PagedStorageContainer::resetPerfCounts();
 
    gettimeofday(&tim, NULL);
    t1 = tim.tv_sec + tim.tv_usec/1000000.0;
@@ -84,7 +85,7 @@ void stridedInsert()
    accessTime += PagedStorageContainer::accessTime;
    execTime += (t2 - t1);
 
-   fprintf(pFile, "strided inst\t\t%i\t\t%i\t\t%f\t\t%f\n", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
+   fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "stride insert", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
    
    delete array;
 }
@@ -93,7 +94,7 @@ void stridedInsert()
 void stridedIteratorInsert()
 {
    MDArray *array = new MDArray(dim, type, row, fileName);
-   PagedStorageContainer::resetCounts();
+   PagedStorageContainer::resetPerfCounts();
    
    gettimeofday(&tim, NULL);
    t1 = tim.tv_sec + tim.tv_usec/1000000.0;
@@ -110,7 +111,7 @@ void stridedIteratorInsert()
    
    execTime += (t2 - t1);
 
-   fprintf(pFile, "batch strided\t\t%i\t\t%i\t\t%f\t\t%f\n", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
+   fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "batch stride", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
 
    delete it;
    delete array;
@@ -125,7 +126,7 @@ void randomInsert()
       k[i] = i;
    }
    MDArray *array = new MDArray(dim, type, row, fileName);
-   PagedStorageContainer::resetCounts();
+   PagedStorageContainer::resetPerfCounts();
    permute(k, n*n);
    i64 *i = k;
 
@@ -144,7 +145,8 @@ void randomInsert()
    accessTime += PagedStorageContainer::accessTime;
    execTime += (t2 - t1);
 
-   fprintf(pFile, "random inst\t\t%i\t\t%i\t\t%f\t\t%f\n", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
+   fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "rand insert", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
+
 
    delete array;
 }
@@ -153,7 +155,7 @@ void randomInsert()
 void sequentialRead()
 {
    MDArray *array = new MDArray(fileName);
-   PagedStorageContainer::resetCounts();
+   PagedStorageContainer::resetPerfCounts();
    gettimeofday(&tim, NULL);
    t1 = tim.tv_sec + tim.tv_usec/1000000.0;
    MDIterator *it = array->createIterator(Dense, row);
@@ -169,7 +171,7 @@ void sequentialRead()
 
    execTime += (t2 - t1);
 
-   fprintf(pFile, "seq read\t\t%i\t\t%i\t\t%f\t\t%f\n", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
+   fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "seq read", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
 
    delete it;
    delete array;
@@ -184,7 +186,7 @@ void randomRead()
       k[i] = i;
    }
    MDArray *array = new MDArray(fileName);
-   PagedStorageContainer::resetCounts();
+   PagedStorageContainer::resetPerfCounts();
    permute(k, n*n);
 
    gettimeofday(&tim, NULL);
@@ -201,7 +203,7 @@ void randomRead()
    accessTime += PagedStorageContainer::accessTime;
    execTime += (t2 - t1);
 
-   fprintf(pFile, "random read\t\t%i\t\t%i\t\t%f\t\t%f\n", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
+   fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "rand read", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
 
    delete array;
 }
@@ -210,16 +212,21 @@ int main()
 {
 
    pFile = fopen(resultFile, "ab+");
-   fprintf(pFile, "\nn = %i\t\t\treads\t\twrites\t\taccess time\t\texecution time\n", n);
+   fprintf(pFile, "\nn = %-10i    reads   writes access time   exec time\n", n);
 
    sequentialInsert();
+   printf("sequential insert done\n");
    stridedInsert();
+   printf("strided insert done\n");
    stridedIteratorInsert();
+   printf("strided iterator insert done\n");
    randomInsert();
+   printf("random insert done\n");
    sequentialRead();
+   printf("sequential read done\n");
    randomRead();
 
-   fprintf(pFile, "total\t\t\t%i\t\t%i\t\t%f\t\t%f\n\n", readCount, writeCount, accessTime, execTime);
+   fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "total", readCount, writeCount, accessTime, execTime);
    fclose(pFile);
    remove(fileName);
 }

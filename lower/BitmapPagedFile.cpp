@@ -1,14 +1,18 @@
 #include <unistd.h>
 #include <malloc.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
 #include "BitmapPagedFile.h"
 #include "PageRec.h"
 
-int BitmapPagedFile::readCount = 0;
-int BitmapPagedFile::writeCount = 0;
+#ifdef PROFILING
+int PagedStorageContainer::readCount = 0;
+int PagedStorageContainer::writeCount = 0;
+double PagedStorageContainer::accessTime = 0.0;
+#endif
 
 /** Creates a BitmapPagedFile over a disk file of a given name. If flag has
  * F_CREATE set, then a new file is created; otherwise the file is assumed
@@ -33,7 +37,6 @@ int BitmapPagedFile::writeCount = 0;
 
 BitmapPagedFile::BitmapPagedFile(const char *pathname, int flag) {
     header = (Byte_t*)memalign(PAGE_SIZE, PAGE_SIZE);
-    readCount = 0;
 	// create new file
 	if (flag & F_CREATE) {
 		fd = open_direct(pathname, O_RDWR|O_CREAT|O_TRUNC);
@@ -156,6 +159,10 @@ RC_t BitmapPagedFile::disposePage(PID_t pid) {
 }
 
 RC_t BitmapPagedFile::readPage(PageHandle ph) {
+#ifdef PROFILING
+    static timeval time1, time2;
+    gettimeofday(&time1, NULL);
+#endif
     // pid is not in usable region yet or is unallocated
     PageRec *rec = (PageRec*)ph;
     PID_t pid = rec->pid;
@@ -166,12 +173,21 @@ RC_t BitmapPagedFile::readPage(PageHandle ph) {
 
     lseek(fd, (1 + pid)*PAGE_SIZE, SEEK_SET); // +1 for header page
     read(fd, rec->image, PAGE_SIZE);
+#ifdef PROFILING
+    gettimeofday(&time2, NULL);
+    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
+        / 1000000.0 ;
     readCount++;
+#endif
     return RC_OK;
 }
 
 // writes ph to file if pid has been allocated
 RC_t BitmapPagedFile::writePage(PageHandle ph) {
+#ifdef PROFILING
+    static timeval time1, time2;
+    gettimeofday(&time1, NULL);
+#endif
     PageRec *rec = (PageRec*) ph;
     PID_t pid = rec->pid;
     // pid is not in usable region yet or is unallocated
@@ -194,6 +210,11 @@ RC_t BitmapPagedFile::writePage(PageHandle ph) {
     */
     lseek(fd, (1 + pid)*PAGE_SIZE, SEEK_SET); // +1 for header page
     assert(write(fd, rec->image, PAGE_SIZE)>=0);
+#ifdef PROFILING
+    gettimeofday(&time2, NULL);
+    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
+        / 1000000.0 ;
     writeCount++;
+#endif
     return RC_OK;
 }

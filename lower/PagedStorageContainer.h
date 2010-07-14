@@ -15,6 +15,18 @@ public:
 	const static int F_CREATE = 01;
 	const static int F_NO_CREATE = 02;
 
+#ifdef PROFILING
+    static int readCount;
+    static int writeCount;
+    static double accessTime;
+
+    static void resetPerfCounts()
+    {
+        readCount = writeCount = 0;
+        accessTime = 0.0;
+    }
+#endif
+
 	virtual ~PagedStorageContainer() {}
 
 	/**
