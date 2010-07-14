@@ -56,9 +56,20 @@ protected:
 private:
     Btree::Splitter *intsp;
     Btree::Splitter *leafsp;
+    bool allocatedSp;
     
 public:
     static MDCoord peekDim(const char *fileName);
+
+    static void init()
+    {
+        apr_initialize();
+    }
+
+    static void cleanup()
+    {
+        apr_terminate();
+    }
     
     u32 size; // number of elements
     /**
@@ -73,6 +84,7 @@ public:
      */
     MDArray(MDCoord &dim, StorageType type, Linearization *lrnztn, const char *fileName=0);
 
+    MDArray(MDCoord &dim, Linearization *lrnztn, Btree::Splitter *leaf, Btree::Splitter *internal, const char *fileName=0);
     /**
      * Constructs and initializes a MDArray from a file stored on
      * disk. ArrayStorage's factory method can analyze the file and

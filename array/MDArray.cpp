@@ -41,10 +41,60 @@ MDCoord MDArray::peekDim(const char *fileName)
     return dim;
 }
 
-MDArray::MDArray(MDCoord &dim, StorageType type, Linearization *lnrztn, const char *fileName)
+MDArray::MDArray(MDCoord &dim, Linearization *lnrztn, Splitter *leaf, Splitter *internal, const char *fileName)
+    : leafsp(leaf), intsp(internal)
 {
-    this->leafsp = NULL;
-    this->intsp = NULL;
+    allocatedSp = false;
+    this->dim = dim;
+    assert(dim.nDim != 0);
+    size = 1;
+    for (int i = 0; i < dim.nDim; i++)
+    {
+        assert(dim.coords[i] > 0);
+        size *= (u32)dim.coords[i];
+    }
+   
+    linearization = lnrztn->clone();
+    char path[40]; // should be long enough..
+    if (fileName == 0)
+    {
+        char temp[] = "MDArXXXXXX";
+        int fd = mkstemp(temp);
+        close(fd);
+        strcpy(path, temp);
+    }
+    else
+    {
+        strcpy(path, fileName);
+    }
+
+    storage = new BTree(path, size, leafsp, intsp); 
+
+    PageHandle ph;
+    storage->buffer->readPage(0, ph);
+    char *image = (char*)storage->buffer->getPageImage(ph);
+    int *header = (int*)(image + OFFSET);
+    *header = BTREE;
+    *(header+1) = dim.nDim;
+    *(header+2) = linearization->getType();
+    i64* header_dims = (i64*)(header + 3);
+    memcpy(header_dims, dim.coords, dim.nDim*sizeof(i64));
+    if (linearization->getType() == BLOCK)
+    {
+        memcpy(header_dims+dim.nDim, ((BlockBased*)linearization)->blockDims, dim.nDim*sizeof(i64));
+        u8 *header_order = (u8*)(header_dims+2*dim.nDim);
+        memcpy(header_order, ((BlockBased*)linearization)->blockOrders, dim.nDim*sizeof(u8));
+        memcpy(header_order+dim.nDim, ((BlockBased*)linearization)->microOrders, dim.nDim*sizeof(u8));
+    }
+    storage->buffer->markPageDirty(ph);
+    storage->buffer->unpinPage(ph);
+    this->fileName = path;
+}
+
+MDArray::MDArray(MDCoord &dim, StorageType type, Linearization *lnrztn, const char *fileName)
+    : leafsp(NULL), intsp(NULL)
+{
+    allocatedSp = false;
     this->dim = dim;
     assert(dim.nDim != 0);
     size = 1;
@@ -77,6 +127,7 @@ MDArray::MDArray(MDCoord &dim, StorageType type, Linearization *lnrztn, const ch
         leafsp = new MSplitter();
         intsp = new MSplitter();
         storage = new BTree(path, size, leafsp, intsp); 
+        allocatedSp = true;
         break;
     default:
         storage = NULL;
@@ -106,6 +157,7 @@ MDArray::MDArray(MDCoord &dim, StorageType type, Linearization *lnrztn, const ch
 
 MDArray::MDArray(const char *fileName)
 {
+    allocatedSp = false;
     this->intsp = NULL;
     this->leafsp = NULL;
    if (access(fileName, F_OK) != 0)
@@ -157,8 +209,10 @@ MDArray::MDArray(const char *fileName)
    }
    else if (type == BTREE)
    {
+       //TODO: should read from file
        leafsp = new MSplitter();
        intsp = new MSplitter();
+       allocatedSp = true;
        storage = new BTree(fileName, leafsp, intsp);
    }
    this->fileName = fileName;
@@ -166,10 +220,11 @@ MDArray::MDArray(const char *fileName)
 
 MDArray::~MDArray()
 {
-    if (intsp)
+    if (allocatedSp)
+    {
         delete intsp;
-    if (leafsp)
         delete leafsp;
+    }
    delete linearization;
    delete storage;
 }

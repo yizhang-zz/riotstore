@@ -1,9 +1,12 @@
-export RIOT_DMA_BUFFER=10
-export RIOT_BTREE_BUFFER=10
+export RIOT_DMA_BUFFER=30
+export RIOT_BTREE_BUFFER=30
+
+./test-elemops
+
 #for i in {1..2}
 
 #do
-/usr/bin/time ./test-elemops 
+#/usr/bin/time ./test-elemops 
 #done
 
 

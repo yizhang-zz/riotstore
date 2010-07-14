@@ -35,7 +35,13 @@ double t1, t2;
 /// sequential insertion into nxn array
 void sequentialInsert()
 {
-   MDArray *array = new MDArray(dim, type, row, fileName);
+    MDArray *array;
+    Btree::MSplitter leafSp;
+    Btree::MSplitter intSp;
+    if (type == DMA)
+        array = new MDArray(dim, type, row, fileName);
+    else if (type == BTREE)
+        array = new MDArray(dim, row, &leafSp, &intSp, fileName);
    PagedStorageContainer::resetPerfCounts();
 
    gettimeofday(&tim, NULL);
@@ -48,6 +54,8 @@ void sequentialInsert()
          array->put(coord, 12345);
       }
    }
+   delete array;
+
    gettimeofday(&tim, NULL);
    t2 = tim.tv_sec + tim.tv_usec/1000000.0;
 
@@ -58,14 +66,19 @@ void sequentialInsert()
 
    fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "seq insert", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
    
-   delete array;
 }
 
 /// strided insertion into nxn array (insert going down columns first into row
 //major array
 void stridedInsert()
 {
-   MDArray *array = new MDArray(dim, type, row, fileName);
+    MDArray *array;
+    Btree::MSplitter leafSp;
+    Btree::MSplitter intSp;
+    if (type == DMA)
+        array = new MDArray(dim, type, row, fileName);
+    else if (type == BTREE)
+        array = new MDArray(dim, row, &leafSp, &intSp, fileName);
    PagedStorageContainer::resetPerfCounts();
 
    gettimeofday(&tim, NULL);
@@ -78,6 +91,8 @@ void stridedInsert()
          array->put(coord, 12345);
       }
    }
+   delete array;
+
    gettimeofday(&tim, NULL);
    t2 = tim.tv_sec + tim.tv_usec/1000000.0;
    readCount += PagedStorageContainer::readCount;
@@ -87,13 +102,18 @@ void stridedInsert()
 
    fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "stride insert", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
    
-   delete array;
 }
 
 /// strided insertion, using the iterator
 void stridedIteratorInsert()
 {
-   MDArray *array = new MDArray(dim, type, row, fileName);
+    MDArray *array;
+    Btree::MSplitter leafSp;
+    Btree::MSplitter intSp;
+    if (type == DMA)
+        array = new MDArray(dim, type, row, fileName);
+    else if (type == BTREE)
+        array = new MDArray(dim, row, &leafSp, &intSp, fileName);
    PagedStorageContainer::resetPerfCounts();
    
    gettimeofday(&tim, NULL);
@@ -103,6 +123,9 @@ void stridedIteratorInsert()
    {
       it->put(12345);
    }
+   delete it;
+   delete array;
+
    gettimeofday(&tim, NULL);
    t2 = tim.tv_sec + tim.tv_usec/1000000.0;
    readCount += PagedStorageContainer::readCount;
@@ -113,8 +136,6 @@ void stridedIteratorInsert()
 
    fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "batch stride", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
 
-   delete it;
-   delete array;
 }
 
 /// random insertion into nxn array, all indices are written to once
@@ -125,7 +146,13 @@ void randomInsert()
    {
       k[i] = i;
    }
-   MDArray *array = new MDArray(dim, type, row, fileName);
+    MDArray *array;
+    Btree::MSplitter leafSp;
+    Btree::MSplitter intSp;
+    if (type == DMA)
+        array = new MDArray(dim, type, row, fileName);
+    else if (type == BTREE)
+        array = new MDArray(dim, row, &leafSp, &intSp, fileName);
    PagedStorageContainer::resetPerfCounts();
    permute(k, n*n);
    i64 *i = k;
@@ -138,6 +165,8 @@ void randomInsert()
       array->put(coord, 12345);
       i++;
    }
+   delete array;
+
    gettimeofday(&tim, NULL);
    t2 = tim.tv_sec + tim.tv_usec/1000000.0;
    readCount += PagedStorageContainer::readCount;
@@ -148,7 +177,6 @@ void randomInsert()
    fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "rand insert", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
 
 
-   delete array;
 }
 
 /// sequentially read nxn array in row major order
@@ -163,6 +191,9 @@ void sequentialRead()
    {
       it->get(coord, datum);
    }
+   delete it;
+   delete array;
+
    gettimeofday(&tim, NULL);
    t2 = tim.tv_sec + tim.tv_usec/1000000.0;
    readCount += PagedStorageContainer::readCount;
@@ -173,8 +204,6 @@ void sequentialRead()
 
    fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "seq read", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
 
-   delete it;
-   delete array;
 }
 
 /// random read from nxn array. all indices are read once
@@ -196,6 +225,8 @@ void randomRead()
       coord = MDCoord(2, k[i]/n, k[i]%n);
       array->get(coord, datum);
    }
+   delete array;
+
    gettimeofday(&tim, NULL);
    t2 = tim.tv_sec + tim.tv_usec/1000000.0;
    readCount += PagedStorageContainer::readCount;
@@ -205,15 +236,17 @@ void randomRead()
 
    fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "rand read", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
 
-   delete array;
 }
 
 int main()
 {
+    srand(time(NULL));
 
+    MDArray::init();
    pFile = fopen(resultFile, "ab+");
-   fprintf(pFile, "\nn = %-10i    reads   writes access time   exec time\n", n);
 
+   type = DMA;
+   fprintf(pFile, "\nDMA, n = %-5i    reads   writes access time   exec time\n", n);
    sequentialInsert();
    printf("sequential insert done\n");
    stridedInsert();
@@ -225,8 +258,26 @@ int main()
    sequentialRead();
    printf("sequential read done\n");
    randomRead();
-
    fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "total", readCount, writeCount, accessTime, execTime);
+
+   // Btree
+   type = BTREE;
+   fprintf(pFile, "\nBTREE, n=%-5i    reads   writes access time   exec time\n", n);
+   sequentialInsert();
+   printf("sequential insert done\n");
+   stridedInsert();
+   printf("strided insert done\n");
+   stridedIteratorInsert();
+   printf("strided iterator insert done\n");
+   randomInsert();
+   printf("random insert done\n");
+   sequentialRead();
+   printf("sequential read done\n");
+   randomRead();
+   fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "total", readCount, writeCount, accessTime, execTime);
+
+
    fclose(pFile);
    remove(fileName);
+   MDArray::cleanup();
 }
