@@ -17,22 +17,26 @@
 /// Open file in direct I/O mode.
 #define open_direct(file, flag) open(file,(flag)|O_DIRECT, 0660)
 
-#elif defined(BSD)||defined(__APPLE__)
-#define RIOT_BSD
-/* BSD & Mac OS support F_NOCACHE for direct I/O */
+#elif defined(__FreeBSD__)
+#define RIOT_FREEBSD
 #include <fcntl.h>
-int open_direct_bsd(const char *pathname, int flags);
-/// Open file in direct I/O mode.
-#define open_direct(file, flag) open_direct_bsd(file, flag)
+#define open_direct(file, flag) open(file,(flag)|O_DIRECT, 0660)
+
+#elif defined(__APPLE__)
+#define RIOT_APPLE
+/* Mac OS support F_NOCACHE for direct I/O */
+#include <fcntl.h>
+int open_direct(const char *pathname, int flags);
 
 #elif defined(sun)
 #define RIOT_SUN
 #include <stdlib.h>
 /* Solaris has directio(3C) for the same purpose */
 #include <fcntl.h>
-int open_direct_sol(const char *pathname, int flags);
-/// Open file in direct I/O mode.
-#define open_direct(file, flag) open_direct_sol(file, flag)
+int open_direct(const char *pathname, int flags);
+
+#else
+#error "Platform not supported"
 #endif
 
 #include <stdint.h>
