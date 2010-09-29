@@ -268,9 +268,23 @@ AccessCode MDArray::get(MDCoord &coord, Datum_t &datum)
    return AC_OutOfRange;
 }
 
+AccessCode MDArray::get(Key_t &key, Datum_t &datum)
+{
+   if (storage->get(key, datum) == AC_OK)
+      return AC_OK;
+   return AC_OutOfRange;
+}
+
 AccessCode MDArray::put(MDCoord &coord, const Datum_t &datum)
 {
    Key_t key = linearization->linearize(coord);
+   if (storage->put(key, datum) == AC_OK)
+      return AC_OK;
+   return AC_OutOfRange;
+}
+
+AccessCode MDArray::put(Key_t &key, const Datum_t &datum)
+{
    if (storage->put(key, datum) == AC_OK)
       return AC_OK;
    return AC_OutOfRange;

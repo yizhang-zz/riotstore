@@ -32,6 +32,16 @@ public:
 
 // template <typename T = LRUPageReplacer>
 class BufferManager {
+    
+public:
+#ifdef PROFILING
+    static double accessTime;
+
+    static void resetPerfCounts()
+    {
+        accessTime = 0.0;
+    }
+#endif
 
 private:
 

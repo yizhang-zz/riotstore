@@ -1,9 +1,16 @@
 #include <iostream>
+#include <sys/time.h>
 #include "../lower/LRUPageReplacer.h"
 #include "../lower/BitmapPagedFile.h"
 #include "DMADenseIterator.h"
 #include "DMASparseIterator.h"
 #include "DirectlyMappedArray.h"
+
+#ifdef PROFILING
+int LinearStorage::readCount = 0;
+int LinearStorage::writeCount = 0;
+double LinearStorage::accessTime = 0.0;
+#endif
 
 int DirectlyMappedArray::BufferSize = DirectlyMappedArray::getBufferSize();
 int DirectlyMappedArray::getBufferSize() {
@@ -65,6 +72,10 @@ DirectlyMappedArray::~DirectlyMappedArray()
 
 int DirectlyMappedArray::get(const Key_t &key, Datum_t &datum) 
 {
+#ifdef PROFILING
+    static timeval time1, time2;
+    gettimeofday(&time1, NULL);
+#endif
    if (key < 0 || numElements <= key) 
    {
       return AC_OutOfRange;
@@ -88,11 +99,21 @@ int DirectlyMappedArray::get(const Key_t &key, Datum_t &datum)
    datum = dab->get(key);
    buffer->unpinPage(dab->getPageHandle());
    delete dab;
+#ifdef PROFILING
+    gettimeofday(&time2, NULL);
+    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
+        / 1000000.0 ;
+    readCount++;
+#endif
    return AC_OK;
 }
 
 int DirectlyMappedArray::put(const Key_t &key, const Datum_t &datum) 
 {
+#ifdef PROFILING
+    static timeval time1, time2;
+    gettimeofday(&time1, NULL);
+#endif
    PID_t pid;
    DenseArrayBlock *dab;
    findPage(key, &(pid));
@@ -105,6 +126,12 @@ int DirectlyMappedArray::put(const Key_t &key, const Datum_t &datum)
    buffer->markPageDirty(dab->getPageHandle());
    buffer->unpinPage(dab->getPageHandle());
    delete dab;
+#ifdef PROFILING
+    gettimeofday(&time2, NULL);
+    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
+        / 1000000.0 ;
+    writeCount++;
+#endif
    return AC_OK;
 }
 

@@ -35,6 +35,17 @@ protected:
 
 public:
 
+#ifdef PROFILING
+    static int readCount;
+    static int writeCount;
+    static double accessTime;
+
+    static void resetPerfCounts()
+    {
+        readCount = writeCount = 0;
+        accessTime = 0.0;
+    }
+#endif
     /**
      * Virtual destructor.
      */
