@@ -22,7 +22,5 @@ all:elemops
 %: %.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $< ../libriot_store.so $(LDFLAGS)
 
-mat_write: mat_write.cpp
-	$(CXX) $(CXXFLAGS) -o $@ $< ../libriot_store.so $(LDFLAGS)
 clean:
 	@rm -f elemops

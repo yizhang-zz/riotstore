@@ -5,9 +5,9 @@ CXXFLAGS += -Wall -g -fPIC $(patsubst %,-I%,$(DIRS)) -DPROFILING
 
 LDFLAGS += `pkg-config --libs apr-1 gsl`
 
-OS = `uname -s`
+OS = $(shell uname -s)
 ifeq ($(OS),SunOS)
-	LDFLAGS += -R/usr/apr/1.3/lib
+	#LDFLAGS += -R/usr/apr/1.3/lib
 endif
 
 LIBS =

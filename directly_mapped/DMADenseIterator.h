@@ -38,6 +38,12 @@ public:
         return false;
     }
     bool setIndexRange(Key_t b, Key_t e);
+
+#ifdef PROFILING
+	static int readCount;
+	static int writeCount;
+	static double accessTime;
+#endif
 };
 
 #endif

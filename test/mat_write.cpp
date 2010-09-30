@@ -25,12 +25,30 @@ struct result
     double totalTime;
     int readCount;
     int writeCount;
-    double accessTime;
+    double ioTime;
+    double bufferTime;
+    int dma_readCount;
+    int dma_writeCount;
+    double dma_ioTime;
+
+    void resetCounts()
+    {
+        totalTime = 0;
+        readCount = 0;
+        writeCount = 0;
+        ioTime = 0;
+        bufferTime = 0;
+        dma_readCount = 0;
+        dma_writeCount = 0;
+        dma_ioTime = 0;
+    }
 };
 
 void doArrayIterator(MDArray *array, Linearization *lin, result &r)
 {
     PagedStorageContainer::resetPerfCounts();
+    BufferManager::resetPerfCounts();
+    LinearStorage::resetPerfCounts();
     gettimeofday(&tim, NULL);
     double start = tim.tv_sec + tim.tv_usec/1000000.0;
 
@@ -43,15 +61,16 @@ void doArrayIterator(MDArray *array, Linearization *lin, result &r)
 
     gettimeofday(&tim, NULL);
     double end = tim.tv_sec + tim.tv_usec/1000000.0;
-    int readCount = PagedStorageContainer::readCount;
-    int writeCount = PagedStorageContainer::writeCount;
-    double accessTime = PagedStorageContainer::accessTime;
 
-    fprintf(pLog, "array iterator time: %f\treads: %i\twrites: %i\tI/O time: %f\n", end - start, readCount, writeCount, accessTime);
+    fprintf(pLog, "array iterator time: %f\treads: %i\twrites: %i\tI/O time: %f\tBuffer time: %f\n", end - start, PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, BufferManager::accessTime);
     r.totalTime += (end - start);
-    r.readCount += readCount;
-    r.writeCount += writeCount;
-    r.accessTime += accessTime;
+    r.readCount += PagedStorageContainer::readCount;
+    r.writeCount += PagedStorageContainer::writeCount;
+    r.ioTime += PagedStorageContainer::accessTime;
+    r.bufferTime += BufferManager::accessTime;
+    r.dma_readCount += LinearStorage::readCount;
+    r.dma_writeCount += LinearStorage::writeCount;
+    r.dma_ioTime += LinearStorage::accessTime;
 }
 
 void doArrayKeyLoop(MDArray *array, result &r)
@@ -59,6 +78,8 @@ void doArrayKeyLoop(MDArray *array, result &r)
     Key_t size = (Key_t)array->size;
     
     PagedStorageContainer::resetPerfCounts();
+    BufferManager::resetPerfCounts();
+    LinearStorage::resetPerfCounts();
     gettimeofday(&tim, NULL);
     double start = tim.tv_sec + tim.tv_usec/1000000.0;
 
@@ -70,26 +91,32 @@ void doArrayKeyLoop(MDArray *array, result &r)
 
     gettimeofday(&tim, NULL);
     double end = tim.tv_sec + tim.tv_usec/1000000.0;
-    int readCount = PagedStorageContainer::readCount;
-    int writeCount = PagedStorageContainer::writeCount;
-    double accessTime = PagedStorageContainer::accessTime;
     
-    fprintf(pLog, "array key loop time: %f\treads: %i\twrites: %i\tI/O time: %f\n", end - start, readCount, writeCount, accessTime);
+    fprintf(pLog, "array key loop time: %f\treads: %i\twrites: %i\tI/O time: %f\tBuffer time: %f\n", end - start, PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, BufferManager::accessTime);
     r.totalTime += (end - start);
-    r.readCount += readCount;
-    r.writeCount += writeCount;
-    r.accessTime += accessTime;
+    r.readCount += PagedStorageContainer::readCount;
+    r.writeCount += PagedStorageContainer::writeCount;
+    r.ioTime += PagedStorageContainer::accessTime;
+    r.bufferTime += BufferManager::accessTime;
+    r.dma_readCount += LinearStorage::readCount;
+    r.dma_writeCount += LinearStorage::writeCount;
+    r.dma_ioTime += LinearStorage::accessTime;
 }
 
 void doArrayCoordLoop(MDArray *array, MDCoord &dim, result &r)
 {
+    i64 rows = dim.coords[0];
+    i64 cols = dim.coords[1];
+
     PagedStorageContainer::resetPerfCounts();
+    BufferManager::resetPerfCounts();
+    LinearStorage::resetPerfCounts();
     gettimeofday(&tim, NULL);
     double start = tim.tv_sec + tim.tv_usec/1000000.0;
 
-    for (i64 i = 0; i < dim.coords[0]; i++)
+    for (i64 i = 0; i < rows; i++)
     {
-        for (i64 j = 0; j < dim.coords[1]; j++)
+        for (i64 j = 0; j < cols; j++)
         {
             MDCoord coord(2, i, j);
             Datum_t value = 1;
@@ -99,15 +126,16 @@ void doArrayCoordLoop(MDArray *array, MDCoord &dim, result &r)
 
     gettimeofday(&tim, NULL);
     double end = tim.tv_sec + tim.tv_usec/1000000.0;
-    int readCount = PagedStorageContainer::readCount;
-    int writeCount = PagedStorageContainer::writeCount;
-    double accessTime = PagedStorageContainer::accessTime;
     
-    fprintf(pLog, "array coord loop time: %f\treads: %i\twrites: %i\tI/O time: %f\n", end - start, readCount, writeCount, accessTime);
+    fprintf(pLog, "array coord loop time: %f\treads: %i\twrites: %i\tI/O time: %f\tBuffer time: %f\n", end - start, PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, BufferManager::accessTime);
     r.totalTime += (end - start);
-    r.readCount += readCount;
-    r.writeCount += writeCount;
-    r.accessTime += accessTime;
+    r.readCount += PagedStorageContainer::readCount;
+    r.writeCount += PagedStorageContainer::writeCount;
+    r.ioTime += PagedStorageContainer::accessTime;
+    r.bufferTime += BufferManager::accessTime;
+    r.dma_readCount += LinearStorage::readCount;
+    r.dma_writeCount += LinearStorage::writeCount;
+    r.dma_ioTime += LinearStorage::accessTime;
 }
 
 void doMove(Linearization *lin, MDCoord &dim)
@@ -153,22 +181,19 @@ int main()
     pLog = fopen(logFile, "ab+");
     pResult = fopen(resultFile, "ab+");
 
-        result r;
     // doArrayIterator
-    for (int i = 4500; i < 10001; i += 500)
+    for (int i = 500; i < 501; i += 500)
     {
-        r.totalTime = 0;
-        r.readCount = 0;
-        r.writeCount = 0;
-        r.accessTime = 0;
+        result r;
+        r.resetCounts();
 
         i64 rows = i;
         i64 cols = i;
         MDCoord dim(2, rows, cols);
-        Linearization *lin = new RowMajor(dim);
+        Linearization *lin = new ColMajor(dim);
         StorageType type = DMA;
         cout << "i = " << i << endl;
-        fprintf(pLog, "dimensions: (%li, %li)\n", dim.coords[0], dim.coords[1]);
+        fprintf(pLog, "dimensions: (%li, %li)\n", rows, cols);
 
         // repeat 10 times
         for (int j = 0; j < 10; j++)
@@ -177,31 +202,29 @@ int main()
             //doLinearize(lin, dim);
 
             MDArray *array = new MDArray(dim, type, lin, array_fileName); 
-            doArrayIterator(array, lin, r);
-            remove(array_fileName);
+            doArrayIterator(array, new RowMajor(dim), r);
             delete array;
+            remove(array_fileName);
         }
 
         delete lin;
-        fprintf(pResult, "dimensions: (%li, %li)\titerator total time = %f\t%i reads\t%i writes\t%f I/O time\n", dim.coords[0], dim.coords[1], r.totalTime, r.readCount, r.writeCount, r.accessTime);
+        fprintf(pResult, "dimensions: (%li, %li)\titerator total time = %f\t reads = %i\twrites = %i\tI/O time = %f\tBuffer time = %f\n", rows, cols, r.totalTime, r.readCount, r.writeCount, r.ioTime, r.bufferTime);
+        fprintf(pResult, "dma_reads = %i\tdma_writes = %i\tdma_accessTime = %f\n", r.dma_readCount, r.dma_writeCount, r.dma_ioTime);
     }
 
     // doArrayKeyLoop
-    for (int i = 4500; i < 10001; i += 500)
+    for (int i = 500; i < 501; i += 500)
     {
         result r;
-        r.totalTime = 0;
-        r.readCount = 0;
-        r.writeCount = 0;
-        r.accessTime = 0;
+        r.resetCounts();
 
         i64 rows = i;
         i64 cols = i;
         MDCoord dim(2, rows, cols);
-        Linearization *lin = new RowMajor(dim);
+        Linearization *lin = new ColMajor(dim);
         StorageType type = DMA;
         cout << "i = " << i << endl;
-        fprintf(pLog, "dimensions: (%li, %li)\n", dim.coords[0], dim.coords[1]);
+        fprintf(pLog, "dimensions: (%li, %li)\n", rows, cols);
 
         for (int j = 0; j < 10; j++)
         {
@@ -210,30 +233,28 @@ int main()
 
             MDArray *array = new MDArray(dim, type, lin, array_fileName); 
             doArrayKeyLoop(array, r);
-            remove(array_fileName);
             delete array;
+            remove(array_fileName);
         }
 
         delete lin;
-        fprintf(pResult, "dimensions: (%li, %li)\tkey loop total time = %f\t%i reads\t%i writes\t%f I/O time\n", dim.coords[0], dim.coords[1], r.totalTime, r.readCount, r.writeCount, r.accessTime);
+        fprintf(pResult, "dimensions: (%li, %li)\tkey loop total time = %f\t reads = %i\twrites = %i\tI/O time = %f\tBuffer time = %f\n", rows, cols, r.totalTime, r.readCount, r.writeCount, r.ioTime, r.bufferTime);
+        fprintf(pResult, "dma_reads = %i\tdma_writes = %i\tdma_accessTime = %f\n", r.dma_readCount, r.dma_writeCount, r.dma_ioTime);
     }
 
     // doArrayCoordLoop
-    for (int i = 4500; i < 10001; i += 500)
+    for (int i = 500; i < 501; i += 500)
     {
         result r;
-        r.totalTime = 0;
-        r.readCount = 0;
-        r.writeCount = 0;
-        r.accessTime = 0;
+        r.resetCounts();
 
         i64 rows = i;
         i64 cols = i;
         MDCoord dim(2, rows, cols);
-        Linearization *lin = new RowMajor(dim);
+        Linearization *lin = new ColMajor(dim);
         StorageType type = DMA;
         cout << "i = " << i << endl;
-        fprintf(pLog, "dimensions: (%li, %li)\n", dim.coords[0], dim.coords[1]);
+        fprintf(pLog, "dimensions: (%li, %li)\n", rows, cols);
 
         for (int j = 0; j < 10; j++)
         {
@@ -242,12 +263,13 @@ int main()
 
             MDArray *array = new MDArray(dim, type, lin, array_fileName); 
             doArrayCoordLoop(array, dim, r);
-            remove(array_fileName);
             delete array;
+            remove(array_fileName);
         }
 
         delete lin;
-        fprintf(pResult, "dimensions: (%li, %li)\tcoord loop total time = %f\t%i reads\t%i writes\t%f I/O time\n", dim.coords[0], dim.coords[1], r.totalTime, r.readCount, r.writeCount, r.accessTime);
+        fprintf(pResult, "dimensions: (%li, %li)\tcoord loop total time = %f\t reads = %i\twrites = %i\tI/O time = %f\tBuffer time = %f\n", rows, cols, r.totalTime, r.readCount, r.writeCount, r.ioTime, r.bufferTime);
+        fprintf(pResult, "dma_reads = %i\tdma_writes = %i\tdma_accessTime = %f\n", r.dma_readCount, r.dma_writeCount, r.dma_ioTime);
     }
 /*    for (int i = 500000; i < 4001*4001; i += 500000)
     {

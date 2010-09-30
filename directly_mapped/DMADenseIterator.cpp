@@ -1,7 +1,13 @@
-
+#include <sys/time.h>
 #include <string>
 #include "DirectlyMappedArray.h"
 #include "DMADenseIterator.h"
+
+#ifdef PROFILING
+int DMADenseIterator::readCount = 0;
+int DMADenseIterator::writeCount = 0;
+double DMADenseIterator::accessTime = 0.0;
+#endif
 
 bool DMADenseIterator::nextBlock() 
 {
@@ -47,14 +53,28 @@ DMADenseIterator::~DMADenseIterator()
 
 bool DMADenseIterator::moveNext()
 {
+#ifdef PROFILING
+    static timeval time1, time2;
+    gettimeofday(&time1, NULL);
+#endif
     curKey++;
     if (curKey < pub)
         return true;
-    return nextBlock();
+    bool hasNext = nextBlock();
+#ifdef PROFILING
+    gettimeofday(&time2, NULL);
+    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
+        / 1000000.0 ;
+#endif
+    return hasNext;
 }
 
 void DMADenseIterator::get(Key_t &k, Datum_t &d)
 {
+#ifdef PROFILING
+    static timeval time1, time2;
+    gettimeofday(&time1, NULL);
+#endif
     k = curKey;
     if (!block) {
         d = DirectlyMappedArray::DefaultValue;
@@ -62,15 +82,31 @@ void DMADenseIterator::get(Key_t &k, Datum_t &d)
     else {
         d = block->get(curKey);
     }
+#ifdef PROFILING
+    gettimeofday(&time2, NULL);
+    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
+        / 1000000.0 ;
+    readCount++;
+#endif
 }
 
 void DMADenseIterator::put(const Datum_t &d)
 {
+#ifdef PROFILING
+    static timeval time1, time2;
+    gettimeofday(&time1, NULL);
+#endif
     if (!block) {
         array->newBlock(curPid, &block);
     }
     block->put(curKey, d);
     dirty = true;
+#ifdef PROFILING
+    gettimeofday(&time2, NULL);
+    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
+        / 1000000.0 ;
+    writeCount++;
+#endif
 }
 
 void DMADenseIterator::reset()

@@ -135,6 +135,7 @@ public:
      * \return OK if successful, OutOfRange if coord is out of range.
      */
     AccessCode get(MDCoord &coord, Datum_t &datum);
+    AccessCode get(Key_t &key, Datum_t &datum);
 
     /**
      * Puts an entry in the array.
@@ -144,6 +145,7 @@ public:
      * \result OK if successful, OutOfRange if coord is out of range.
      */
     AccessCode put(MDCoord &coord, const Datum_t &datum);
+    AccessCode put(Key_t &key, const Datum_t &datum);
 
     /**
      * Creates an internal iterator over the 1-D storage device.
