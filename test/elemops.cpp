@@ -11,14 +11,14 @@
 
 using namespace std;
 
-int n = 100;
+int n = 300;
 i64 rows = n;
 i64 cols = n;
 MDCoord dim(2, rows, cols);
 StorageType type = DMA;
 Linearization *row = new RowMajor(dim);
 Linearization *col = new ColMajor(dim);
-const char *fileName = "/var/tmp/local/array.bin";
+const char *fileName = "/riot/array.bin";
 MDCoord coord;
 Datum_t datum;
 
@@ -46,9 +46,9 @@ void sequentialInsert()
 
    gettimeofday(&tim, NULL);
    t1 = tim.tv_sec + tim.tv_usec/1000000.0;
-   for (int i = 0; i < n; i++)
+   for (i64 i = 0; i < n; i++)
    {
-      for (int j = 0; j < n; j++)
+      for (i64 j = 0; j < n; j++)
       {
          coord = MDCoord(2, i, j);
          array->put(coord, 12345);
@@ -83,9 +83,9 @@ void stridedInsert()
 
    gettimeofday(&tim, NULL);
    t1 = tim.tv_sec + tim.tv_usec/1000000.0;
-   for (int j = 0; j < n; j++)
+   for (i64 j = 0; j < n; j++)
    {
-      for (int i = 0; i < n; i++)
+      for (i64 i = 0; i < n; i++)
       {
          coord = MDCoord(2, i, j);
          array->put(coord, 12345);
@@ -247,8 +247,9 @@ int main()
 
    type = DMA;
    fprintf(pFile, "\nDMA, n = %-5i    reads   writes access time   exec time\n", n);
-   sequentialInsert();
-   printf("sequential insert done\n");
+   //sequentialInsert();
+   //printf("sequential insert done\n");
+   /*
    stridedInsert();
    printf("strided insert done\n");
    stridedIteratorInsert();
@@ -258,23 +259,25 @@ int main()
    sequentialRead();
    printf("sequential read done\n");
    randomRead();
+*/
    fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "total", readCount, writeCount, accessTime, execTime);
+   remove(fileName);
 
    // Btree
    type = BTREE;
    fprintf(pFile, "\nBTREE, n=%-5i    reads   writes access time   exec time\n", n);
-   sequentialInsert();
-   printf("sequential insert done\n");
-   stridedInsert();
-   printf("strided insert done\n");
-   stridedIteratorInsert();
-   printf("strided iterator insert done\n");
+   //sequentialInsert();
+   //printf("sequential insert done\n");
+   // stridedInsert();
+   // printf("strided insert done\n");
+   // stridedIteratorInsert();
+   // printf("strided iterator insert done\n");
    randomInsert();
    printf("random insert done\n");
-   sequentialRead();
-   printf("sequential read done\n");
-   randomRead();
-   fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "total", readCount, writeCount, accessTime, execTime);
+   // sequentialRead();
+   // printf("sequential read done\n");
+   // randomRead();
+   // fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "total", readCount, writeCount, accessTime, execTime);
 
 
    fclose(pFile);

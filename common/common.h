@@ -3,6 +3,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <unistd.h>
 #include <stdlib.h>
 
 /* Direct I/O, no caching by the OS */

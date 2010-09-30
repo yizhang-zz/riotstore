@@ -3,7 +3,7 @@ CXX = g++
 CXXFLAGS += -Wall -g -fPIC $(patsubst %,-I%,$(DIRS)) -DPROFILING
 #CXXFLAGS += -DUSE_BATCH_BUFFER
 
-LDFLAGS += -lgtest `pkg-config --libs apr-1 gsl`
+LDFLAGS += `pkg-config --libs apr-1 gsl`
 
 OS = `uname -s`
 ifeq ($(OS),SunOS)
@@ -19,10 +19,10 @@ OBJ := $(patsubst %.cpp,%.o,$(filter %.cpp,$(SRC))) \
 	$(patsubst %.c,%.o,$(filter %.c,$(SRC)))
 
 
-all:libriot_store.so install
+all:libriot_store.so
 
 install: libriot_store.so
-	@install $< $(HOME)/lib/
+	@cp $< $(HOME)/lib/
 
 libriot_store.a: $(OBJ)
 	ar rcs $@ $^
@@ -41,3 +41,4 @@ clean:
 	rm -f $(OBJ)
 	rm -f $(OBJ:.o=.d)
 	rm -f libriot_store.a
+	rm -f libriot_store.so

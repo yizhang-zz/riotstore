@@ -6,12 +6,12 @@ CXXFLAGS += -DPROFILING
 
 #CXXFLAGS += -DUSE_BATCH_BUFFER
 
-LDFLAGS += `pkg-config --libs apr-1`
+LDFLAGS += `pkg-config --libs apr-1 gsl`
 #LDFLAGS += `pkg-config --libs gsl`
 
-OS = `uname -s`
+OS = $(shell uname -s)
 ifeq ($(OS),SunOS)
-	LDFLAGS += -R/usr/apr/1.3/lib
+	LDFLAGS += -L/lib 
 endif
 
 LIBS =
@@ -19,8 +19,10 @@ SRC =
 
 all:elemops
 
-elemops: elemops.cpp
-	$(CXX) $(CXXFLAGS) -o test-elemops elemops.cpp ../libriot_store.so
+%: %.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $< ../libriot_store.so $(LDFLAGS)
 
+mat_write: mat_write.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $< ../libriot_store.so $(LDFLAGS)
 clean:
-	rm -f test-elemops
+	@rm -f elemops
