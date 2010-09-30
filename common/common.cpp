@@ -40,8 +40,8 @@ bool isNA(double x)
 	return false;
 }
 
-#ifdef RIOT_BSD
-int open_direct_bsd(const char *pathname, int flags)
+#ifdef RIOT_APPLE
+int open_direct(const char *pathname, int flags)
 {
 	int fd = open(pathname, flags, 0660);
 	if (fd < 0) return fd;
@@ -50,22 +50,10 @@ int open_direct_bsd(const char *pathname, int flags)
 		Error("Cannot open %s in direct I/O mode", pathname);
 	return fd;
 }
-PageImage allocPageImage(size_t num)
-{
-    PageImage p;
-    if (posix_memalign(&p, PAGE_SIZE, PAGE_SIZE*num))
-        return p;
-    return NULL;
-}
-
-void freePageImage(PageImage p)
-{
-    free(p);
-}
 #endif
 
 #ifdef RIOT_SUN
-int open_direct_sol(const char *pathname, int flags)
+int open_direct(const char *pathname, int flags)
 {
 	int fd = open(pathname, flags, 0660);
     return fd;
@@ -73,28 +61,26 @@ int open_direct_sol(const char *pathname, int flags)
 		return fd;
 	return directio(fd, DIRECTIO_ON);
 }
+
 PageImage allocPageImage(size_t num)
 {
     return (PageImage) memalign(PAGE_SIZE, PAGE_SIZE*num);
 }
 
-void freePageImage(PageImage p)
-{
-    free(p);
-}
-#endif
-
-#ifdef RIOT_LINUX
+#else
 PageImage allocPageImage(size_t num)
 {
-    return (PageImage) memalign(PAGE_SIZE, PAGE_SIZE*num);
+    PageImage p;
+    if (posix_memalign(&p, PAGE_SIZE, PAGE_SIZE*num))
+        return p;
+    return NULL;
 }
+#endif
 
 void freePageImage(PageImage p)
 {
     free(p);
 }
-#endif
 
 #ifdef DEBUG
 void debug(const char *format, ...)

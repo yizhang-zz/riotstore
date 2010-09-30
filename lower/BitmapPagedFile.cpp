@@ -1,5 +1,4 @@
 #include <unistd.h>
-#include <malloc.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <string.h>
@@ -36,7 +35,8 @@ double PagedStorageContainer::accessTime = 0.0;
  */
 
 BitmapPagedFile::BitmapPagedFile(const char *pathname, int flag) {
-    header = (Byte_t*)memalign(PAGE_SIZE, PAGE_SIZE);
+	header = (Byte_t*)allocPageImage(1); // alloc a page worth of memory
+	//header = (Byte_t*)memalign(PAGE_SIZE, PAGE_SIZE);
 	// create new file
 	if (flag & F_CREATE) {
 		fd = open_direct(pathname, O_RDWR|O_CREAT|O_TRUNC);
@@ -83,7 +83,7 @@ BitmapPagedFile::~BitmapPagedFile() {
 	lseek(fd, 0, SEEK_SET);
     int c = write(fd, header, PAGE_SIZE);
     close(fd);
-    free(header);
+    freePageImage(header);
 }
 
 /* only mark bit in header as allocated, defer writing until later */
