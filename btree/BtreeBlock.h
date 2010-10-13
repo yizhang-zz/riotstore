@@ -7,15 +7,8 @@
 #include "../lower/BufferManager.h"
 #include "../lower/PageReplacer.h"
 
-#define KEY(x,y) *(Key_t*)((char*)(x)+y)
-
 namespace Btree
 {
-#define BT_OK 0
-#define BT_OVERWRITE 1
-#define BT_OVERFLOW 2
-#define BT_NOT_FOUND 3
-
 /**
  * A value stored in a btree block. Can be either a datum or a PID.
  */
@@ -34,7 +27,18 @@ struct Entry
     Key_t key;
 };
 
-class BTree;
+struct OverflowEntry : public Entry
+{
+	// Where the entry should be inserted into.
+	// Note that the indices of all other records do NOT change.
+	// For example, if the overflow entry has an index of 5,
+	// then all existing records with index x >=5 would have a
+	// new index x+1 if there were enough space and the overflow
+	// entry were inserted into the block.
+	u16 index; 
+};
+
+//class BTree;
 
 /**
  * A block (node) of a Btree. Structure of a btree block stored on disk looks
@@ -73,37 +77,33 @@ class BTree;
 
 class Block {
 public:
-    BTree	*tree;
+    //BTree	*tree;
 	u16		capacity;
-	u16		*nEntries;	/* how many entries */
-	Key_t	lower;		/* all keys >= lower */
-	Key_t	upper;		/* all keys < upper */
-	PageHandle	ph;
+	Key_t	lower;		// all keys >= lower 
+	Key_t	upper;		// all keys < upper 
+	// How many entries with non-default values. This never includes the
+	// overflow entry, if any.
+	u16		*nEntries;
     char	*header;
     PID_t	*nextLeaf;
+	OverflowEntry	overflow;
+	bool	isOverflowed;
 
 public:
-    enum Type {
-        Internal = 0,
-        Leaf = 1,
-        SparseLeaf = 1,
-        DenseLeaf = 3
-    };
-
-    enum {
-        DenseHeaderSize = 12,
-        SparseHeaderSize = 12,
-		/* Size		Note
-		 * 1		flag
-		 * 1		reserved
-		 * 2		number of entries
-		 * 2		offset of first free space
-		 * 2		offset of first byte of cell content area
-		 * 4		page id of next leaf
-		 */
-		InternalHeaderSize = 4,
-		RecOffsetSize = 2
+	enum Status {
+		kOK = 0,
+		kOverwrite,
+		kOverflow,
+		kNotFound,
+		kSwitchFormat
 	};
+
+	enum Type {
+        kInternal = 0,
+        kLeaf = 1,
+        kSparseLeaf = 1,
+        kDenseLeaf = 3
+    };
 
 	//const static int HeaderSize[4];
 	//static size_t BlockCapacity[4];
@@ -118,43 +118,57 @@ public:
 	//typedef ::Iterator<Key_t, Value> Iterator;
 
 	//Block(){}
-	static Block * load(BTree *tree, PageHandle ph, Key_t beginsAt, Key_t endsBy);
+	//static Block * load(BTree *tree, PageHandle ph, Key_t beginsAt, Key_t endsBy);
 	//static Block * create(BTree *tree, PageHandle ph, Key_t beginsAt, Key_t endsBy, Type type);
 
 	/* If a key is not found in a dense leaf block, it has a default value
 	 * and is omitted. */
-	const static Datum_t defaultValue = 0.0;
-	static inline bool IS_DEFAULT(Datum_t x) { return x == defaultValue; }
+	static const Datum_t kDefaultValue = 0.0;
+	static inline bool IsDefaultValue(Datum_t x) { return x == kDefaultValue; }
+	static Block *create(Type t, char *image, Key_t beingsAt, Key_t endsBy);
 
-	virtual int search(Key_t key, int &index) const;
-	virtual int get(Key_t key, Value &v) const;
-	virtual int get(int index, Key_t &key, Value &val) const;
-	virtual int put(Key_t key, const Value &v);
+	Block(Key_t _lower, Key_t _upper):lower(_lower),upper(_upper),isOverflowed(false)
+	{
+	}
+
+	virtual int search(Key_t key, int &index) const = 0;
+	virtual int get(Key_t key, Value &v) const = 0;
+	virtual int get(int index, Key_t &key, Value &val) const = 0;
+	// Returns the beginsAt-th to the endsBy-th (exclusive) records, counting
+	// either default-valued or non-default-valued records (in dense format).
+	virtual int getRange(Key_t beginsAt, Key_t endsBy, void *values) const = 0;
+	// Returns the beginsAt-th to the endsBy-th (exclusive) non-default-valued
+	// records (in sparse format).
+	virtual int getRange(int beginsAt, int endsBy, Key_t *keys, void *values) const = 0;
+	virtual int getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, void *values) const = 0;
+
+	virtual int put(Key_t key, const Value &v) = 0;
+	virtual int putRangeSorted(Key_t *keys, void *values, int num, int *numPut) = 0;
 	// int   put(int index, Key_t key, const Value &val) = 0;
 	//virtual int del(Key_t key);
-
-	u16 getCapacity() { return capacity; }
-	Key_t getLowerBound() { return lower; }
-	Key_t getUpperBound() { return upper; }
-	PageHandle getPageHandle() { return ph; }
-	bool  isDense() { return *((u8*)header) & 2; }
-	bool  isLeaf() { return *((u8*)header) & 1; }
-
-	//Key_t getKey(int index);
-	//Value getValue(int index);
-
-	//TODO: implement these!
 	/**
 	 * The specified entry and all after it are truncated.
 	 *
 	 * @param cutoff Truncate from which entry on
 	 */
-	void truncate(int cutoff){}
-	void splitTypes(int sp, Key_t spKey, Type &left, Type &right){}
-	Block *split(PageHandle newPh, int sp, Key_t spKey){return NULL;}
-	void switchTo(Type t){}
+	virtual void truncate(int pos, Key_t end) = 0;
+	//Block *split(PageHandle newPh, int sp, Key_t spKey){return NULL;}
+	virtual Block *switchFormat(Type t) = 0;
 
-	void print(int depth){}
+	//u16 getCapacity() { return capacity; }
+	Key_t getLowerBound() const { return lower; }
+	Key_t getUpperBound() const { return upper; }
+	//PageHandle getPageHandle() { return ph; }
+	bool  isDense() { return *((u8*)header) & 2; }
+	bool  isLeaf() { return *((u8*)header) & 1; }
+	u16 size() const { return *nEntries; }
+	u16 sizeWithOverflow() const { return (*nEntries)+isOverflowed; }
+	Type type() const { return (Type)(int)*header; }
+	void splitTypes(int sp, Key_t spKey, Type *left, Type *right);
+	virtual size_t valueTypeSize() const { return sizeof(Datum_t); }
+
+
+	virtual void print() const = 0;
 
 	void setNextLeaf(PID_t pid) { *nextLeaf = pid; }
 

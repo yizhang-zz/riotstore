@@ -1,8 +1,10 @@
-#ifndef BTREE_DENSE_LEAF_BLOCK_H
-#define BTREE_DENSE_LEAF_BLOCK_H
+#pragma once
 
 #include "../common/common.h"
 #include "BtreeBlock.h"
+#include "BtreeConfig.h"
+#include <boost/iterator/iterator_facade.hpp>
+#include <boost/iterator/filter_iterator.hpp>
 
 namespace Btree
 {
@@ -24,23 +26,154 @@ public:
 	 * When the head and tail coincide, we decide if the buffer is full or empty by
 	 * checking the number of non-zero entries.
 	 */
-	const static int HeaderSize = 16;
+	//const static int HeaderSize = 16;
 	//static u16 capacity() { return _capacity; }
-	static u16 capacity;
+	u16 getCapacity() const { return config->denseLeafCapacity; }
+	int getHeaderSize() const { return config->denseLeafHeaderSize; }
 
-	u16 *headIndex;
-	u16 *tailIndex;
-	Key_t *headKey;
-
-	DenseLeafBlock(BTree *tree, PageHandle ph, Key_t beginsAt, Key_t endsBy, bool create);
+	DenseLeafBlock(char *image, Key_t beginsAt, Key_t endsBy, bool create);
 	int search(Key_t key, int &index) const;
 	int get(Key_t key, Value &v) const;
 	int get(int index, Key_t &key, Value &v) const;
+	int getRange(Key_t beginsAt, Key_t endsBy, void *values) const;
+	int getRange(int beginsAt, int endsBy, Key_t *keys, void *values) const;
+	int getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, void *values) const;
 	int put(Key_t key, const Value &v);
+	int putRangeSorted(Key_t *keys, void *values, int num, int *numPut);
+	void truncate(int pos, Key_t end);
+	Block *switchFormat(Type t);
+	void print() const;
 
+	class DenseIterator : public boost::iterator_facade<
+						  DenseIterator,
+						  std::pair<Key_t,Datum_t>,
+						  boost::forward_traversal_tag,
+						  std::pair<Key_t,Datum_t>
+						  >
+	{
+	public:
+		DenseIterator(const DenseLeafBlock *b, int i):block(b),index(i)
+		{}
+
+	private:
+		const DenseLeafBlock *block;
+		int index;
+		friend class boost::iterator_core_access;
+		void increment() {
+			++index;
+		}
+		bool equal(DenseIterator const & other) const {
+			return index == other.index;
+		}
+		std::pair<Key_t,Datum_t> dereference() const {
+			return std::pair<Key_t,Datum_t>(block->key(index),block->value(index));
+		}
+	};
+
+	class SparseIterator : public boost::iterator_facade<
+						  SparseIterator,
+						  std::pair<Key_t,Datum_t>,
+						  boost::forward_traversal_tag,
+						  std::pair<Key_t,Datum_t>
+						  >
+	{
+	public:
+		SparseIterator(const DenseLeafBlock *b, int i):block(b),index(i)
+		{
+			d_index = -1;
+			int numNonDefault = 0;
+			int span = block->getSpan();
+			while (d_index < span && numNonDefault < index+1) {
+				++d_index;
+				if (block->value(d_index) != kDefaultValue)
+					++numNonDefault;
+			}
+		}
+
+	private:
+		const DenseLeafBlock *block;
+		int index;
+		int d_index;
+		friend class boost::iterator_core_access;
+		void increment() {
+			++index;
+			do {
+				++d_index;
+			} while (block->value(d_index) == kDefaultValue);
+		}
+		bool equal(SparseIterator const & other) const {
+			return index == other.index;
+		}
+		std::pair<Key_t,Datum_t> dereference() const {
+			return std::pair<Key_t,Datum_t>(block->key(d_index),block->value(d_index));
+		}
+	};
+	/*
+	struct IsNonDefaultValue {
+		bool operator()(std::pair<Key_t,Datum_t> x) {
+			return x.second!=kDefaultValue;
+		}
+	};
+
+	typedef boost::filter_iterator<IsNonDefaultValue, DenseIterator>
+		_SparseIterator;
+
+	class SparseIterator:public _SparseIterator
+	{
+	public:
+		SparseIterator(const DenseLeafBlock *b, int i):_SparseIterator(predicate, DenseIterator(b,i), DenseIterator(b,b->getSpan()))
+		{}
+	private:
+		static IsNonDefaultValue predicate;
+	};
+	*/
+
+	/*
+	class SparseIterator
+	{
+	public:
+		SparseIterator(DenseLeafBlock *block) {
+			this->block = block;
+			index = 0;
+		}
+
+		SparseIterator& operator++() {
+			do {
+				++index;
+			} while (IsDefaultValue(block->data[(index+*(block->headIndex))%block->capacity]));
+			return *this;
+		}
+
+		Key_t key() const {
+			return index+*(block->headKey);
+
+		}
+
+		Datum_t value() const {
+			return block->data[(index+*(block->headIndex))%block->capacity];
+		}
+
+	private:
+		DenseLeafBlock *block;
+		int index;
+	};
+	*/
 private:
+	i16 *headIndex;
+	i16 *tailIndex;
+	Key_t *headKey;
 	Datum_t *data;
-	static u16 initCapacity();
+	
+	Key_t key(int index) const
+	{
+		return *headKey + index;
+	}
+
+	Datum_t &value(int index) const
+	{
+		return data[(index+*headIndex)%capacity];
+	}
+
 	Key_t getTailKey() const
 	{
 		if (*tailIndex > *headIndex) {
@@ -57,8 +190,20 @@ private:
 		}
 	}
 
+	int getSpan() const
+	{
+		int span = *tailIndex - *headIndex;
+		if (span == 0 && *nEntries > 0)
+			return capacity;
+		return span>=0?span:span+capacity;
+	}
 
+	bool canSwitchFormat() const
+	{
+		return (*nEntries + 1) <= config->sparseLeafCapacity;
+	}
+
+	Status extendStoredRange(Key_t key) ;
 };
 }
 
-#endif

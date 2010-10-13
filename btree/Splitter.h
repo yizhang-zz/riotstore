@@ -22,7 +22,7 @@ public:
      * @param newPh The page handle where the new node should be stored.
      * @return The new node on the right after split.
      */
-    virtual Block* split(Block *orig, PageHandle newPh) = 0;
+    virtual void split(Block **orig, Block **new_block, char *new_image) = 0;
 };
 
 /**
@@ -31,7 +31,8 @@ public:
 class MSplitter : public Splitter
 {
 public:
-    Block* split(Block *orig, PageHandle newPh);
+    void split(Block **orig, Block **new_block, char *new_image);
+    //Block* split(Block *orig, char *new_image);
 };
 
 /**

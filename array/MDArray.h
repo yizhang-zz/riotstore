@@ -63,12 +63,12 @@ public:
 
     static void init()
     {
-        apr_initialize();
+        //apr_initialize();
     }
 
     static void cleanup()
     {
-        apr_terminate();
+        //apr_terminate();
     }
     
     u32 size; // number of elements

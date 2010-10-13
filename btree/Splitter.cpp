@@ -4,10 +4,12 @@
 #include <gsl/gsl_sf_exp.h>
 #include "Splitter.h"
 #include "BtreeBlock.h"
+#include "BtreeDenseLeafBlock.h"
+#include "BtreeSparseBlock.h"
 #include <limits>
 using namespace Btree;
 
-Block* MSplitter::split(Block *orig, PageHandle newPh)
+void MSplitter::split(Block **orig, Block **new_block, char *new_image)
 {
     /*
      * orig's dense/sparse format will not be changed for efficiency
@@ -15,9 +17,26 @@ Block* MSplitter::split(Block *orig, PageHandle newPh)
      * range is no larger than a dense node's capacity, then the dense
      * format is used.
      */
-    int size = orig->getSize();
-    int sp = size / 2;
-	return orig->split(newPh, sp, orig->getKey(sp));
+
+    int size = (*orig)->sizeWithOverflow();
+    int sp = size / 2; // split before the sp-th record
+	Key_t spKey;
+	int new_size = size-sp; // size of new block
+	// get the second half block
+	Key_t keys[new_size];
+	char values[(*orig)->valueTypeSize()*(new_size)];
+	(*orig)->getRangeWithOverflow(sp, size, keys, values);
+	spKey = keys[0];
+	Block::Type left, right;
+	(*orig)->splitTypes(sp, spKey, &left, &right);
+	*new_block = Block::create(right, new_image, keys[0], (*orig)->getUpperBound());
+	int numPut;
+	(*new_block)->putRangeSorted(keys, values, new_size, &numPut);
+	(*orig)->truncate(sp, spKey);
+	if (Block *new_left = (*orig)->switchFormat(left)) {
+		delete *orig;//TODO: would the caller know about this?
+		*orig = new_left;
+	}
     /*
     if (!orig->isLeaf())
         block = new BtreeIntBlock(newHandle, beginsAt, endsBy);
@@ -43,6 +62,7 @@ Block* MSplitter::split(Block *orig, PageHandle newPh)
     */
 }
 
+/*
 
 Block* BSplitter::split(Block *orig, PageHandle newPh)
 {
@@ -200,3 +220,4 @@ Block* TSplitter::split(Block *orig, PageHandle newPh)
 
   return orig->split(newPh, sp, orig->getKey(sp));
 }
+*/

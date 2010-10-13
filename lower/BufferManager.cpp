@@ -13,7 +13,7 @@ double BufferManager::accessTime = 0.0;
 // memory buffer that holds a given number of pages.
 BufferManager::BufferManager(PagedStorageContainer *s, uint32_t n,
                              PageReplacer *pr) {
-    packer = NULL;
+    //packer = NULL;
     if (pr)
         pageReplacer = pr;
     else
@@ -44,10 +44,10 @@ BufferManager::BufferManager(PagedStorageContainer *s, uint32_t n,
 // Destructs the BufferManager.  All dirty pages will be flushed.
 BufferManager::~BufferManager() {
     flushAllPages();
-    for (int i=0; i<numSlots; i++) {
-        if (headers[i].unpacked && packer)
-            packer->destroyUnpacked(headers[i].unpacked);
-    }
+    //for (int i=0; i<numSlots; i++) {
+    //    if (headers[i].unpacked && packer)
+    //        packer->destroyUnpacked(headers[i].unpacked);
+    //}
     freePageImage(pool);
     //delete[] handles;
     delete[] headers;
@@ -358,9 +358,9 @@ RC_t BufferManager::flushPage(const PageHandle ph) {
     PageHashMap::iterator it = pageHash->find(rec->pid);
     assert(it != pageHash->end());
     if (rec->dirty) {
-        if (packer && rec->unpacked) {
-            packer->pack(rec->unpacked, rec->image);
-        }
+        //if (packer && rec->unpacked) {
+        //    packer->pack(rec->unpacked, rec->image);
+        //}
         if ((ret=storage->writePage(ph)) != RC_OK) {
             fprintf(stderr, "Physical storage cannot write pid %d, error %d.\n", rec->pid, ret);
 #ifdef PROFILING
@@ -394,9 +394,9 @@ RC_t BufferManager::flushAllPages() {
          it++) {
         PageRec *rec = it->second;
         if (rec->dirty) {
-            if (packer && rec->unpacked) {
-                packer->pack(rec->unpacked, rec->image);
-            }
+            //if (packer && rec->unpacked) {
+            //    packer->pack(rec->unpacked, rec->image);
+            //}
             if ((ret=storage->writePage((PageHandle)rec)) != RC_OK) {
                 fprintf(stderr, "Physical storage cannot write pid %d, error %d.\n",rec->pid,ret);
                 good = false;
@@ -439,8 +439,8 @@ RC_t BufferManager::replacePage(PageRec *&bh)
         return ret;
     }
     if (bh->dirty) {
-        if (packer && bh->unpacked)
-            packer->pack(bh->unpacked, bh->image);
+        //if (packer && bh->unpacked)
+        //    packer->pack(bh->unpacked, bh->image);
         if ((ret=storage->writePage((PageHandle)bh)) != RC_OK) {
             fprintf(stderr, "Physical storage cannot write pid %d, error %d.\n",bh->pid,ret);
             return ret;
@@ -450,24 +450,13 @@ RC_t BufferManager::replacePage(PageRec *&bh)
     // remove old mapping in hash table
     pageHash->erase(bh->pid);
     // clear unpacked image
-    if (packer && bh->unpacked)
-        packer->destroyUnpacked(bh->unpacked);
+    //if (packer && bh->unpacked)
+    //    packer->destroyUnpacked(bh->unpacked);
     bh->reset();
     return RC_OK;
 }
 
-PID_t BufferManager::getPID(PageHandle ph)
-{
-    PageRec *rec = (PageRec*) ph;
-    return rec->pid;
-}
-
-void *BufferManager::getPageImage(PageHandle ph)
-{
-    PageRec *rec = (PageRec*) ph;
-    return rec->image;
-}
-
+/*
 void *BufferManager::getUnpackedPageImage(PageHandle ph)
 {
 #ifdef PROFILING
@@ -485,3 +474,4 @@ void *BufferManager::getUnpackedPageImage(PageHandle ph)
 #endif
     return rec->unpacked;
 }
+*/

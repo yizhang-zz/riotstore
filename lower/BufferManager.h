@@ -1,7 +1,7 @@
 #ifndef BUFFER_MANAGER_H
 #define BUFFER_MANAGER_H
 
-#include <apr_pools.h>
+//#include <apr_pools.h>
 #include <map>
 #include "../common/common.h"
 #include "PagedStorageContainer.h"
@@ -10,6 +10,7 @@
 // forward declaration
 class PageReplacer;
 
+/*
 class PagePacker
 {
 public:
@@ -17,6 +18,7 @@ public:
     virtual void unpack(void *packed, void *&unpacked) = 0;
     virtual void destroyUnpacked(void *&unpacked) = 0;
 };
+*/
 
 //////////////////////////////////////////////////////////////////////
 // Provides memory-buffered access to a PagedStorageContainer.  This
@@ -84,7 +86,7 @@ private:
     //friend class PageReplacer;
     PageReplacer *pageReplacer;
 
-    PagePacker *packer;
+    //PagePacker *packer;
 
 public:
 
@@ -135,11 +137,20 @@ public:
     
     void print() ;
 
-    void setPagePacker(PagePacker *packer) { this->packer = packer; }
+    //void setPagePacker(PagePacker *packer) { this->packer = packer; }
 
-    PID_t getPID(PageHandle ph);
-    void *getPageImage(PageHandle ph);
-    void *getUnpackedPageImage(PageHandle ph);
+    PID_t getPID(PageHandle ph)
+	{
+		PageRec *rec = (PageRec*) ph;
+		return rec->pid;
+	}
+
+    void *getPageImage(PageHandle ph)
+	{
+		PageRec *rec = (PageRec*) ph;
+		return rec->image;
+	}
+    //void *getUnpackedPageImage(PageHandle ph);
 
 private:
 	RC_t replacePage(PageRec *&bh);
