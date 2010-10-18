@@ -2,7 +2,7 @@
 #include "BtreeBlock.h"
 #include "BtreeDenseLeafBlock.h"
 #include "BtreeSparseBlock.h"
-#include "BtreeConfig.h"
+#include "Config.h"
 
 using namespace std;
 using namespace Btree;

@@ -41,7 +41,7 @@ MDCoord MDArray::peekDim(const char *fileName)
     return dim;
 }
 
-MDArray::MDArray(MDCoord &dim, Linearization *lnrztn, Splitter *leaf, Splitter *internal, const char *fileName)
+MDArray::MDArray(MDCoord &dim, Linearization *lnrztn, LeafSplitter *leaf, InternalSplitter *internal, const char *fileName)
     : leafsp(leaf), intsp(internal)
 {
     allocatedSp = false;
@@ -124,8 +124,8 @@ MDArray::MDArray(MDCoord &dim, StorageType type, Linearization *lnrztn, const ch
         storage = new DirectlyMappedArray(path, size);
         break;
     case BTREE:
-        leafsp = new MSplitter();
-        intsp = new MSplitter();
+        leafsp = new MSplitter<Datum_t>();
+        intsp = new MSplitter<PID_t>();
         storage = new BTree(path, size, leafsp, intsp); 
         allocatedSp = true;
         break;
@@ -210,8 +210,8 @@ MDArray::MDArray(const char *fileName)
    else if (type == BTREE)
    {
        //TODO: should read from file
-       leafsp = new MSplitter();
-       intsp = new MSplitter();
+       leafsp = new MSplitter<Datum_t>();
+       intsp = new MSplitter<PID_t>();
        allocatedSp = true;
        storage = new BTree(fileName, leafsp, intsp);
    }

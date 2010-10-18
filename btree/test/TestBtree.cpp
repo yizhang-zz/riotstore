@@ -6,7 +6,7 @@
 using namespace Btree;
 using namespace std;
 
-TEST(BTree, All)
+TEST(BTree, InOrderPut)
 {
     LeafSplitter *lsp = new MSplitter<Datum_t>();
 	InternalSplitter *isp = new MSplitter<PID_t>();
@@ -93,4 +93,28 @@ TEST(BTree, All)
     t4->put(0U, 1.0);
     delete t4;
 	*/
+}
+
+TEST(BTree, RandomPut)
+{
+    LeafSplitter *lsp = new MSplitter<Datum_t>();
+	InternalSplitter *isp = new MSplitter<PID_t>();
+    BTree tree("tree.bin", 100, lsp, isp);
+    Key_t k = 0;
+    Datum_t d = 1.0;
+    int cols = 8;
+    int rows = 8;
+    int num = rows*cols;
+	Key_t keys[num];
+	Datum_t vals[num];
+	for (int i=0; i<num; ++i)
+		keys[i] = i+1;
+	permute(keys, num);
+	for (int i=0; i<num; ++i)
+		vals[i] = keys[i];
+	for (int i=0; i<num; ++i)
+		tree.put(keys[i], vals[i]);
+	tree.print();
+	delete lsp;
+	delete isp;
 }

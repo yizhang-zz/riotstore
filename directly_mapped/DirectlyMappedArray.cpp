@@ -1,5 +1,6 @@
 #include <iostream>
 #include <sys/time.h>
+#include "../common/Config.h"
 #include "../lower/LRUPageReplacer.h"
 #include "../lower/BitmapPagedFile.h"
 #include "DMADenseIterator.h"
@@ -12,17 +13,6 @@ int LinearStorage::writeCount = 0;
 double LinearStorage::accessTime = 0.0;
 #endif
 
-int DirectlyMappedArray::BufferSize = DirectlyMappedArray::getBufferSize();
-int DirectlyMappedArray::getBufferSize() {
-    int n = 5000;
-    if (getenv("RIOT_DMA_BUFFER") != NULL) {
-        n = atoi(getenv("RIOT_DMA_BUFFER"));
-    }
-    debug("Using buffer size %dKB", n*4);
-    return n;
-}
-
-
 /// If numElements > 0, create a new array; otherwise read from disk.
 /// Whether file exists is ignored.
 DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numElements) 
@@ -31,7 +21,7 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numEleme
    {
       remove(fileName);
       file = new BitmapPagedFile(fileName, BitmapPagedFile::F_CREATE);
-      buffer = new BufferManager(file, BufferSize); 
+      buffer = new BufferManager(file, config->dmaBufferSize); 
       this->numElements = numElements;
       PageHandle ph;
       assert(RC_OK == buffer->allocatePageWithPID(0, ph));
@@ -50,7 +40,7 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numEleme
       if (access(fileName, F_OK) != 0)
          throw ("File for array does not exist.");
       file = new BitmapPagedFile(fileName, BitmapPagedFile::F_NO_CREATE);
-      buffer = new BufferManager(file, BufferSize); 
+      buffer = new BufferManager(file, config->dmaBufferSize); 
       PageHandle ph;
       buffer->readPage(0, ph);
       DirectlyMappedArrayHeader* header = (DirectlyMappedArrayHeader*)

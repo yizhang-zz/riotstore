@@ -86,6 +86,7 @@ bool DMASparseIterator::movePrev()
             return false;
    } while (isZero()); // check current value is non-zero
    return true;*/
+	return false;
 }
 
 void DMASparseIterator::get(Key_t &k, Datum_t &d)

@@ -3,7 +3,7 @@
 #include "BtreeDenseLeafBlock.h"
 #include "BtreeSparseBlock.h"
 #include "Btree.h"
-#include "BtreeConfig.h"
+#include "Config.h"
 //#include "BtreeDenseIterator.h"
 #include "BtreeStat.h"
 #include "BatchBuffer.h"

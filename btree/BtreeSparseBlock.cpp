@@ -1,6 +1,5 @@
 #include "BtreeSparseBlock.h"
 #include "BtreeDenseLeafBlock.h"
-#include "BtreeConfig.h"
 #include <iostream>
 
 using namespace Btree;

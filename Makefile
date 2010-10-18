@@ -1,6 +1,7 @@
-DIRS := common lower directly_mapped btree 
+DIRS := common lower directly_mapped btree array
 CXX = g++
 CXXFLAGS += -Wall -g -fPIC $(patsubst %,-I%,$(DIRS)) -DPROFILING
+CXXFLAGS += -O2
 #CXXFLAGS += -DUSE_BATCH_BUFFER
 
 #LDFLAGS += `pkg-config --libs apr-1 gsl`

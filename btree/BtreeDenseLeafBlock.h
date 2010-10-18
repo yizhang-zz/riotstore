@@ -2,7 +2,7 @@
 
 #include "../common/common.h"
 #include "BtreeBlock.h"
-#include "BtreeConfig.h"
+#include "Config.h"
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 

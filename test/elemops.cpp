@@ -11,7 +11,7 @@
 
 using namespace std;
 
-int n = 300;
+int n = 800;
 i64 rows = n;
 i64 cols = n;
 MDCoord dim(2, rows, cols);
@@ -36,8 +36,8 @@ double t1, t2;
 void sequentialInsert()
 {
     MDArray *array;
-    Btree::MSplitter leafSp;
-    Btree::MSplitter intSp;
+    Btree::MSplitter<Datum_t> leafSp;
+    Btree::MSplitter<PID_t> intSp;
     if (type == DMA)
         array = new MDArray(dim, type, row, fileName);
     else if (type == BTREE)
@@ -73,8 +73,8 @@ void sequentialInsert()
 void stridedInsert()
 {
     MDArray *array;
-    Btree::MSplitter leafSp;
-    Btree::MSplitter intSp;
+    Btree::MSplitter<Datum_t> leafSp;
+    Btree::MSplitter<PID_t> intSp;
     if (type == DMA)
         array = new MDArray(dim, type, row, fileName);
     else if (type == BTREE)
@@ -108,8 +108,8 @@ void stridedInsert()
 void stridedIteratorInsert()
 {
     MDArray *array;
-    Btree::MSplitter leafSp;
-    Btree::MSplitter intSp;
+    Btree::MSplitter<Datum_t> leafSp;
+    Btree::MSplitter<PID_t> intSp;
     if (type == DMA)
         array = new MDArray(dim, type, row, fileName);
     else if (type == BTREE)
@@ -142,24 +142,26 @@ void stridedIteratorInsert()
 void randomInsert()
 {
    i64 k[n*n];
-   for (int i = 0; i < n*n; i++)
+   int stride = 5;
+   int num = n*n/stride;
+   for (int i = 0; i < num; i++)
    {
-      k[i] = i;
+      k[i] = i*stride;
    }
     MDArray *array;
-    Btree::MSplitter leafSp;
-    Btree::MSplitter intSp;
+    Btree::MSplitter<Datum_t> leafSp;
+    Btree::MSplitter<PID_t> intSp;
     if (type == DMA)
         array = new MDArray(dim, type, row, fileName);
     else if (type == BTREE)
         array = new MDArray(dim, row, &leafSp, &intSp, fileName);
    PagedStorageContainer::resetPerfCounts();
-   permute(k, n*n);
+   permute(k, num);
    i64 *i = k;
 
    gettimeofday(&tim, NULL);
    t1 = tim.tv_sec + tim.tv_usec/1000000.0;
-   while (i < k + n*n)
+   while (i < k + num)
    {
       coord = MDCoord(2, *i/n, *i%n);
       array->put(coord, 12345);
@@ -174,6 +176,7 @@ void randomInsert()
    accessTime += PagedStorageContainer::accessTime;
    execTime += (t2 - t1);
 
+   fprintf(pFile, "sparsity %4.3f\n", 1.0/stride);
    fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "rand insert", PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, t2-t1);
 
 
@@ -254,14 +257,18 @@ int main()
    printf("strided insert done\n");
    stridedIteratorInsert();
    printf("strided iterator insert done\n");
-   randomInsert();
-   printf("random insert done\n");
    sequentialRead();
    printf("sequential read done\n");
    randomRead();
 */
+   randomInsert();
+   printf("random insert done\n");
    fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "total", readCount, writeCount, accessTime, execTime);
    remove(fileName);
+
+   // reset total counters
+   readCount = writeCount = 0;
+   accessTime = execTime = 0;
 
    // Btree
    type = BTREE;
@@ -277,7 +284,7 @@ int main()
    // sequentialRead();
    // printf("sequential read done\n");
    // randomRead();
-   // fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "total", readCount, writeCount, accessTime, execTime);
+   fprintf(pFile, "%-14s %8i %8i %11.3f %11.3f\n", "total", readCount, writeCount, accessTime, execTime);
 
 
    fclose(pFile);

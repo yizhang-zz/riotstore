@@ -1,8 +1,9 @@
 #SRC += $(wildcard btree/*.cpp)
 SRC += \
-	   btree/BtreeDenseLeafBlock.cpp \
-	   btree/BtreeSparseBlock.cpp \
-	   btree/BtreeConfig.cpp btree/BtreeBlock.cpp \
-	   btree/Splitter.cpp btree/Btree.cpp
+	btree/BtreeDenseLeafBlock.cpp \
+	btree/BtreeSparseBlock.cpp \
+	btree/BtreeBlock.cpp \
+	btree/Splitter.cpp btree/Btree.cpp \
+	btree/BtreeDenseIterator.cpp
 #btree/BtreeBlock.cpp
 CXXFLAGS += `pkg-config --cflags-only-I gsl`

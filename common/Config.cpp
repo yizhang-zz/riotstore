@@ -1,13 +1,11 @@
-#include "BtreeConfig.h"
+#include "Config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-using namespace Btree;
+Config *config = Config::getGlobalConfig();
 
-BtreeConfig *Btree::config = BtreeConfig::getGlobalConfig();
-
-BtreeConfig::BtreeConfig(const char *path)
+Config::Config(const char *path)
 {
 	denseLeafCapacity = (PAGE_SIZE-denseLeafHeaderSize)/(sizeof(Datum_t));
 	sparseLeafCapacity = (PAGE_SIZE-sparseLeafHeaderSize)/(sizeof(Datum_t)+sizeof(Key_t)+2);
@@ -20,6 +18,8 @@ BtreeConfig::BtreeConfig(const char *path)
 		char buf[512];
 		while (fgets(buf, 512, f)) {
 			//TODO: trim first
+			if (buf[0]=='#')
+				continue;
 			char *a = strtok(buf, "=");
 			char *b = strtok(NULL, "\n");
 			if (strcmp(a, "denseLeafCapacity") == 0) {
@@ -38,7 +38,7 @@ BtreeConfig::BtreeConfig(const char *path)
 	}
 }
 
-BtreeConfig* BtreeConfig::getGlobalConfig()
+Config* Config::getGlobalConfig()
 {
     char buf[512];
 	if (getenv("RIOT_CONFIG") != NULL) {
@@ -48,5 +48,5 @@ BtreeConfig* BtreeConfig::getGlobalConfig()
 		strcpy(buf, getenv("HOME"));
 		strcat(buf, "/.riot");
 	}
-    return new BtreeConfig(buf);
+    return new Config(buf);
 }

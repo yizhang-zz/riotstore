@@ -54,8 +54,8 @@ protected:
     std::string fileName;
 
 private:
-    Btree::Splitter *intsp;
-    Btree::Splitter *leafsp;
+    Btree::LeafSplitter *leafsp;
+    Btree::InternalSplitter *intsp;
     bool allocatedSp;
     
 public:
@@ -84,7 +84,7 @@ public:
      */
     MDArray(MDCoord &dim, StorageType type, Linearization *lrnztn, const char *fileName=0);
 
-    MDArray(MDCoord &dim, Linearization *lrnztn, Btree::Splitter *leaf, Btree::Splitter *internal, const char *fileName=0);
+    MDArray(MDCoord &dim, Linearization *lrnztn, Btree::LeafSplitter *leaf, Btree::InternalSplitter *internal, const char *fileName=0);
     /**
      * Constructs and initializes a MDArray from a file stored on
      * disk. ArrayStorage's factory method can analyze the file and

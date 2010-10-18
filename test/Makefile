@@ -1,23 +1,17 @@
 CXX = g++
 CXXFLAGS += -Wall -g 
-CXXFLAGS += `pkg-config --cflags-only-I apr-1`
+#CXXFLAGS += `pkg-config --cflags-only-I apr-1`
 # enables profiling
 CXXFLAGS += -DPROFILING
 
 #CXXFLAGS += -DUSE_BATCH_BUFFER
 
-LDFLAGS += `pkg-config --libs apr-1 gsl`
-#LDFLAGS += `pkg-config --libs gsl`
-
-OS = $(shell uname -s)
-ifeq ($(OS),SunOS)
-	LDFLAGS += -L/lib 
-endif
+LDFLAGS += `pkg-config --libs gsl`
 
 LIBS =
 SRC =
 
-all:elemops
+all:elemops mat_write
 
 %: %.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $< ../libriot_store.so $(LDFLAGS)

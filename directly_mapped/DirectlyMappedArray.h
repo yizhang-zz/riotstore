@@ -27,8 +27,6 @@ protected:
     u32 numElements;
 
 public:
-    static int BufferSize;
-    static int getBufferSize();
     const static double DefaultValue = 0.0;
     /// If numElements > 0, create a new array; otherwise read from disk.
     /// Whether file exists is ignored.
