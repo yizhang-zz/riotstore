@@ -13,7 +13,7 @@ Cursor::Cursor(BTree *t)
 Cursor::~Cursor()
 {
     for (int i=current; i>=0; i--) {
-        tree->releasePage(trace[i]->getPageHandle());
+        tree->releasePage(trace[i]->pageHandle);
         delete trace[i];
     }
 }

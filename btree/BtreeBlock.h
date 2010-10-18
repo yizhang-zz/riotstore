@@ -9,18 +9,24 @@
 
 namespace Btree
 {
-/**
+	enum Status {
+		kOK = 0,
+		kOverwrite,
+		kOverflow,
+		kNotFound,
+		kSwitchFormat
+	};
+
+	/**
  * A value stored in a btree block. Can be either a datum or a PID.
  */
 
-union Value{
+/*
+  union Value{
     Datum_t datum;
     PID_t pid;
 };
 
-/**
- * A key-value pair.
- */
 struct Entry
 {
     Value value;
@@ -37,7 +43,7 @@ struct OverflowEntry : public Entry
 	// entry were inserted into the block.
 	u16 index; 
 };
-
+*/
 //class BTree;
 
 /**
@@ -77,27 +83,19 @@ struct OverflowEntry : public Entry
 
 class Block {
 public:
-    //BTree	*tree;
+	PageHandle pageHandle;
+    char	*header;
 	u16		capacity;
 	Key_t	lower;		// all keys >= lower 
 	Key_t	upper;		// all keys < upper 
 	// How many entries with non-default values. This never includes the
 	// overflow entry, if any.
 	u16		*nEntries;
-    char	*header;
     PID_t	*nextLeaf;
-	OverflowEntry	overflow;
+	//OverflowEntry	overflow;
 	bool	isOverflowed;
 
 public:
-	enum Status {
-		kOK = 0,
-		kOverwrite,
-		kOverflow,
-		kNotFound,
-		kSwitchFormat
-	};
-
 	enum Type {
         kInternal = 0,
         kLeaf = 1,
@@ -125,25 +123,15 @@ public:
 	 * and is omitted. */
 	static const Datum_t kDefaultValue = 0.0;
 	static inline bool IsDefaultValue(Datum_t x) { return x == kDefaultValue; }
-	static Block *create(Type t, char *image, Key_t beingsAt, Key_t endsBy);
+	static Block *create(Type t, PageHandle ph, char *image, Key_t beingsAt, Key_t endsBy);
+	static Block *create(PageHandle ph, char *image, Key_t beingsAt, Key_t endsBy);
 
-	Block(Key_t _lower, Key_t _upper):lower(_lower),upper(_upper),isOverflowed(false)
+	Block(PageHandle ph, char *image, Key_t _lower, Key_t _upper)
+		:pageHandle(ph),header(image),lower(_lower),upper(_upper),isOverflowed(false)
 	{
 	}
 
 	virtual int search(Key_t key, int &index) const = 0;
-	virtual int get(Key_t key, Value &v) const = 0;
-	virtual int get(int index, Key_t &key, Value &val) const = 0;
-	// Returns the beginsAt-th to the endsBy-th (exclusive) records, counting
-	// either default-valued or non-default-valued records (in dense format).
-	virtual int getRange(Key_t beginsAt, Key_t endsBy, void *values) const = 0;
-	// Returns the beginsAt-th to the endsBy-th (exclusive) non-default-valued
-	// records (in sparse format).
-	virtual int getRange(int beginsAt, int endsBy, Key_t *keys, void *values) const = 0;
-	virtual int getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, void *values) const = 0;
-
-	virtual int put(Key_t key, const Value &v) = 0;
-	virtual int putRangeSorted(Key_t *keys, void *values, int num, int *numPut) = 0;
 	// int   put(int index, Key_t key, const Value &val) = 0;
 	//virtual int del(Key_t key);
 	/**
@@ -153,20 +141,20 @@ public:
 	 */
 	virtual void truncate(int pos, Key_t end) = 0;
 	//Block *split(PageHandle newPh, int sp, Key_t spKey){return NULL;}
-	virtual Block *switchFormat(Type t) = 0;
 
 	//u16 getCapacity() { return capacity; }
 	Key_t getLowerBound() const { return lower; }
 	Key_t getUpperBound() const { return upper; }
+	bool inRange(Key_t key) const { return key >= lower && key < upper; }
 	//PageHandle getPageHandle() { return ph; }
-	bool  isDense() { return *((u8*)header) & 2; }
-	bool  isLeaf() { return *((u8*)header) & 1; }
+	Type type() const { return (Type)(int)*header; }
+	bool isDense() { return *((u8*)header) & 2; }
+	bool isLeaf() { return *((u8*)header) & 1; }
 	u16 size() const { return *nEntries; }
 	u16 sizeWithOverflow() const { return (*nEntries)+isOverflowed; }
-	Type type() const { return (Type)(int)*header; }
-	void splitTypes(int sp, Key_t spKey, Type *left, Type *right);
 	virtual size_t valueTypeSize() const { return sizeof(Datum_t); }
 
+	void splitTypes(int sp, Key_t spKey, Type *left, Type *right);
 
 	virtual void print() const = 0;
 
@@ -225,5 +213,41 @@ public:
 	};
 	*/
 };
+
+template<class T>
+class BlockT : public Block
+{
+public:
+	BlockT(PageHandle ph, char *image, Key_t lower, Key_t upper):Block(ph,image,lower,upper)
+	{
+	}
+	virtual int get(Key_t key, T &v) const = 0;
+	virtual Key_t key(int index) const = 0;
+	virtual T &value(int index) const = 0;
+	virtual int get(int index, Key_t &key, T &val) const = 0;
+	// Returns the beginsAt-th to the endsBy-th (exclusive) records, counting
+	// either default-valued or non-default-valued records (in dense format).
+	virtual int getRange(Key_t beginsAt, Key_t endsBy, T *values) const = 0;
+	// Returns the beginsAt-th to the endsBy-th (exclusive) non-default-valued
+	// records (in sparse format).
+	virtual int getRange(int beginsAt, int endsBy, Key_t *keys, T *values) const = 0;
+	virtual int getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, T *values) const = 0;
+
+	virtual int put(Key_t key, const T &v, int *index) = 0;
+	virtual int putRangeSorted(Key_t *keys, T *values, int num, int *numPut) = 0;
+
+	virtual BlockT<T> *switchFormat() = 0;
+
+	struct OverflowEntry
+	{
+		int index;
+		Key_t key;
+		T value;
+	} overflow;
+};
+
+typedef BlockT<PID_t> PIDBlock;
+typedef BlockT<Datum_t> LeafBlock;
+
 }
 #endif

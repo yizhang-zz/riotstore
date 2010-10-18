@@ -145,7 +145,7 @@ public:
 		return rec->pid;
 	}
 
-    void *getPageImage(PageHandle ph)
+    char *getPageImage(PageHandle ph)
 	{
 		PageRec *rec = (PageRec*) ph;
 		return rec->image;

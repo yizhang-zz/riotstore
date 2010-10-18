@@ -19,7 +19,7 @@ OBJ := $(patsubst %.cpp,%.o,$(filter %.cpp,$(SRC))) \
 	$(patsubst %.c,%.o,$(filter %.c,$(SRC)))
 
 
-all: libriot_store.so test1
+all: libriot_store.so
 
 tags: $(OBJ)
 	ctags -R

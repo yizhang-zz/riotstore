@@ -32,7 +32,7 @@ BufferManager::BufferManager(PagedStorageContainer *s, uint32_t n,
     // handles = new PageHandle[numSlots];
     headers = new PageRec[numSlots];
     //freelist = headers;
-    for (int i=0; i<numSlots; i++) {
+    for (u32 i=0; i<numSlots; i++) {
         headers[i].image = (char*)pool+i*PAGE_SIZE;
         pageReplacer->add(headers+i);
     }

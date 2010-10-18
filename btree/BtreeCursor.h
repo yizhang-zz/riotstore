@@ -5,21 +5,40 @@
 
 namespace Btree
 {
-class BTree;
 class Block;
 
 class Cursor
 {
 public:
     static const int MaxDepth = 20;
-    BTree *tree;
+
+	BufferManager *buffer;
     Block *trace[MaxDepth];
     int indices[MaxDepth];
-    int current;
+    int current; // current position in the trace
+	Key_t key;   // the key searched/inserted using this cursor
+	
+    Cursor(BufferManager *buf):buffer(buf),current(-1)
+	{
+	}
 
-    Cursor(BTree *t);
+    ~Cursor()
+	{
+		for (int i=current; i>=0; i--) {
+			buffer->unpinPage(trace[i]->pageHandle);
+			delete trace[i];
+		}
+	}
 
-    ~Cursor();
+	void grow()
+	{
+		assert(current<MaxDepth);
+		for (int i=current; i>=0; i--) {
+			trace[i+1] = trace[i];
+			indices[i+1] = indices[i];
+		}
+		current++;
+	}
 };
 }
 #endif

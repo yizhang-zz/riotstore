@@ -9,7 +9,7 @@
 namespace Btree
 {
 template<class T>
-class SparseBlock : public Block
+class SparseBlock : public BlockT<T>
 {
 public:
 	/* Header of a sparse leaf block consists of the following:
@@ -29,23 +29,53 @@ public:
 	 * 2		offset of first free space
 	 * 2		offset of first byte of cell content area
 	 */
-	//const static int headerSize;
-	//const static u16 capacity;
 
-	SparseBlock(char *image, Key_t beginsAt, Key_t endsBy, bool create) {}
+	// ctor is specialized
+	SparseBlock(PageHandle ph, char *image, Key_t beginsAt, Key_t endsBy, bool create)
+		:BlockT<T>(ph, image, beginsAt, endsBy)
+	{}
 	int search(Key_t key, int &index) const;
-	int get(Key_t key, Value &v) const;
-	int get(int index, Key_t &key, Value &v) const;
-	int getRange(Key_t beginsAt, Key_t endsBy, void *values) const;
-	int getRange(int beginsAt, int endsBy, Key_t *keys, void *values) const;
-	int getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, void *values) const;
-	int put(Key_t key, const Value &v);
-	int putRangeSorted(Key_t *keys, void *values, int num, int *numPut);
-	void truncate(int sp, Key_t spKey);
-	Block *switchFormat(Type type);
+	Key_t key(int i) const
+	{
+		return i<this->size() ? *(Key_t*) (this->header+offsets[i]): this->upper;
+	}
+	
+	T &value(int i) const
+	{
+		return *(T*)(this->header+offsets[i]+sizeof(Key_t));
+	}
 
-	u16 getCapacity() const { return 0; }
-	int getHeaderSize() const { return 0; }
+	int get(Key_t k, T &v) const
+	{
+		assert(k >= this->lower && k < this->upper);
+		int index;
+		if (search(k, index) == kOK) {
+			v = value(index);
+			return kOK;
+		}
+		return kNotFound;
+	}
+	int get(int index, Key_t &k, T &v) const
+	{
+		assert(index >= 0 && index < *(this->nEntries));
+		k = key(index);
+		v = value(index);
+		return kOK;
+	}
+
+	int getRange(Key_t beginsAt, Key_t endsBy, T *values) const;
+	int getRange(int beginsAt, int endsBy, Key_t *keys, T *values) const;
+	int getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, T *values) const;
+	int put(Key_t key, const T &v, int *index);
+	int putRangeSorted(Key_t *keys, T *values, int num, int *numPut);
+	void truncate(int sp, Key_t spKey);
+	BlockT<T> *switchFormat()
+	{
+		return NULL;
+	}
+
+	//u16 getCapacity() const { return 0; }
+	//int getThis->HeaderSize() const { return 0; }
 	size_t valueTypeSize() const { return sizeof(T); }
 	void print() const;
 
@@ -78,7 +108,7 @@ public:
 private:
 	//Datum_t *data;
 	//static u16 initCapacity();
-	//static u16 initHeaderSize();
+	//static u16 initThis->HeaderSize();
 	u16 *dataOffset; // where the data section has grown to (from high-address to low-address)
 	                 // the next record can be placed s.t. it ends at the current dataOffset
 	u16 *freeCell; // the offset of the first free cell (created by deletions); each free
@@ -96,11 +126,11 @@ private:
 	{
 		char *x = NULL;
 		if (boundary <= *dataOffset-sizeof(Key_t)-sizeof(T)) {
-			x = header+*dataOffset-sizeof(Key_t)-sizeof(T);
+			x = this->header+*dataOffset-sizeof(Key_t)-sizeof(T);
 			*dataOffset -= sizeof(Key_t)+sizeof(T);
 		}
 		else {
-			x = header+*freeCell;
+			x = this->header+*freeCell;
 			*freeCell = *(u16*)x;
 		}
 		return x;
@@ -110,32 +140,23 @@ private:
 		*(Key_t*)x = k;
 		*(T*)(x+sizeof(k)) = v;
 	}
-	Key_t &key(int i) const
-	{
-		return *(Key_t*) (header+offsets[i]);
-	}
-	T &value(int i) const
-	{
-		return *(T*)(header+offsets[i]+sizeof(Key_t));
-	}
 	u16 offset(Key_t *k)
 	{
-		return ((char*)k)-header;
+		return ((char*)k)-this->header;
 	}
 	bool canSwitchFormat() const
 	{
 		Key_t min, max;
-		Value val;
-		get(0, min, val);
-		get(*nEntries-1, max, val);
-		if (overflow.key < min) min = overflow.key;
-		else if (overflow.key > max) max = overflow.key;
+		min = key(0);
+		max = key(*(this->nEntries)-1);
+		if (this->overflow.key < min) min = this->overflow.key;
+		else if (this->overflow.key > max) max = this->overflow.key;
 		return (max-min+1 <= config->denseLeafCapacity);
 	}
 	void freeCells(int from_index, int end_index)
 	{
 		for (int i=from_index; i<end_index; ++i) {
-			*(u16*) (header+offsets[i]) = *freeCell;
+			*(u16*) (this->header+offsets[i]) = *freeCell;
 			*freeCell = offsets[i];
 		}
 	}
@@ -144,11 +165,14 @@ private:
 // template specialization declarations
 
 template<>
-SparseBlock<PID_t>::SparseBlock(char *image, Key_t beginsAt, Key_t endsBy, bool create);
+SparseBlock<PID_t>::SparseBlock(PageHandle ph, char *image, Key_t beginsAt, Key_t endsBy, bool create);
 
 template<>
-SparseBlock<Datum_t>::SparseBlock(char *image, Key_t beginsAt, Key_t endsBy, bool create);
+SparseBlock<Datum_t>::SparseBlock(PageHandle ph, char *image, Key_t beginsAt, Key_t endsBy, bool create);
 
+template<>
+BlockT<Datum_t> * SparseBlock<Datum_t>::switchFormat();
+/*
 template<>
 inline u16 SparseBlock<PID_t>::getCapacity() const
 {
@@ -162,17 +186,17 @@ inline u16 SparseBlock<Datum_t>::getCapacity() const
 }
 
 template<>
-inline int SparseBlock<PID_t>::getHeaderSize() const
+inline int SparseBlock<PID_t>::getThis->HeaderSize() const
 {
-	return config->internalHeaderSize;
+	return config->internalThis->HeaderSize;
 }
 
 template<>
-inline int SparseBlock<Datum_t>::getHeaderSize() const
+inline int SparseBlock<Datum_t>::getThis->HeaderSize() const
 {
-	return config->sparseLeafHeaderSize;
+	return config->sparseLeafThis->HeaderSize;
 }
-
+*/
 
 typedef SparseBlock<PID_t> InternalBlock;
 typedef SparseBlock<Datum_t> SparseLeafBlock;

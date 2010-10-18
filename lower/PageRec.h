@@ -6,7 +6,7 @@
 struct PageRec
 {
     PID_t pid;
-    void *image;
+    char *image;
     //void *unpacked;
 	uint32_t pinCount;
     bool dirty;

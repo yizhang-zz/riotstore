@@ -8,19 +8,35 @@ using namespace std;
 using namespace Btree;
 
 
-Block * Block::create(Type t, char *image, Key_t beginsAt, Key_t endsBy)
+Block * Block::create(Type t, PageHandle ph, char *image, Key_t beginsAt, Key_t endsBy)
 {
 	switch (t) {
 	case kInternal:
-		return new InternalBlock(image, beginsAt, endsBy, true);
+		return new InternalBlock(ph, image, beginsAt, endsBy, true);
 	case kDenseLeaf:
-		return new DenseLeafBlock(image, beginsAt, endsBy, true);
+		return new DenseLeafBlock(ph, image, beginsAt, endsBy, true);
 	case kSparseLeaf:
-		return new SparseLeafBlock(image, beginsAt, endsBy, true);
+		return new SparseLeafBlock(ph, image, beginsAt, endsBy, true);
 	default:
 		return NULL;
 	}
 }
+
+Block * Block::create(PageHandle ph, char *image, Key_t beginsAt, Key_t endsBy)
+{
+	// first byte of the block image contains the type
+	switch (*image) {
+	case kInternal:
+		return new InternalBlock(ph, image, beginsAt, endsBy, false);
+	case kDenseLeaf:
+		return new DenseLeafBlock(ph, image, beginsAt, endsBy, false);
+	case kSparseLeaf:
+		return new SparseLeafBlock(ph, image, beginsAt, endsBy, false);
+	default:
+		return NULL;
+	}
+}
+
 /*
 void print(int depth)
 {

@@ -12,7 +12,9 @@ BtreeConfig::BtreeConfig(const char *path)
 	denseLeafCapacity = (PAGE_SIZE-denseLeafHeaderSize)/(sizeof(Datum_t));
 	sparseLeafCapacity = (PAGE_SIZE-sparseLeafHeaderSize)/(sizeof(Datum_t)+sizeof(Key_t)+2);
 	internalCapacity = (PAGE_SIZE-internalHeaderSize)/(sizeof(PID_t)+sizeof(Key_t)+2);
-
+	btreeBufferSize = 10;
+	dmaBufferSize = 10;
+	
     FILE *f = fopen(path, "r");
     if (f != NULL) {
 		char buf[512];
@@ -26,6 +28,10 @@ BtreeConfig::BtreeConfig(const char *path)
 				sparseLeafCapacity = atoi(b);
 			} else if (strcmp(a, "internalCapacity") == 0) {
 				internalCapacity = atoi(b);
+			} else if (strcmp(a, "btreeBufferSize") == 0) {
+				btreeBufferSize = atoi(b);
+			} else if (strcmp(a, "dmaBufferSize") == 0) {
+				dmaBufferSize = atoi(b);
 			}
 		}
 		fclose(f);
@@ -35,7 +41,12 @@ BtreeConfig::BtreeConfig(const char *path)
 BtreeConfig* BtreeConfig::getGlobalConfig()
 {
     char buf[512];
-    strcpy(buf, getenv("HOME"));
-    strcat(buf, "/.riot");
+	if (getenv("RIOT_CONFIG") != NULL) {
+		strcpy(buf, getenv("RIOT_CONFIG"));
+	}
+	else {
+		strcpy(buf, getenv("HOME"));
+		strcat(buf, "/.riot");
+	}
     return new BtreeConfig(buf);
 }

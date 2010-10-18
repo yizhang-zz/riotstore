@@ -8,7 +8,7 @@
 
 namespace Btree
 {
-class DenseLeafBlock : public Block
+class DenseLeafBlock : public LeafBlock
 {
 public:
 	/* Header consists of the following:
@@ -28,21 +28,31 @@ public:
 	 */
 	//const static int HeaderSize = 16;
 	//static u16 capacity() { return _capacity; }
-	u16 getCapacity() const { return config->denseLeafCapacity; }
-	int getHeaderSize() const { return config->denseLeafHeaderSize; }
+	//u16 getCapacity() const { return config->denseLeafCapacity; }
+	//int getHeaderSize() const { return config->denseLeafHeaderSize; }
 
-	DenseLeafBlock(char *image, Key_t beginsAt, Key_t endsBy, bool create);
+	DenseLeafBlock(PageHandle ph, char *image, Key_t beginsAt, Key_t endsBy, bool create);
 	int search(Key_t key, int &index) const;
-	int get(Key_t key, Value &v) const;
-	int get(int index, Key_t &key, Value &v) const;
-	int getRange(Key_t beginsAt, Key_t endsBy, void *values) const;
-	int getRange(int beginsAt, int endsBy, Key_t *keys, void *values) const;
-	int getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, void *values) const;
-	int put(Key_t key, const Value &v);
-	int putRangeSorted(Key_t *keys, void *values, int num, int *numPut);
+	int get(Key_t key, Datum_t &v) const;
+	int get(int index, Key_t &key, Datum_t &v) const;
+	int getRange(Key_t beginsAt, Key_t endsBy, Datum_t *values) const;
+	int getRange(int beginsAt, int endsBy, Key_t *keys, Datum_t *values) const;
+	int getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, Datum_t *values) const;
+	int put(Key_t key, const Datum_t &v, int *index);
+	int putRangeSorted(Key_t *keys, Datum_t *values, int num, int *numPut);
 	void truncate(int pos, Key_t end);
-	Block *switchFormat(Type t);
+	LeafBlock *switchFormat();
 	void print() const;
+
+	Key_t key(int index) const
+	{
+		return *headKey + index;
+	}
+
+	Datum_t &value(int index) const
+	{
+		return data[(index+*headIndex)%capacity];
+	}
 
 	class DenseIterator : public boost::iterator_facade<
 						  DenseIterator,
@@ -164,16 +174,6 @@ private:
 	Key_t *headKey;
 	Datum_t *data;
 	
-	Key_t key(int index) const
-	{
-		return *headKey + index;
-	}
-
-	Datum_t &value(int index) const
-	{
-		return data[(index+*headIndex)%capacity];
-	}
-
 	Key_t getTailKey() const
 	{
 		if (*tailIndex > *headIndex) {

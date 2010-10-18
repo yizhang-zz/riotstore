@@ -24,6 +24,9 @@ public:
 	u16 sparseLeafCapacity;
 	u16 internalCapacity;
 
+	int btreeBufferSize;
+	int dmaBufferSize;
+
 private:
     //static BtreeConfig* config;
 	//std::map<std::string, std::string> params;

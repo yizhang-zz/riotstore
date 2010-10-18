@@ -10,6 +10,7 @@ namespace Btree
  * Btree block. All concrete splitting algorithms should be implemented in a
  * subclass of this class.
  */
+template<class Value>
 class Splitter
 {
 public:
@@ -19,27 +20,35 @@ public:
      * returned.
      *
      * @param orig The original node.
-     * @param newPh The page handle where the new node should be stored.
-     * @return The new node on the right after split.
+     * @param new_block The new block.
+     * @param ph The page handle for the new node.
+     * @param new_image The location where the new node should be stored.
+     * @return 0 if orig's format is not changed, nonzero otherwise.
      */
-    virtual void split(Block **orig, Block **new_block, char *new_image) = 0;
+    virtual int split(BlockT<Value> **orig, BlockT<Value> **new_block,
+					   PageHandle ph, char *new_image) = 0;
 };
+
+typedef Splitter<PID_t> InternalSplitter;
+typedef Splitter<Datum_t> LeafSplitter;
 
 /**
  * A strategy that splits an overflowing Btree block in the middle position.
  */
-class MSplitter : public Splitter
+template<class Value>
+class MSplitter : public Splitter<Value>
 {
 public:
-    void split(Block **orig, Block **new_block, char *new_image);
-    //Block* split(Block *orig, char *new_image);
+    int split(BlockT<Value> **orig, BlockT<Value> **new_block,
+			   PageHandle ph, char *new_image);
 };
 
 /**
  * A strategy that splits an overflowing Btree block at the boundary that is
  * closest to the middle position.
  */
-class BSplitter : public Splitter
+template<class Value>
+class BSplitter : public Splitter<Value>
 {
 public:
     Block* split(Block *orig, PageHandle newPh);
@@ -59,14 +68,16 @@ private:
  * A strategy that splits an overflowing Btree block at the boundary that is
  * closest to the middle position.
  */
-class RSplitter : public Splitter
+template<class Value>
+class RSplitter : public Splitter<Value>
 {
 public:
     Block* split(Block *orig, PageHandle newPh);
     // RSplitter(u16 boundary) { this->boundary = boundary; }
 };
 
-class SSplitter : public Splitter
+template<class Value>
+class SSplitter : public Splitter<Value>
 {
 public:
   /**
@@ -77,7 +88,8 @@ private:
     double sValue(int b1, int b2, int d1, int d2);
 };
 
-class TSplitter : public Splitter
+template<class Value>
+class TSplitter : public Splitter<Value>
 {
 public:
   /**

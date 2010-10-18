@@ -9,7 +9,12 @@
 #include <limits>
 using namespace Btree;
 
-void MSplitter::split(Block **orig, Block **new_block, char *new_image)
+MSplitter<Datum_t> md;
+MSplitter<PID_t> mp;
+
+template<class Value>
+int MSplitter<Value>::split(BlockT<Value> **orig, BlockT<Value> **new_block,
+							 PageHandle ph, char *new_image)
 {
     /*
      * orig's dense/sparse format will not be changed for efficiency
@@ -24,19 +29,22 @@ void MSplitter::split(Block **orig, Block **new_block, char *new_image)
 	int new_size = size-sp; // size of new block
 	// get the second half block
 	Key_t keys[new_size];
-	char values[(*orig)->valueTypeSize()*(new_size)];
+	Value values[new_size];
 	(*orig)->getRangeWithOverflow(sp, size, keys, values);
 	spKey = keys[0];
 	Block::Type left, right;
 	(*orig)->splitTypes(sp, spKey, &left, &right);
-	*new_block = Block::create(right, new_image, keys[0], (*orig)->getUpperBound());
+	*new_block = static_cast<BlockT<Value>*>(Block::create(right, ph, new_image, keys[0], (*orig)->getUpperBound()));
 	int numPut;
 	(*new_block)->putRangeSorted(keys, values, new_size, &numPut);
 	(*orig)->truncate(sp, spKey);
-	if (Block *new_left = (*orig)->switchFormat(left)) {
-		delete *orig;//TODO: would the caller know about this?
+	if (left != (*orig)->type()) {
+		BlockT<Value> *new_left = (*orig)->switchFormat();
+		delete *orig;
 		*orig = new_left;
+		return 1;  // notify caller
 	}
+	return 0;
     /*
     if (!orig->isLeaf())
         block = new BtreeIntBlock(newHandle, beginsAt, endsBy);

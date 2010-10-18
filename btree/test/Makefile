@@ -7,7 +7,7 @@ LDFLAGS += -L../.. -R../.. -lriot_store -L/usr/local/lib -lgtest
 
 .PHONY: all clean lower
 
-SRC := main.cpp TestBlock.cpp TestSplit.cpp
+SRC := main.cpp TestBlock.cpp TestSplit.cpp TestBtree.cpp
 objects := $(patsubst %.cpp, %.o, $(SRC))
 #par_objects := $(patsubst %.cpp, %.o, $(wildcard ../*.cpp))
 #lower_objects := $(wildcard ../../lower/*.o)

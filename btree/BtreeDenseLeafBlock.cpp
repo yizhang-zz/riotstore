@@ -21,15 +21,11 @@ u16 DenseLeafBlock::initCapacity()
 }
 */
 
-DenseLeafBlock::DenseLeafBlock(char *image, Key_t beginsAt, Key_t endsBy, bool create)
-	:Block(beginsAt, endsBy)
+DenseLeafBlock::DenseLeafBlock(PageHandle ph, char *image, Key_t beginsAt, Key_t endsBy, bool create)
+	:LeafBlock(ph, image, beginsAt, endsBy)
 {
-//	this->tree	= tree;
-//	this->ph	= ph;
-//	header		= (char*)tree->getPagePacked(ph);
-	capacity	= getCapacity();
-	header		= image;
-	data		= (Datum_t*)(header+getHeaderSize());
+	capacity	= config->denseLeafCapacity;
+	data		= (Datum_t*)(header+config->denseLeafHeaderSize);
 	nEntries	= (u16*)(header+2);
 	nextLeaf	= (PID_t*)(header+4);
 	headIndex	= (i16*)(header+8);
@@ -45,7 +41,7 @@ DenseLeafBlock::DenseLeafBlock(char *image, Key_t beginsAt, Key_t endsBy, bool c
 	}
 }
 
-Block::Status DenseLeafBlock::extendStoredRange(Key_t key) 
+Status DenseLeafBlock::extendStoredRange(Key_t key) 
 {
 	int span = getSpan();
 	Key_t tailKey = getTailKey();
@@ -118,26 +114,26 @@ int DenseLeafBlock::search(Key_t key, int &index) const
 
 //TODO: if key is outside of [head, tail) range, should we return value
 //0 and signal kOK or just kNotFound?
-int DenseLeafBlock::get(Key_t key, Value &v) const
+int DenseLeafBlock::get(Key_t key, Datum_t &v) const
 {
 	assert(key >= lower && key < upper);
 	Key_t tailKey = getTailKey();
 	if (key >= *headKey && key < tailKey) {
-		v.datum = value(key-*headKey);
+		v = value(key-*headKey);
 		return kOK;
 	}
 	return kNotFound;
 }
 
-int DenseLeafBlock::get(int index, Key_t &key, Value &v) const
+int DenseLeafBlock::get(int index, Key_t &key, Datum_t &v) const
 {
 	assert(index >= 0 && index < getSpan());
 	key = this->key(index);
-	v.datum = this->value(index);
+	v = this->value(index);
 	return kOK;
 }
 
-int DenseLeafBlock::put(Key_t key, const Value &v)
+int DenseLeafBlock::put(Key_t key, const Datum_t &v, int *index)
 {
 	assert(key >= lower && key < upper);
 	//u16 capacity = getCapacity();
@@ -159,22 +155,25 @@ int DenseLeafBlock::put(Key_t key, const Value &v)
 		*headKey = key;
 		*headIndex = 0;
 		*tailIndex = 1;
-		data[0] = v.datum;
+		data[0] = v;
 		*nEntries = 1;
+		*index = 0;
 		return kOK;
 	}
 
 	Status s;
 	switch(s=extendStoredRange(key)) {
 	case kOK:
-		this->value(key-*headKey) = v.datum;
+		this->value(key-*headKey) = v;
 		*nEntries += 1;
+		*index = key-*headKey;
 		return kOK;
 	case kOverflow:
 	case kSwitchFormat:
 		isOverflowed = true;
 		overflow.key = key;
 		overflow.value = v;
+		*index = key-*headKey;
 		return s;
 	default:
 		return s;
@@ -254,42 +253,42 @@ int DenseLeafBlock::put(Key_t key, const Value &v)
 	*/
 }
 
-int DenseLeafBlock::getRange(Key_t beginsAt, Key_t endsBy, void *values) const
+int DenseLeafBlock::getRange(Key_t beginsAt, Key_t endsBy, Datum_t *values) const
 {
-	Datum_t *dv = static_cast<Datum_t*>(values);
+	//Datum_t *dv = static_cast<Datum_t*>(values);
 	DenseIterator it(this, beginsAt-*headKey);
 	DenseIterator end(this, endsBy-*headKey);
 	for(int i=0; it !=end; ++it,++i) {
-		dv[i] = it->second;
+		values[i] = it->second;
 	}
 	return kOK;
 }
 
-int DenseLeafBlock::getRange(int beginsAt, int endsBy, Key_t *keys, void *values) const
+int DenseLeafBlock::getRange(int beginsAt, int endsBy, Key_t *keys, Datum_t *values) const
 {
-	Datum_t *dv = static_cast<Datum_t*>(values);
+	//Datum_t *dv = static_cast<Datum_t*>(values);
 	SparseIterator it(this, beginsAt);
 	SparseIterator end(this, endsBy);
 	for(int j=0; j<endsBy-beginsAt && it !=end; ++it,++j) {
 		SparseIterator::value_type x = *it; 
 		keys[j] = x.first;
-		dv[j] = x.second;
+		values[j] = x.second;
 	}
 	return kOK;
 }
 
-int DenseLeafBlock::getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, void *values) const
+int DenseLeafBlock::getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, Datum_t *values) const
 {
-	Datum_t *dv = static_cast<Datum_t*>(values);
+	//Datum_t *dv = static_cast<Datum_t*>(values);
 	if (isOverflowed) {
 		if (overflow.index < 0) {
 			if (beginsAt == 0) {
 				// fill the first slot
 				keys[0] = overflow.key;
-				dv[0] = overflow.value.datum;
+				values[0] = overflow.value;
 				++beginsAt;
 				++keys;
-				++dv;
+				++values;
 			}
 			getRange(beginsAt-1,endsBy-1,keys,values);
 		}
@@ -298,7 +297,7 @@ int DenseLeafBlock::getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, 
 				// fill the last slot
 				int i = endsBy-beginsAt-1;
 				keys[i] = overflow.key;
-				dv[i] = overflow.value.datum;
+				values[i] = overflow.value;
 				--endsBy;
 			}
 			getRange(beginsAt,endsBy,keys,values);
@@ -311,16 +310,17 @@ int DenseLeafBlock::getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, 
 	return kOK;
 }
 
-int DenseLeafBlock::putRangeSorted(Key_t *keys, void *values, int num, int *numPut)
+int DenseLeafBlock::putRangeSorted(Key_t *keys, Datum_t *values, int num, int *numPut)
 {
-	Datum_t *dv = static_cast<Datum_t*>(values);
+	//Datum_t *dv = static_cast<Datum_t*>(values);
 	*numPut = 0;
 
 	int ret;
 	for (int i=0; i<num; ++i) {
-		Value v;
-		v.datum = dv[i];
-		switch(ret=put(keys[i], v)) {
+		//Value v;
+		//v.datum = dv[i];
+		int index;
+		switch(ret=put(keys[i], values[i], &index)) {
 		case kOK:
 			++(*numPut);
 			break;
@@ -328,7 +328,6 @@ int DenseLeafBlock::putRangeSorted(Key_t *keys, void *values, int num, int *numP
 			return ret;
 		}
 	}
-
 	return kOK;
 }
 
@@ -362,7 +361,8 @@ void DenseLeafBlock::truncate(int pos, Key_t end)
 	*nEntries = pos;
 	if (isOverflowed) {
 		if (overflow.index < 0) {
-			int ret = put(overflow.key, overflow.value);
+			int index;
+			int ret = put(overflow.key, overflow.value, &index);
 			if (ret==kOK) {
 				isOverflowed = false;
 				++(*nEntries);
@@ -377,24 +377,23 @@ void DenseLeafBlock::truncate(int pos, Key_t end)
 	}
 }
 
-Block *DenseLeafBlock::switchFormat(Type t)
+LeafBlock *DenseLeafBlock::switchFormat()
 {
-	if (t == kSparseLeaf) {
+	//if (t == kSparseLeaf) {
 		int num = sizeWithOverflow();
 		Key_t *keys = new Key_t[num];
 		Datum_t *vals = new Datum_t[num];
 		getRangeWithOverflow(0,num,keys,vals);
-		SparseLeafBlock *block = new SparseLeafBlock(header,lower,
-				upper, true);
+		SparseLeafBlock *block = new SparseLeafBlock(pageHandle, header,lower,
+													 upper, true);
 		int numPut;
 		block->putRangeSorted(keys,vals,num,&numPut);
 		assert(num==numPut);
 		delete[] keys;
 		delete[] vals;
 		return block;
-
-	}
-	return NULL;
+		//}
+		//return NULL;
 }
 
 void DenseLeafBlock::print() const

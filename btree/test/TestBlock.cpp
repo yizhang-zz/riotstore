@@ -19,7 +19,7 @@ TEST(DenseBlock, Create)
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePageWithPID(0,ph)==RC_OK);
-	DenseLeafBlock *block = new DenseLeafBlock((char*)buffer->getPageImage(ph), 0, 10, true);
+	DenseLeafBlock *block = new DenseLeafBlock(ph, buffer->getPageImage(ph), 0, 10, true);
 	buffer->markPageDirty(ph);
 	delete block;
 	delete buffer;
@@ -28,33 +28,33 @@ TEST(DenseBlock, Create)
     file = new BitmapPagedFile(fileName, BitmapPagedFile::F_NO_CREATE);
     buffer = new BufferManager(file, BufferSize);
 	ASSERT_TRUE(buffer->readPage(0,ph)==RC_OK);
-	block = new DenseLeafBlock((char*)buffer->getPageImage(ph), 0, 10, false);
+	block = new DenseLeafBlock(ph, buffer->getPageImage(ph), 0, 10, false);
 	ASSERT_EQ(block->size(), 0);
 
 	Key_t key = 5;
-	Value val;
-	val.datum = 1.0;
-	block->put(key, val);
+	Datum_t val = 1.0;
+	int index;
+	block->put(key, val, &index);
 
 	ASSERT_EQ(block->size(), 1);
-	ASSERT_EQ(block->get(key, val), Block::kOK);
-	ASSERT_DOUBLE_EQ(val.datum, 1.0);
+	ASSERT_EQ(block->get(key, val), kOK);
+	ASSERT_DOUBLE_EQ(val, 1.0);
 
 	key = 9;
-	block->put(key, val);
+	block->put(key, val, &index);
 	ASSERT_EQ(block->size(), 2);
-	ASSERT_EQ(block->get(key, val), Block::kOK);
-	ASSERT_DOUBLE_EQ(val.datum, 1.0);
-	ASSERT_EQ(block->get(key-1, val), Block::kOK);
-	ASSERT_DOUBLE_EQ(val.datum, 0.0);
-	ASSERT_EQ(block->get(key-2, val), Block::kOK);
-	ASSERT_DOUBLE_EQ(val.datum, 0.0);
+	ASSERT_EQ(block->get(key, val), kOK);
+	ASSERT_DOUBLE_EQ(val, 1.0);
+	ASSERT_EQ(block->get(key-1, val), kOK);
+	ASSERT_DOUBLE_EQ(val, 0.0);
+	ASSERT_EQ(block->get(key-2, val), kOK);
+	ASSERT_DOUBLE_EQ(val, 0.0);
 
-	val.datum = 1.0;
-	block->put(6, val);
-	block->put(7, val);
-	block->put(8, val);
-	block->put(3, val);
+	val = 1.0;
+	block->put(6, val, &index);
+	block->put(7, val, &index);
+	block->put(8, val, &index);
+	block->put(3, val, &index);
 
 	// 3 should be the first element and 9 the last
 	block->get(0, key, val);
@@ -64,8 +64,8 @@ TEST(DenseBlock, Create)
 	block->get(9-3, key, val);
 	ASSERT_EQ(9, key);
 
-	int ret = block->put(2, val); // causing overflow
-	ASSERT_EQ(Block::kOverflow, ret);
+	int ret = block->put(2, val, &index); // causing overflow
+	ASSERT_EQ(kOverflow, ret);
 	ASSERT_EQ(6, block->size());
 	ASSERT_EQ(7, block->sizeWithOverflow());
 
@@ -79,17 +79,18 @@ TEST(DenseBlock, Create)
 TEST(SparseLeafBlock, Create)
 {
 	Key_t key;
-	Value val;
+	Datum_t val;
     PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::F_CREATE);
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePageWithPID(0,ph)==RC_OK);
-	SparseLeafBlock *block = new SparseLeafBlock((char*)buffer->getPageImage(ph), 0, 10, true);
+	SparseLeafBlock *block = new SparseLeafBlock(ph, buffer->getPageImage(ph), 0, 10, true);
 
-	val.datum = 0.1;
-	block->put(0, val);
-	val.datum = 5.0;
-	block->put(5, val);
+	int index;
+	val = 0.1;
+	block->put(0, val, &index);
+	val = 5.0;
+	block->put(5, val, &index);
 	ASSERT_EQ(block->size(), 2);
 	
 	buffer->markPageDirty(ph);
@@ -99,7 +100,7 @@ TEST(SparseLeafBlock, Create)
 	file = new BitmapPagedFile(fileName, BitmapPagedFile::F_NO_CREATE);
     buffer = new BufferManager(file, BufferSize);
 	ASSERT_EQ(buffer->readPage(0,ph), RC_OK);
-	block = new SparseLeafBlock((char*)buffer->getPageImage(ph), 0, 10, false);
+	block = new SparseLeafBlock(ph, buffer->getPageImage(ph), 0, 10, false);
 
 	ASSERT_EQ(block->size(), 2);
 	ASSERT_EQ(block->sizeWithOverflow(), 2);
@@ -107,27 +108,26 @@ TEST(SparseLeafBlock, Create)
 	delete block;
 
 	buffer->allocatePage(ph);
-	block = new SparseLeafBlock((char*)buffer->getPageImage(ph), 0, 10, true);
+	block = new SparseLeafBlock(ph, buffer->getPageImage(ph), 0, 10, true);
 	// random insertions
 	int num_keys = config->sparseLeafCapacity;
 	Key_t keys[num_keys];
 	for (int i=0; i<num_keys; i++)
 		keys[i] = i;
 	permute(keys, num_keys);
-	val.datum = 1.4;
+	val = 1.4;
 	for (int i=0; i<num_keys; i++) {
-		block->put(keys[i], val);
+		block->put(keys[i], val, &index);
 	}
 	for (int i=0; i<num_keys; i++) {
 		block->get(i, key, val);
 		ASSERT_EQ(i, key);
-		ASSERT_DOUBLE_EQ(1.4, val.datum);
+		ASSERT_DOUBLE_EQ(1.4, val);
 	}
-	int index;
 	for (int i=0; i<num_keys; i++) {
 		key = i;
 		block->get(key, val);
-		ASSERT_DOUBLE_EQ(val.datum, 1.4);
+		ASSERT_DOUBLE_EQ(val, 1.4);
 	}
 	block->print();
 	delete block;
@@ -139,14 +139,15 @@ TEST(SparseLeafBlock, Create)
 TEST(InternalBlock, Create)
 {
 	Key_t key;
-	Value val;
+	PID_t val;
     PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::F_CREATE);
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePageWithPID(0,ph)==RC_OK);
-	InternalBlock *block = new InternalBlock((char*)buffer->getPageImage(ph), 0, 10, true);
+	InternalBlock *block = new InternalBlock(ph, buffer->getPageImage(ph), 0, 10, true);
 	
 	ASSERT_EQ(block->size(), 0);
+	int index;
 	
 	// random insertions
 	int num_keys = config->internalCapacity;
@@ -159,19 +160,18 @@ TEST(InternalBlock, Create)
 	// randomly permute the keys and insert
 	permute(keys, num_keys);
 	for (int i=0; i<num_keys; i++) {
-		val.pid = keys[i];
-		block->put(keys[i], val);
+		val = keys[i];
+		block->put(keys[i], val, &index);
 	}
 
 	// retrieve and test if in order
 	for (int i=0; i<num_keys; i++) {
 		block->get(i, key, val);
 		ASSERT_EQ(key, i*2);
-		ASSERT_EQ(val.pid, i*2);
+		ASSERT_EQ(val, i*2);
 	}
 
 	// search for non-existent keys
-	int index;
 	for (int i=0; i<num_keys; i++) {
 		key = 2*i+1;
 		block->search(key, index);
@@ -192,17 +192,18 @@ TEST(DenseBlock, Switch)
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePage(ph)==RC_OK);
-	DenseLeafBlock *block = new DenseLeafBlock((char*)buffer->getPageImage(ph), 0, 100, true);
+	DenseLeafBlock *block = new DenseLeafBlock(ph, buffer->getPageImage(ph), 0, 100, true);
 	buffer->markPageDirty(ph);
 
-	Value val;
-	val.datum=1.0;
+	Datum_t val;
+	int index;
+	val=1.0;
 	for (int i=0; i<block->capacity/2; ++i)
-		block->put(i*2, val);
+		block->put(i*2, val, &index);
 	int ret;
-	ret = block->put(block->capacity, val);
-	ASSERT_EQ(Block::kSwitchFormat, ret);
-	Block *new_block = block->switchFormat(Block::kSparseLeaf);
+	ret = block->put(block->capacity, val, &index);
+	ASSERT_EQ(kSwitchFormat, ret);
+	Block *new_block = block->switchFormat();
 	ASSERT_EQ(Block::kSparseLeaf, new_block->type());
 	delete block;
 	new_block->print();
@@ -218,17 +219,18 @@ TEST(SparseBlock, Switch)
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePage(ph)==RC_OK);
-	Block *block = new SparseLeafBlock((char*)buffer->getPageImage(ph), 0, 100, true);
+	LeafBlock *block = new SparseLeafBlock(ph,buffer->getPageImage(ph), 0, 100, true);
 	buffer->markPageDirty(ph);
 
-	Value val;
-	val.datum=1.0;
+	Datum_t val;
+	val=1.0;
+	int index;
 	for (int i=0; i<block->capacity; ++i)
-		block->put(i, val);
+		block->put(i, val, &index);
 	int ret;
-	ret = block->put(block->capacity, val);
-	ASSERT_EQ(Block::kSwitchFormat, ret);
-	Block *new_block = block->switchFormat(Block::kDenseLeaf);
+	ret = block->put(block->capacity, val, &index);
+	ASSERT_EQ(kSwitchFormat, ret);
+	Block *new_block = block->switchFormat();
 	ASSERT_EQ(Block::kDenseLeaf, new_block->type());
 	delete block;
 	new_block->print();
