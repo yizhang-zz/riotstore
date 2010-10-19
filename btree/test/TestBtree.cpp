@@ -2,14 +2,31 @@
 #include <iostream>
 #include "../Btree.h"
 #include "../Splitter.h"
+#include "../../common/Config.h"
 
 using namespace Btree;
 using namespace std;
 
-TEST(BTree, InOrderPut)
+static LeafSplitter *lsp;
+static InternalSplitter *isp;
+
+typedef void (*SeqGenerator)(Key_t *, int);
+
+static void genOrdered(Key_t *keys, int num)
 {
-    LeafSplitter *lsp = new MSplitter<Datum_t>();
-	InternalSplitter *isp = new MSplitter<PID_t>();
+	for (int i=0; i<num; ++i)
+		keys[i] = i;
+}
+
+static void genRandom(Key_t *keys, int num)
+{
+	for (int i=0; i<num; ++i)
+		keys[i] = i;
+	permute(keys, num);
+}
+
+static void insert(SeqGenerator gen)
+{
     BTree tree("tree.bin", 100, lsp, isp);
     Key_t k = 0;
     Datum_t d = 1.0;
@@ -17,18 +34,14 @@ TEST(BTree, InOrderPut)
     int rows = 5;
     int num = rows*cols;
 
-    //Key_t keys[] = {8,5,0,3,2,4,6,7,9,1,10,13,12,11};
     Key_t keys[num];
-    for (int i=0; i<num; i++)
-        keys[i] = i;
-    // sequential
-    for (int i=0; i<rows; i++) {
-        for (int j=0; j<cols; j++) {
-            Key_t key = i*cols+j;
-            tree.put(key, d);
-        }
+	(*gen)(keys, num);
+	
+    for (int i=0; i<num; ++i) {
+		tree.put(keys[i], d);
     }
     tree.print();
+}
 	/*
     cols = 4;
     rows = 4;
@@ -93,28 +106,58 @@ TEST(BTree, InOrderPut)
     t4->put(0U, 1.0);
     delete t4;
 	*/
-}
 
-TEST(BTree, RandomPut)
+TEST(BTree, RandomPut_MSplitter)
 {
-    LeafSplitter *lsp = new MSplitter<Datum_t>();
-	InternalSplitter *isp = new MSplitter<PID_t>();
-    BTree tree("tree.bin", 100, lsp, isp);
-    Key_t k = 0;
-    Datum_t d = 1.0;
-    int cols = 8;
-    int rows = 8;
-    int num = rows*cols;
-	Key_t keys[num];
-	Datum_t vals[num];
-	for (int i=0; i<num; ++i)
-		keys[i] = i+1;
-	permute(keys, num);
-	for (int i=0; i<num; ++i)
-		vals[i] = keys[i];
-	for (int i=0; i<num; ++i)
-		tree.put(keys[i], vals[i]);
-	tree.print();
+	lsp = new MSplitter<Datum_t>();
+	isp = new MSplitter<PID_t>();
+	insert(genRandom);
 	delete lsp;
 	delete isp;
 }
+
+TEST(BTree, InOrderPut_MSplitter)
+{
+	lsp = new MSplitter<Datum_t>();
+	isp = new MSplitter<PID_t>();
+	insert(genOrdered);
+	delete lsp;
+	delete isp;
+}
+
+TEST(BTree, InOrderPut_BSplitter)
+{
+	lsp = new BSplitter<Datum_t>(config->denseLeafCapacity);
+	isp = new MSplitter<PID_t>();
+	insert(genOrdered);
+	delete lsp;
+	delete isp;
+}
+
+TEST(BTree, RandomPut_BSplitter)
+{
+	lsp = new BSplitter<Datum_t>(config->denseLeafCapacity);
+	isp = new MSplitter<PID_t>();
+	insert(genRandom);
+	delete lsp;
+	delete isp;
+}
+
+TEST(BTree, InOrderPut_RSplitter)
+{
+	lsp = new RSplitter<Datum_t>();
+	isp = new MSplitter<PID_t>();
+	insert(genOrdered);
+	delete lsp;
+	delete isp;
+}
+
+TEST(BTree, RandomPut_RSplitter)
+{
+	lsp = new RSplitter<Datum_t>();
+	isp = new MSplitter<PID_t>();
+	insert(genRandom);
+	delete lsp;
+	delete isp;
+}
+

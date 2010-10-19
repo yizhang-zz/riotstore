@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../common/common.h"
+#include "../common/Config.h"
 #include "BtreeBlock.h"
-#include "Config.h"
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 

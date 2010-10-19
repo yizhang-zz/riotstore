@@ -115,7 +115,7 @@ void Block::splitTypes(int sp, Key_t spKey, Type *left, Type *right)
 	// that way
 	if (spKey-lower <= config->denseLeafCapacity)
 		*left = kDenseLeaf;
-	if (*nEntries-sp > config->sparseLeafCapacity
+	if (sizeWithOverflow()-sp > config->sparseLeafCapacity
 		|| upper-spKey <= config->denseLeafCapacity)
 	  *right = kDenseLeaf;
   }

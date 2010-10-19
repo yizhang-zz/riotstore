@@ -25,8 +25,13 @@ public:
      * @param new_image The location where the new node should be stored.
      * @return 0 if orig's format is not changed, nonzero otherwise.
      */
-    virtual int split(BlockT<Value> **orig, BlockT<Value> **new_block,
-					   PageHandle ph, char *new_image) = 0;
+    virtual int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
+					   PageHandle newPh, char *newImage) = 0;
+protected:
+	int splitHelper(BlockT<Value> **orig, BlockT<Value> **newBlock,
+					PageHandle newPh, char *newImage,
+					int sp,	Key_t spKey,
+					Key_t *keys, Value *values);
 };
 
 typedef Splitter<PID_t> InternalSplitter;
@@ -39,8 +44,8 @@ template<class Value>
 class MSplitter : public Splitter<Value>
 {
 public:
-    int split(BlockT<Value> **orig, BlockT<Value> **new_block,
-			   PageHandle ph, char *new_image);
+    int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
+			   PageHandle newPh, char *newImage);
 };
 
 /**
@@ -51,29 +56,28 @@ template<class Value>
 class BSplitter : public Splitter<Value>
 {
 public:
-    Block* split(Block *orig, PageHandle newPh);
+    int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
+			  PageHandle newPh, char *newImage);
 
     /**
      * Constructs a splitter with fixed boundary. Each future split must occur
      * on multiples of the given boundary.
      * @param boundary The splitting boundary.
      */
-    BSplitter(u16 b):boundary(b) { }
+    BSplitter(int b):boundary(b)
+	{ }
 
 private:
-    u16 boundary;
+    int boundary;
 };
 
-/**
- * A strategy that splits an overflowing Btree block at the boundary that is
- * closest to the middle position.
- */
+
 template<class Value>
 class RSplitter : public Splitter<Value>
 {
 public:
-    Block* split(Block *orig, PageHandle newPh);
-    // RSplitter(u16 boundary) { this->boundary = boundary; }
+	int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
+			  PageHandle newPh, char *newImage);
 };
 
 template<class Value>

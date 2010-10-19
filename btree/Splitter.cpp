@@ -1,3 +1,4 @@
+#include <float.h>
 #include <math.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_sf_gamma.h>
@@ -6,15 +7,46 @@
 #include "BtreeBlock.h"
 #include "BtreeDenseLeafBlock.h"
 #include "BtreeSparseBlock.h"
-#include <limits>
+#include <iostream>
+
 using namespace Btree;
 
+// Needed to force the compiler to compile the template classes
 MSplitter<Datum_t> md;
 MSplitter<PID_t> mp;
+RSplitter<Datum_t> rd;
+RSplitter<PID_t> rp;
+BSplitter<Datum_t> bd(0);
+BSplitter<PID_t> bp(0);
 
 template<class Value>
-int MSplitter<Value>::split(BlockT<Value> **orig, BlockT<Value> **new_block,
-							 PageHandle ph, char *new_image)
+int Splitter<Value>::splitHelper(BlockT<Value> **orig, BlockT<Value> **newBlock,
+								 PageHandle newPh, char *newImage,
+								 int sp, Key_t spKey,
+								 Key_t *keys, Value *values)
+								 
+{
+	Block::Type leftType, rightType;
+	int newSize = (*orig)->sizeWithOverflow() - sp;
+	int numPut;
+	(*orig)->splitTypes(sp, spKey, &leftType, &rightType);
+	*newBlock = static_cast<BlockT<Value>*>(Block::create(rightType, newPh,
+														  newImage, spKey,
+														  (*orig)->getUpperBound()));
+	(*newBlock)->putRangeSorted(keys, values, newSize, &numPut);
+	(*orig)->truncate(sp, spKey);
+	if (leftType != (*orig)->type()) {
+		BlockT<Value> *newLeft = (*orig)->switchFormat();
+		delete *orig;
+		*orig = newLeft;
+		return 1;  // notify caller
+	}
+	return 0;
+}
+
+template<class Value>
+int MSplitter<Value>::split(BlockT<Value> **orig, BlockT<Value> **newBlock,
+							PageHandle newPh, char *newImage)
 {
     /*
      * orig's dense/sparse format will not be changed for efficiency
@@ -25,58 +57,24 @@ int MSplitter<Value>::split(BlockT<Value> **orig, BlockT<Value> **new_block,
 
     int size = (*orig)->sizeWithOverflow();
     int sp = size / 2; // split before the sp-th record
-	Key_t spKey;
-	int new_size = size-sp; // size of new block
+	int newSize = size-sp; // size of new block
 	// get the second half block
-	Key_t keys[new_size];
-	Value values[new_size];
+	Key_t keys[newSize];
+	Value values[newSize];
 	(*orig)->getRangeWithOverflow(sp, size, keys, values);
-	spKey = keys[0];
-	Block::Type left, right;
-	(*orig)->splitTypes(sp, spKey, &left, &right);
-	*new_block = static_cast<BlockT<Value>*>(Block::create(right, ph, new_image, keys[0], (*orig)->getUpperBound()));
-	int numPut;
-	(*new_block)->putRangeSorted(keys, values, new_size, &numPut);
-	(*orig)->truncate(sp, spKey);
-	if (left != (*orig)->type()) {
-		BlockT<Value> *new_left = (*orig)->switchFormat();
-		delete *orig;
-		*orig = new_left;
-		return 1;  // notify caller
-	}
-	return 0;
-    /*
-    if (!orig->isLeaf())
-        block = new BtreeIntBlock(newHandle, beginsAt, endsBy);
-    else if (orig->isSparse())
-        block = new BtreeSLeafBlock(newHandle, beginsAt, endsBy);
-    else if (endsBy-beginsAt > BtreeDLeafBlock::capacity)
-        block = new BtreeSLeafBlock(newHandle, beginsAt, endsBy);
-    else
-        block = new BtreeDLeafBlock(newHandle, beginsAt, endsBy);
 
-    // use sparse iterator to move contents to new node
-    Entry e;
-    BtreeBlock::Iterator *itor = orig->getSparseIterator(beginsAt, endsBy);
-    int i = 0;
-    while (itor->moveNext()) {
-        itor->get(e.key, e.value);
-        block->put(i++, e);
-    }
-    delete itor;
-
-    orig->truncate(sp);
-    return block;
-    */
+	return this->splitHelper(orig, newBlock, newPh, newImage, sp,
+							 keys[0], keys, values);
 }
 
-/*
-
-Block* BSplitter::split(Block *orig, PageHandle newPh)
+template<class Value>
+int BSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
+							 PageHandle newPh, char *newImage)
 {
+	BlockT<Value> *&orig = *orig_;
     // start from the middle and find the closest boundary
     int left, right, sp;
-    int size = orig->getSize();
+    int size = orig->sizeWithOverflow();
     if (size % 2 == 0) {
         right = size / 2;
         left = right - 1;
@@ -85,54 +83,75 @@ Block* BSplitter::split(Block *orig, PageHandle newPh)
         left = right = size / 2;
     }
 
+	Key_t keys[size];
+	Value values[size];
+	orig->getRangeWithOverflow(0, size, keys, values);
+	
     while(true) {
         // test if can split in front of left/right position
         // loop is terminated once a split point is found
-        if (orig->getKey(right-1)/boundary
-			< orig->getKey(right)/boundary) { // integer comparison
+        if (keys[right-1]/boundary
+			< keys[right]/boundary) { // integer comparison
             sp = right;
             break;
         }
         right++;
 
-        if (orig->getKey(left-1)/boundary 
-			< orig->getKey(left)/boundary) {
+        if (keys[left-1]/boundary 
+			< keys[left]/boundary) {
             sp = left;
             break;
         }
         left--;
     }
 
-	return orig->split(newPh, sp, orig->getKey(sp)/boundary*boundary);
+	return this->splitHelper(orig_, newBlock, newPh, newImage, sp,
+							 keys[sp], keys+sp, values+sp);
 }
 
-
-Block* RSplitter::split(Block *orig, PageHandle newPh)
+template<class Value>
+int RSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
+							 PageHandle newPh, char *newImage)
 {
-  int size = orig->getSize();
-  Key_t lower = orig->getLowerBound();
-  Key_t upper = orig->getUpperBound();
-  double min = std::numeric_limits<double>::max();
-  int sp;
-  for (int i=1; i<size-1; i++) {
-	// try to split before the i-th element
-	double r1, r2;
-	// capacity of left child is the same as orig (node reuse)
-	int rcapacity = 0;
-	Block::Type t1, t2;
-	orig->splitTypes(i, orig->getKey(i), t1, t2);
-	rcapacity = Block::BlockCapacity[t2];
-	r1 = ((orig->getKey(i)-lower)-i) / (orig->capacity-i);
-	r2 = ((upper-orig->getKey(i))-(size-i)) / (rcapacity-(size-i));
-	double diff = fabs(r1-r2);
-	if (diff < min) {
-	  min = diff;
-	  sp = i;
-	}
-  }
-  return orig->split(newPh, sp, orig->getKey(sp));
-}
+	static double capacities[] = {config->internalCapacity,
+							   config->sparseLeafCapacity,
+							   0,
+							   config->denseLeafCapacity};
+	BlockT<Value> *&orig = *orig_;
+	int size = orig->sizeWithOverflow();
+	Key_t lower = orig->getLowerBound();
+	Key_t upper = orig->getUpperBound();
+	double max = -1000.0;
+	Key_t keys[size];
+	Value values[size];
+	orig->getRangeWithOverflow(0, size, keys, values);
 
+	int sp = 1;
+	double r1, r2, smaller;
+	Block::Type t1, t2;
+	for (int i=1; i<size; i++) {
+		// try to split before the i-th element
+		orig->splitTypes(i, keys[i], &t1, &t2);
+		// r = #slots / remaining domain size
+		if (keys[i]-lower-i==0)
+			r1 = DBL_MAX;
+		else
+			r1 = (capacities[t1]-i) / ((keys[i]-lower)-i);
+		if (upper-keys[i]-(size-i)==0)
+			r2 = DBL_MAX;
+		else
+			r2 = (capacities[t2]-(size-i)) / ((upper-keys[i])-(size-i));
+		smaller = r1 < r2 ? r1 : r2;
+		if (smaller > max) {
+			max = smaller;
+			sp = i;
+		}
+	}
+	std::cout<<"split before "<<sp<<", with ratio "<<max<<std::endl;
+	return this->splitHelper(orig_, newBlock, newPh, newImage, sp,
+							 keys[sp], keys+sp, values+sp);
+}
+/*
 Block* SSplitter::split(Block *orig, PageHandle newPh)
 {
   int size = orig->getSize();
