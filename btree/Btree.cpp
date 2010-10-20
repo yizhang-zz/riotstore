@@ -14,7 +14,7 @@ BTree::BTree(const char *fileName, u32 endsBy,
 			 LeafSplitter *leafSp, InternalSplitter *intSp)
 	: leafSplitter(leafSp), internalSplitter(intSp)
 {
-    file = new BitmapPagedFile(fileName, BitmapPagedFile::F_CREATE);
+    file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
     buffer = new BufferManager(file, config->btreeBufferSize);
     assert(buffer->allocatePageWithPID(0, headerPage) == RC_OK);
     header = (BtreeHeader*) buffer->getPageImage(headerPage);
@@ -33,7 +33,7 @@ BTree::BTree(const char *fileName, u32 endsBy,
 BTree::BTree(const char *fileName, LeafSplitter *leafSp, InternalSplitter *intSp)
 	: leafSplitter(leafSp),	internalSplitter(intSp)
 {
-    file = new BitmapPagedFile(fileName, BitmapPagedFile::F_NO_CREATE);
+    file = new BitmapPagedFile(fileName, 0);
     buffer = new BufferManager(file, config->btreeBufferSize);
     assert(buffer->readPage(0, headerPage) == RC_OK);
     header = (BtreeHeader*) buffer->getPageImage(headerPage);

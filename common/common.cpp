@@ -3,7 +3,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-
+#include <map>
+using namespace std;
 
 void Error(const char *s, ...)
 {

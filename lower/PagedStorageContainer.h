@@ -12,8 +12,7 @@ class PagedStorageContainer {
 
 public:
 
-	const static int F_CREATE = 01;
-	const static int F_NO_CREATE = 02;
+	const static int CREATE = 0x1;
 
 #ifdef PROFILING
     static int readCount;

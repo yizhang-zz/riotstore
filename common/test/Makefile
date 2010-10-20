@@ -6,7 +6,7 @@ LDFLAGS += -L../.. -R../.. -lriot_store
 
 .PHONY: all clean lower
 
-SRC := main.cpp TestBufferManager.cpp TestBitmapPagedFile.cpp
+SRC := TestPermute.cpp 
 OBJ := $(patsubst %.cpp, %.o, $(SRC))
 
 .cpp.o:

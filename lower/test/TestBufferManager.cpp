@@ -16,7 +16,7 @@ using namespace std;
 
 TEST(BufferManager, Allocate)
 {
-    BitmapPagedFile bpf("a.bin", PagedStorageContainer::F_CREATE);
+    BitmapPagedFile bpf("a.bin", PagedStorageContainer::CREATE);
 	BufferManager bm(&bpf, BUFFER_SIZE);
 	PageHandle ph;
 	Byte_t *image;
@@ -31,7 +31,7 @@ TEST(BufferManager, Allocate)
 }
 
 TEST(BufferManager, AllocateRead) {
-    BitmapPagedFile bpf("a.bin", PagedStorageContainer::F_NO_CREATE);
+    BitmapPagedFile bpf("a.bin", 0);
 	BufferManager bm(&bpf, BUFFER_SIZE);
 	PageHandle ph;
 	Byte_t *image;
@@ -43,7 +43,7 @@ TEST(BufferManager, AllocateRead) {
 }
 
 TEST(BufferManager, ReplaceDirty) {
-    BitmapPagedFile bpf("a.bin", PagedStorageContainer::F_NO_CREATE);
+    BitmapPagedFile bpf("a.bin", 0);
 	BufferManager bm(&bpf, BUFFER_SIZE);
 	PageHandle ph;
 	Byte_t *image;
@@ -73,8 +73,8 @@ TEST(BufferManager, ReplaceDirty) {
 	
 	// check if page 0 has been flushed
 	FILE *f = fopen("a.bin", "r");
-	// skip the first header page
-	fseek(f, 1*PAGE_SIZE, SEEK_SET);
+	// skip the header pages
+	fseek(f, HEADER_SIZE, SEEK_SET);
 	char buf;
 	fread(&buf, 1, sizeof(char), f);
 	fclose(f);

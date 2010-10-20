@@ -35,10 +35,9 @@ double PagedStorageContainer::accessTime = 0.0;
  */
 
 BitmapPagedFile::BitmapPagedFile(const char *pathname, int flag) {
-	header = (Byte_t*)allocPageImage(1); // alloc a page worth of memory
-	//header = (Byte_t*)memalign(PAGE_SIZE, PAGE_SIZE);
+	header = (u32*)allocPageImage(NUM_HEADER_PAGES);
 	// create new file
-	if (flag & F_CREATE) {
+	if (flag & CREATE) {
 		fd = open_direct(pathname, O_RDWR|O_CREAT|O_TRUNC);
         if (fd < 0) {
             fprintf(stderr, "error %d\n", errno);
@@ -46,11 +45,12 @@ BitmapPagedFile::BitmapPagedFile(const char *pathname, int flag) {
         }
 		assert(fd >= 0);
         numContentPages = 0;
-        memset(header, 0, PAGE_SIZE);
-        int c = write(fd, header, PAGE_SIZE);
-        if (c <= 0) {
-            fprintf(stderr, "written %d\n, %p\n", c, header);
-        }
+        memset(header, 0, HEADER_SIZE);
+		// delay the write of header (to destructor)
+        //int c = write(fd, header, HEADER_SIZE);
+        //if (c <= 0) {
+        //    fprintf(stderr, "written %d\n, %p\n", c, header);
+        //}
     }
 	// file exists
     else { // at least header here
@@ -63,33 +63,33 @@ BitmapPagedFile::BitmapPagedFile(const char *pathname, int flag) {
 		assert(fd >= 0);
 		struct stat s;
 		fstat(fd, &s);
-        numContentPages = s.st_size/PAGE_SIZE - 1;
+        numContentPages = s.st_size/PAGE_SIZE - NUM_HEADER_PAGES;
 		lseek(fd, 0, SEEK_SET);
-        read(fd, header, PAGE_SIZE);
+        read(fd, header, HEADER_SIZE);
     }
 }
 
 // Remember to write the header back!
 BitmapPagedFile::~BitmapPagedFile() {
     // make sure number of pages in file is consistent with numContentPages
-    Byte_t *filler = header;
 	struct stat s;
 	fstat(fd, &s);
-    if(1 + numContentPages > s.st_size/PAGE_SIZE) {
-        lseek(fd, (numContentPages)*PAGE_SIZE, SEEK_SET);
-        write(fd, filler, PAGE_SIZE);
+	u32 numTotalPages = NUM_HEADER_PAGES + numContentPages;
+    if(numTotalPages > s.st_size/PAGE_SIZE) {
+        lseek(fd, (numTotalPages-1)*PAGE_SIZE, SEEK_SET);
+        write(fd, header, PAGE_SIZE); // write any data
     }
     // write header
 	lseek(fd, 0, SEEK_SET);
-    int c = write(fd, header, PAGE_SIZE);
+    write(fd, header, HEADER_SIZE);
     close(fd);
     freePageImage(header);
 }
 
-/* only mark bit in header as allocated, defer writing until later */
+// only mark bit in header as allocated, defer writing until later
 RC_t BitmapPagedFile::allocatePage(PID_t &pid) {
     // first check if next bit beyond currently allocated ones is available
-    if(numContentPages < 8*PAGE_SIZE) { // still unused bits in header
+    if(numContentPages < NUM_BITS_HEADER) { // still unused bits in header
         pid = numContentPages;
         allocate(pid);
         numContentPages++;
@@ -97,17 +97,11 @@ RC_t BitmapPagedFile::allocatePage(PID_t &pid) {
     }
 
     // check for empty slot in allocated header space
-    for(unsigned k = 0; k < numContentPages; k+=8) { // check 1 byte at a time
-        if((header[k/8] & 255) != 255) { // found empty slot in header[k/8]
-            Byte_t target = header[k/8];
-            Byte_t mask = 1;
-			int i = 0;
-			while (target & mask) {
-				mask <<= 1;
-				i++;
-			}
-			pid = k + i;
-			allocate(pid);
+	u32 numWords = numContentPages / 32;
+    for(u32 k = 0; k < numWords; ++k) {
+		// check one word (4 bytes) at a time
+        if(header[k] != ~0) {
+			setBit(header[k], findFirstZeroBit(header[k]));
 			return RC_OK;
         }
     }
@@ -119,7 +113,7 @@ RC_t BitmapPagedFile::allocatePage(PID_t &pid) {
  * and not written until later call
  */
 RC_t BitmapPagedFile::allocatePageWithPID(PID_t pid) {
-    if(pid >= 8*PAGE_SIZE) { // pid outside valid range
+    if(pid >= NUM_BITS_HEADER) { // pid outside valid range
         return RC_OutOfRange;
     }
 
@@ -171,7 +165,7 @@ RC_t BitmapPagedFile::readPage(PageHandle ph) {
     if(!isAllocated(pid)) 
         return RC_NotAllocated;
 
-    lseek(fd, (1 + pid)*PAGE_SIZE, SEEK_SET); // +1 for header page
+    lseek(fd, (NUM_HEADER_PAGES + pid)*PAGE_SIZE, SEEK_SET);
     read(fd, rec->image, PAGE_SIZE);
 #ifdef PROFILING
     gettimeofday(&time2, NULL);
@@ -208,7 +202,7 @@ RC_t BitmapPagedFile::writePage(PageHandle ph) {
         }
     }
     */
-    lseek(fd, (1 + pid)*PAGE_SIZE, SEEK_SET); // +1 for header page
+    lseek(fd, (NUM_HEADER_PAGES + pid)*PAGE_SIZE, SEEK_SET);
     assert(write(fd, rec->image, PAGE_SIZE)>=0);
 #ifdef PROFILING
     gettimeofday(&time2, NULL);

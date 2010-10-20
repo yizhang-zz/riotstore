@@ -20,7 +20,7 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numEleme
    if (numElements > 0)		// new array to be created
    {
       remove(fileName);
-      file = new BitmapPagedFile(fileName, BitmapPagedFile::F_CREATE);
+      file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
       buffer = new BufferManager(file, config->dmaBufferSize); 
       this->numElements = numElements;
       PageHandle ph;
@@ -39,7 +39,7 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numEleme
    {
       if (access(fileName, F_OK) != 0)
          throw ("File for array does not exist.");
-      file = new BitmapPagedFile(fileName, BitmapPagedFile::F_NO_CREATE);
+      file = new BitmapPagedFile(fileName, 0);
       buffer = new BufferManager(file, config->dmaBufferSize); 
       PageHandle ph;
       buffer->readPage(0, ph);

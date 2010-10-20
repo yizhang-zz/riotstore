@@ -4,6 +4,11 @@
 #include "../common/common.h"
 #include "PagedStorageContainer.h"
 
+#define NUM_HEADER_PAGES 8
+#define NUM_BITS_PER_PAGE PAGE_SIZE*8
+#define NUM_BITS_HEADER NUM_BITS_PER_PAGE*NUM_HEADER_PAGES
+#define HEADER_SIZE PAGE_SIZE*NUM_HEADER_PAGES
+
 //////////////////////////////////////////////////////////////////////
 // A basic paged file implemented using a file header page containing
 // a bitmap, followed by multiple content pages.  The header page
@@ -14,12 +19,14 @@
 // page implicitly imposes an upper limit on the maximum number of
 // content pages.
 
+// Assuming a pagesize of 4KB, a single header page can support a
+// maximum of 4K*8*4KB=128MB data. This seems too small for practical use
 class BitmapPagedFile : public PagedStorageContainer {
 
 public:
-  Byte_t *header;
+  u32 *header;
   int fd;	// file descriptor
-  uint32_t numContentPages;
+  u32 numContentPages;
 
 public:
 
@@ -45,33 +52,38 @@ public:
 
   virtual RC_t writePage(PageHandle ph);
 
-// private:
-public:
+private:
 
-  // sets bit in header that maps to pid
-  void allocate(PID_t pid)
-  {
-	  if(pid < 8*PAGE_SIZE) {
-		  header[pid/8] |= (1 << (pid%8));
-	  }
-  }
+	// sets bit in header that maps to pid
+	void setBit(u32 &word, int pos)
+	{
+		word |= (1 << pos);
+	}
 
-  // clears bit in header that maps to pid
-  void deallocate(PID_t pid)
-  {
-	  if(pid < 8*PAGE_SIZE) {
-		  header[pid/8] &= ~(1 << (pid%8));
-	  }
-  }
+	// clears bit in header that maps to pid
+	void unsetBit(u32 &word, int pos)
+	{
+		word &= ~(1 << pos);
+	}
 
-  // returns value of bit in header that maps to pid
-  bool isAllocated(PID_t pid)
-  {
-	  if(pid < 8*PAGE_SIZE) {
-		  return (header[pid/8] & (1 << (pid%8))) >> (pid%8);
-	  }
-	  return false;
-  }
+	void allocate(PID_t pid)
+	{
+		setBit(header[pid>>5], pid&31);
+	}
+
+	void deallocate(PID_t pid)
+	{
+		unsetBit(header[pid>>5], pid&31);
+	}
+	
+	// returns value of bit in header that maps to pid
+	bool isAllocated(PID_t pid)
+	{
+		if(pid < NUM_BITS_HEADER) {
+			return (header[pid>>5] & (1 << (pid&31)));
+		}
+		return false;
+	}
 };
 
 //////////////////////////////////////////////////////////////////////

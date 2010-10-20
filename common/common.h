@@ -43,6 +43,7 @@ int open_direct(const char *pathname, int flags);
 #include <stdint.h>
 #include <typeinfo>
 #include <assert.h>
+#include <map>
 
 /* Utilities for the NA value. Taken from arithmetic.c from R src. */
 typedef union
@@ -254,10 +255,13 @@ enum AccessCode {
     AC_OutOfRange
 };
 
+// randomly permute an array of given size 
 template<class T>
 void permute(T* array, const int size)
 {
     for (int i=0; i<size-1; i++) {
+		// choose target from [i, size) randomly,
+		// and swap i and target
         int target = rand() % (size-i) + i;
         T temp = array[target];
         array[target] = array[i];
@@ -292,6 +296,32 @@ bool binarySearch(T *array, int size, T target, int *index)
 	}
 }
 
+// generate a k-permute from [begin, end] inclusive
+template<class T>
+void kPermute(T *array, T begin, T end, int k)
+{
+	std::map<T,T> htable;
+	T size = end-begin+1;
+	for (int i=0; i<k; i++) {
+		int target = rand() % (size-i) + i;
+		if (i==target)
+			continue;
+		if (htable.find(begin+i) == htable.end())
+			htable[begin+i] = begin+i;
+		if (htable.find(begin+target) == htable.end())
+			htable[begin+target] = begin+target;
+		T temp = htable[begin+i];
+		htable[begin+i] = htable[begin+target];
+		htable[begin+target] = temp;
+	}
+	for (int i=0; i<k; ++i) {
+		if (htable.find(begin+i) == htable.end())
+			array[i] = begin+i;
+		else
+			array[i] = htable[begin+i];
+	}
+}
+
 void Error(const char *format, ...);
 
 #ifdef DEBUG
@@ -299,5 +329,18 @@ void debug(const char *format, ...);
 #else
 #define debug(...)
 #endif
+
+inline int findFirstZeroBit(u32 word)
+{
+	int pos = 0;
+	// bsf finds the least significant bit that is set (1)
+	__asm__("bsfl %1,%0\n\t"
+            "jne 1f\n\t"
+            "movl $32, %0\n"
+            "1:"
+            : "=r" (pos)
+            : "r" (~word));
+	return pos;
+}
 
 #endif

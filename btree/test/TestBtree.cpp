@@ -116,7 +116,7 @@ TEST(BTree, RandomPut_MSplitter)
 	delete isp;
 }
 
-TEST(BTree, InOrderPut_MSplitter)
+TEST(DISABLE_BTree, InOrderPut_MSplitter)
 {
 	lsp = new MSplitter<Datum_t>();
 	isp = new MSplitter<PID_t>();
@@ -125,7 +125,7 @@ TEST(BTree, InOrderPut_MSplitter)
 	delete isp;
 }
 
-TEST(BTree, InOrderPut_BSplitter)
+TEST(DISABLE_BTree, InOrderPut_BSplitter)
 {
 	lsp = new BSplitter<Datum_t>(config->denseLeafCapacity);
 	isp = new MSplitter<PID_t>();
@@ -143,7 +143,7 @@ TEST(BTree, RandomPut_BSplitter)
 	delete isp;
 }
 
-TEST(BTree, InOrderPut_RSplitter)
+TEST(DISABLE_BTree, InOrderPut_RSplitter)
 {
 	lsp = new RSplitter<Datum_t>();
 	isp = new MSplitter<PID_t>();
@@ -161,15 +161,6 @@ TEST(BTree, RandomPut_RSplitter)
 	delete isp;
 }
 
-TEST(BTree, InOrderPut_SSplitter)
-{
-	lsp = new SSplitter<Datum_t>();
-	isp = new MSplitter<PID_t>();
-	insert(genOrdered);
-	delete lsp;
-	delete isp;
-}
-
 TEST(BTree, RandomPut_SSplitter)
 {
 	lsp = new SSplitter<Datum_t>();
@@ -179,3 +170,19 @@ TEST(BTree, RandomPut_SSplitter)
 	delete isp;
 }
 
+TEST(BTree, RandomPut_TSplitter)
+{
+	lsp = new TSplitter<Datum_t>(.6);
+	isp = new MSplitter<PID_t>();
+	insert(genRandom);
+	delete lsp;
+	delete isp;
+}
+
+TEST(BTree, RandomPut_TSplitter_Read)
+{
+	lsp = new TSplitter<Datum_t>(.6);
+	isp = new MSplitter<PID_t>();
+	BTree btree("tree.bin", lsp, isp);
+	btree.print();
+}
