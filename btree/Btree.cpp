@@ -324,9 +324,10 @@ void BTree::print(PID_t pid, Key_t beginsAt, Key_t endsBy, int depth)
 void BTree::print()
 {
     using namespace std;
-    cout<<"-----------------------------------------"<<endl;
+    cout<<"BEGIN--------------------------------------"<<endl;
 	cout<<"BTree with depth "<<header->depth<<endl;
     print(header->root, 0, header->endsBy, 0);
+    cout<<"END----------------------------------------"<<endl;
 }
 
 

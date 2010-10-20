@@ -18,12 +18,15 @@ RSplitter<Datum_t> rd;
 RSplitter<PID_t> rp;
 BSplitter<Datum_t> bd(0);
 BSplitter<PID_t> bp(0);
+TSplitter<Datum_t> td(.6);
+TSplitter<PID_t> tp(.6);
+SSplitter<Datum_t> sd;
+SSplitter<PID_t> sp;
 
 template<class Value>
 int Splitter<Value>::splitHelper(BlockT<Value> **orig, BlockT<Value> **newBlock,
 								 PageHandle newPh, char *newImage,
-								 int sp, Key_t spKey,
-								 Key_t *keys, Value *values)
+								 int sp, Key_t spKey, Key_t *keys, Value *values)
 								 
 {
 	Block::Type leftType, rightType;
@@ -63,8 +66,8 @@ int MSplitter<Value>::split(BlockT<Value> **orig, BlockT<Value> **newBlock,
 	Value values[newSize];
 	(*orig)->getRangeWithOverflow(sp, size, keys, values);
 
-	return this->splitHelper(orig, newBlock, newPh, newImage, sp,
-							 keys[0], keys, values);
+	return this->splitHelper(orig, newBlock, newPh, newImage, sp, keys[0],
+							 keys, values);
 }
 
 template<class Value>
@@ -104,9 +107,9 @@ int BSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
         }
         left--;
     }
-
-	return this->splitHelper(orig_, newBlock, newPh, newImage, sp,
-							 keys[sp], keys+sp, values+sp);
+	Key_t spKey = (keys[sp]/boundary)*boundary;
+	return this->splitHelper(orig_, newBlock, newPh, newImage, sp, spKey,
+							 keys+sp, values+sp);
 }
 
 template<class Value>
@@ -114,14 +117,14 @@ int RSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 							 PageHandle newPh, char *newImage)
 {
 	static double capacities[] = {config->internalCapacity,
-							   config->sparseLeafCapacity,
-							   0,
-							   config->denseLeafCapacity};
+								  config->sparseLeafCapacity,
+								  0,
+								  config->denseLeafCapacity};
 	BlockT<Value> *&orig = *orig_;
 	int size = orig->sizeWithOverflow();
 	Key_t lower = orig->getLowerBound();
 	Key_t upper = orig->getUpperBound();
-	double max = -1000.0;
+	double max = -1e9;
 	Key_t keys[size];
 	Value values[size];
 	orig->getRangeWithOverflow(0, size, keys, values);
@@ -148,103 +151,151 @@ int RSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 		}
 	}
 	std::cout<<"split before "<<sp<<", with ratio "<<max<<std::endl;
-	return this->splitHelper(orig_, newBlock, newPh, newImage, sp,
-							 keys[sp], keys+sp, values+sp);
+	return this->splitHelper(orig_, newBlock, newPh, newImage, sp, keys[sp],
+							 keys+sp, values+sp);
 }
-/*
-Block* SSplitter::split(Block *orig, PageHandle newPh)
+
+template<class Value>
+int SSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
+							PageHandle newPh, char *newImage)
 {
-  int size = orig->getSize();
-  Key_t lower = orig->getLowerBound();
-  Key_t upper = orig->getUpperBound();
-  int sp = 0;
-  double max = std::numeric_limits<double>::min();
-  for (int i=1; i < size-1; i++) {
+	static double capacities[] = {config->internalCapacity,
+								  config->sparseLeafCapacity,
+								  0,
+								  config->denseLeafCapacity};
+	BlockT<Value> *&orig = *orig_;
+	int size = orig->sizeWithOverflow();
+	Key_t lower = orig->getLowerBound();
+	Key_t upper = orig->getUpperBound();
+	double max = -1e9;
+	Key_t keys[size];
+	Value values[size];
+	orig->getRangeWithOverflow(0, size, keys, values);
+
+	int sp = 1;
+	int lcap, rcap;
 	Block::Type t1, t2;
-	orig->splitTypes(i, orig->getKey(i), t1, t2);
-	int lcap = Block::BlockCapacity[t1];
-	int rcap = Block::BlockCapacity[t2];
-	Key_t key = orig->getKey(i);
-	double x = sValue(lcap-i, rcap-(size-i), (key-lower)-i, 
-					  (upper-key)-(size-i));
-	if (x > max) {
-	  max = x;
-	  sp = i;
+	for (int i=1; i<size; i++) {
+		orig->splitTypes(i, keys[i], &t1, &t2);
+		lcap = capacities[t1];
+		rcap = capacities[t2];
+		double x = sValue(lcap-i, rcap-(size-i), (keys[i]-lower)-i, 
+						  (upper-keys[i])-(size-i));
+		if (x > max) {
+			max = x;
+			sp = i;
+		}
 	}
-  }
-  
-  return orig->split(newPh, sp, orig->getKey(sp));
+	std::cout<<"split before "<<sp<<", with max S="<<max<<std::endl;
+	return this->splitHelper(orig_, newBlock, newPh, newImage, sp, keys[sp],
+							 keys+sp, values+sp);
 }
 
-double SSplitter::sValue(int b1, int b2, int d1, int d2)
+template<class Value>
+double SSplitter<Value>::sValue(int b1, int b2, int d1, int d2)
 {
-  double v1, v2;
-  int d = d1+d2;
-  double den = gsl_sf_lnchoose(d, d1);
+	double v1, v2;
+	int d = d1+d2;
+	double den = gsl_sf_lnchoose(d, d1);
 
-  if (d1 <= b1)
-	v1 = std::numeric_limits<double>::max();
-  else {
-	int stop = b1+GSL_MIN(b2, d2);
-	double re = 0;
-	for (int k=b1; k <= stop; k++) {
-	  re += k * gsl_sf_exp(gsl_sf_lnchoose(k,b1)+gsl_sf_lnchoose(d-k-1,d1-b1-1)-den);
+	if (d1 <= b1)
+		v1 = DBL_MAX;
+	else {
+		int stop = b1+GSL_MIN(b2, d2);
+		double re = 0;
+		for (int k=b1; k <= stop; k++) {
+			re += k * gsl_sf_exp(gsl_sf_lnchoose(k,b1)+gsl_sf_lnchoose(d-k-1,d1-b1-1)-den);
+		}
+		v1 = re;
 	}
-	v1 = re;
-  }
 
-  if (d2 <= b2)
-	v2 = std::numeric_limits<double>::max();
-  else { 
-	int stop = b2+GSL_MIN(b1, d1);
-	double re = 0;
-	for (int k=b2; k <= stop; k++) {
-	  re += k * gsl_sf_exp(gsl_sf_lnchoose(k,b2)+gsl_sf_lnchoose(d-k-1,d2-b2-1)-den);
+	if (d2 <= b2)
+		v2 = DBL_MAX;
+	else { 
+		int stop = b2+GSL_MIN(b1, d1);
+		double re = 0;
+		for (int k=b2; k <= stop; k++) {
+			re += k * gsl_sf_exp(gsl_sf_lnchoose(k,b2)+gsl_sf_lnchoose(d-k-1,d2-b2-1)-den);
+		}
+		v2 = re;
 	}
-	v2 = re;
-  }
-  return GSL_MIN(v1, v2);
+	return GSL_MIN(v1, v2);
 }
 
-Block* TSplitter::split(Block *orig, PageHandle newPh)
+template<class Value>
+int TSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
+							PageHandle newPh, char *newImage)
 {
-  int size = orig->getSize();
-  Key_t lower = orig->getLowerBound();
-  Key_t upper = orig->getUpperBound();
-  int sp = 0;
+	BlockT<Value> *&orig = *orig_;
+	int size = orig->sizeWithOverflow();
+	Key_t lower = orig->getLowerBound();
+	Key_t upper = orig->getUpperBound();
+	Key_t keys[size];
+	Value values[size];
+	orig->getRangeWithOverflow(0, size, keys, values);
 
-  // all elements in the left node should be < marker0,
-  // all elements in the right node should be >= marker1
-  // relative order: lower ... marker1 ... marker0 ... upper
-  int marker0, marker1;
-  int index0, index1;
-  double r0, r1;
-  // left node always inherits the original format
-  if (!orig->isDense()) {
-	marker0 = lower+Block::BlockCapacity[Block::SparseLeaf];
-	orig->search(marker0, index0);
-	r0 = ((double) index0)/Block::BlockCapacity[Block::SparseLeaf];
-  }
-  else {
-	marker0 = lower+Block::BlockCapacity[Block::DenseLeaf];
-	orig->search(marker0, index0);
-	r0 = ((double) index0)/Block::BlockCapacity[Block::DenseLeaf];
-  }
+	// all elements in the left node should be < marker0,
+	// all elements in the right node should be >= marker1
+	// relative order: lower ... marker1 ... marker0 ... upper
 
-  // right child should be dense to accommodate more elements
-  marker1 = upper-Block::BlockCapacity[Block::DenseLeaf];
-  orig->search(marker1, index1);
-  r1 = ((double) (size-index1))/Block::BlockCapacity[Block::DenseLeaf];
-  
-  // if any child is dense enough, then pick the one that results in
-  // the maximum density; otherwise split in the middle
-  if (r0 < threshold && r1 < threshold)
-	sp = size/2;
-  else if (r0 > r1)
-	sp = index0;
-  else
-	sp = index1;
+	double r0;
+	int index0, index0a, index0b;
+	Key_t spKey0;
+	Key_t marker0a = lower+config->sparseLeafCapacity;
+	binarySearch(keys, size, marker0a, &index0a);
+	double r0a = ((double) index0a)/config->sparseLeafCapacity;
+	Key_t marker0b = lower+config->denseLeafCapacity;
+	binarySearch(keys, size, marker0b, &index0b);
+	double r0b = ((double) index0b)/config->denseLeafCapacity;
+	if (r0a > r0b) {
+		r0 = r0a;
+		index0 = index0a;
+		spKey0 = marker0a;
+	}
+	else {
+		r0 = r0b;
+		index0 = index0b;
+		spKey0 = marker0b;
+	}
 
-  return orig->split(newPh, sp, orig->getKey(sp));
+	// try sparse and dense for the right child
+	double r1;
+	int index1, index1a, index1b;
+	Key_t spKey1;
+	Key_t marker1a = upper-config->denseLeafCapacity;
+	binarySearch(keys, size, marker1a, &index1a);
+	double r1a = ((double) (size-index1a))/config->denseLeafCapacity;
+	Key_t marker1b = upper-config->sparseLeafCapacity;
+	binarySearch(keys, size, marker1b, &index1b);
+	double r1b = ((double) (size-index1b))/config->sparseLeafCapacity;
+	if (r1a > r1b) {
+		r1 = r1a;
+		index1 = index1a;
+		spKey1 = marker1a;
+	}
+	else {
+		r1 = r1b;
+		index1 = index1b;
+		spKey1 = marker1b;
+	}
+	
+	// if any child is dense enough, then pick the one that results in
+	// the maximum density; otherwise split in the middle
+	int sp = 0;
+	key_t spKey;
+	if (r0 < threshold && r1 < threshold) {
+		sp = size/2;
+		spKey = keys[sp];
+	}
+	else if (r0 > r1) {
+		sp = index0;
+		spKey = spKey0;
+	}
+	else {
+		sp = index1;
+		spKey = spKey1;
+	}
+	
+	return this->splitHelper(orig_, newBlock, newPh, newImage, sp, spKey,
+							 keys+sp, values+sp);
 }
-*/

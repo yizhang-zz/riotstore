@@ -173,7 +173,7 @@ int DenseLeafBlock::put(Key_t key, const Datum_t &v, int *index)
 		isOverflowed = true;
 		overflow.key = key;
 		overflow.value = v;
-		*index = key-*headKey;
+		overflow.index = *index = key-*headKey;
 		return s;
 	default:
 		return s;

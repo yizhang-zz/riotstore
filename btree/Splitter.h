@@ -30,8 +30,7 @@ public:
 protected:
 	int splitHelper(BlockT<Value> **orig, BlockT<Value> **newBlock,
 					PageHandle newPh, char *newImage,
-					int sp,	Key_t spKey,
-					Key_t *keys, Value *values);
+					int sp,	Key_t spKey, Key_t *keys, Value *values);
 };
 
 typedef Splitter<PID_t> InternalSplitter;
@@ -87,7 +86,8 @@ public:
   /**
    * Split to maximize the S metric.
    */
-    Block* split(Block *orig, PageHandle newPh);
+	int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
+			  PageHandle newPh, char *newImage);
 private:
     double sValue(int b1, int b2, int d1, int d2);
 };
@@ -101,10 +101,12 @@ public:
    * than the given threshold, then split so as to achieve the best
    * density; otherwise fallback to the M scheme.
    */
-  Block* split(Block *orig, PageHandle newPh);
-  TSplitter(double threshold) { this->threshold = threshold; }
-  private:
-  double threshold;
+	int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
+			  PageHandle newPh, char *newImage);
+	TSplitter(double th) : threshold(th)
+	{}
+private:
+	double threshold;
 };
 }
 #endif

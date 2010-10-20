@@ -1,7 +1,7 @@
 CXX = g++
 CXXFLAGS = -g -I/usr/local/include 
 #`pkg-config --cflags-only-I apr-1`
-#LDFLAGS = `pkg-config --libs apr-1`
+LDFLAGS = $(shell pkg-config --libs gsl)
 #LDFLAGS += `pkg-config --libs `
 LDFLAGS += -L../.. -R../.. -lriot_store -L/usr/local/lib -lgtest
 

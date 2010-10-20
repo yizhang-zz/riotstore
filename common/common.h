@@ -265,6 +265,33 @@ void permute(T* array, const int size)
     }
 }
 
+template<class T>
+bool binarySearch(T *array, int size, T target, int *index)
+{
+	int p = 0;
+	int q = size - 1;
+	int mid;
+	T midKey;
+
+	do {
+		mid = (p+q)/2;
+		midKey = array[mid]; 
+		if (midKey > target)
+			q = mid-1;
+		else
+			p = mid+1;
+	} while (p <= q && midKey != target);
+
+	if (midKey == target) {
+		*index = mid;
+		return true;
+	}
+	else {
+		*index = p;
+		return false;
+	}
+}
+
 void Error(const char *format, ...);
 
 #ifdef DEBUG

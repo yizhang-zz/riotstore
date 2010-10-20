@@ -161,3 +161,21 @@ TEST(BTree, RandomPut_RSplitter)
 	delete isp;
 }
 
+TEST(BTree, InOrderPut_SSplitter)
+{
+	lsp = new SSplitter<Datum_t>();
+	isp = new MSplitter<PID_t>();
+	insert(genOrdered);
+	delete lsp;
+	delete isp;
+}
+
+TEST(BTree, RandomPut_SSplitter)
+{
+	lsp = new SSplitter<Datum_t>();
+	isp = new MSplitter<PID_t>();
+	insert(genRandom);
+	delete lsp;
+	delete isp;
+}
+
