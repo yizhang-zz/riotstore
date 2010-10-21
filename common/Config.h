@@ -3,6 +3,9 @@
 #include <string>
 #include <map>
 #include "common.h"
+#include "btree/BatchBuffer.h"
+
+//enum Btree::BatchMethod;
 
 class Config
 {
@@ -20,6 +23,10 @@ public:
 	int btreeBufferSize;
 	int dmaBufferSize;
 
+	double TThreshold; // threshold for the T splitter
+
+	Btree::BatchMethod batchMethod;
+	u32 batchBufferSize;
 private:
     Config(const char *path);
 };

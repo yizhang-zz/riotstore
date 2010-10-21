@@ -14,7 +14,7 @@ extern const char *fileName;
 
 TEST(DenseBlock, MSplit)
 {
-    PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::F_CREATE);
+    PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePageWithPID(0,ph)==RC_OK);
@@ -57,7 +57,7 @@ TEST(DenseBlock, MSplit)
 
 TEST(SparseBlock, MSplit)
 {
-    PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::F_CREATE);
+    PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePageWithPID(0,ph)==RC_OK);

@@ -1,8 +1,8 @@
 DIRS := common lower directly_mapped btree array
 CXX = g++
-CXXFLAGS += -Wall -g -fPIC $(patsubst %,-I%,$(DIRS)) -DPROFILING
-#CXXFLAGS += -O2
-#CXXFLAGS += -DUSE_BATCH_BUFFER
+CXXFLAGS += -Wall -fPIC -I. $(patsubst %,-I%,$(DIRS))
+
+include flags.mk
 
 #LDFLAGS += `pkg-config --libs apr-1 gsl`
 
@@ -11,8 +11,8 @@ ifeq ($(OS),SunOS)
 #LDFLAGS += -R/usr/apr/1.3/lib
 endif
 
-LIBS =
 SRC =
+TARGET = libriot_store-1.so
 
 include $(patsubst %, %/module.mk,$(DIRS))
 
@@ -20,22 +20,19 @@ OBJ := $(patsubst %.cpp,%.o,$(filter %.cpp,$(SRC))) \
 	$(patsubst %.c,%.o,$(filter %.c,$(SRC)))
 
 
-all: libriot_store.so
+all: $(TARGET)
 
 tags: $(OBJ)
 	ctags -R
 
-install: libriot_store.so
-	@cp $< $(HOME)/lib/
-
 libriot_store.a: $(OBJ)
 	ar rcs $@ $^
 
-libriot_store.so: $(OBJ)
+$(TARGET): $(OBJ)
 	$(CXX) -shared $(LDFLAGS) -o $@ $^
 
 test1: $(OBJ)
-	$(CXX) $(LDFLAGS) -o $@ $^ btree/test/main.cpp btree/test/TestBlock.cpp -L/usr/local/lib -lgtest
+	$(CXX) $(LDFLAGS) -o $@ $^ btree/test/main.cpp btree/test/TestBlock.cpp -L/usr/local/lib -lgtest `pkg-config --libs gsl`
 include $(OBJ:.o=.d)
 
 %.d:%.cpp
@@ -45,5 +42,4 @@ include $(OBJ:.o=.d)
 clean:
 	rm -f $(OBJ)
 	rm -f $(OBJ:.o=.d)
-	rm -f libriot_store.a
-	rm -f libriot_store.so
+	rm -f $(TARGET)

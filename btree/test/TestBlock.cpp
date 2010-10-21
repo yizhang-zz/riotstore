@@ -15,7 +15,7 @@ const char *fileName = "/riot/a.bt";
 // sparseLeafCapacity=5
 TEST(DenseBlock, Create)
 {
-    PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::F_CREATE);
+    PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePageWithPID(0,ph)==RC_OK);
@@ -25,7 +25,7 @@ TEST(DenseBlock, Create)
 	delete buffer;
 	delete file;
 
-    file = new BitmapPagedFile(fileName, BitmapPagedFile::F_NO_CREATE);
+    file = new BitmapPagedFile(fileName, 0);
     buffer = new BufferManager(file, BufferSize);
 	ASSERT_TRUE(buffer->readPage(0,ph)==RC_OK);
 	block = new DenseLeafBlock(ph, buffer->getPageImage(ph), 0, 10, false);
@@ -80,7 +80,7 @@ TEST(SparseLeafBlock, Create)
 {
 	Key_t key;
 	Datum_t val;
-    PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::F_CREATE);
+    PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePageWithPID(0,ph)==RC_OK);
@@ -97,7 +97,7 @@ TEST(SparseLeafBlock, Create)
 	delete buffer;
 	delete file;
 
-	file = new BitmapPagedFile(fileName, BitmapPagedFile::F_NO_CREATE);
+	file = new BitmapPagedFile(fileName, 0);
     buffer = new BufferManager(file, BufferSize);
 	ASSERT_EQ(buffer->readPage(0,ph), RC_OK);
 	block = new SparseLeafBlock(ph, buffer->getPageImage(ph), 0, 10, false);
@@ -140,7 +140,7 @@ TEST(InternalBlock, Create)
 {
 	Key_t key;
 	PID_t val;
-    PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::F_CREATE);
+    PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePageWithPID(0,ph)==RC_OK);
@@ -186,9 +186,10 @@ TEST(InternalBlock, Create)
 }
 
 
+#ifndef DISABLE_DENSE_LEAF
 TEST(DenseBlock, Switch)
 {
-    PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::F_CREATE);
+    PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePage(ph)==RC_OK);
@@ -212,10 +213,12 @@ TEST(DenseBlock, Switch)
 	delete buffer;
 	delete file;
 }
+#endif
 
+#ifndef DISABLE_DENSE_LEAF
 TEST(SparseBlock, Switch)
 {
-    PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::F_CREATE);
+    PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePage(ph)==RC_OK);
@@ -239,3 +242,4 @@ TEST(SparseBlock, Switch)
 	delete buffer;
 	delete file;
 }
+#endif

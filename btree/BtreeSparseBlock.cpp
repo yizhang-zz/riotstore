@@ -188,7 +188,11 @@ int SparseBlock<T>::put(Key_t key, const T &v, int *index)
 		if (!this->isLeaf()) 
 			return kOverflow;
 		// sparse leaf block
+#ifndef DISABLE_DENSE_LEAF
 		return canSwitchFormat()? kSwitchFormat : kOverflow;
+#else
+		return kOverflow;
+#endif
 	}
 
 	// new key and enough space
@@ -274,6 +278,7 @@ void SparseBlock<T>::truncate(int sp, Key_t spKey)
 	}
 }
 
+#ifndef DISABLE_DENSE_LEAF
 template<>
 BlockT<Datum_t> * SparseBlock<Datum_t>::switchFormat()
 {
@@ -292,6 +297,7 @@ BlockT<Datum_t> * SparseBlock<Datum_t>::switchFormat()
 		//}
 		//return NULL;
 }
+#endif
 
 template<class T>
 void SparseBlock<T>::print() const

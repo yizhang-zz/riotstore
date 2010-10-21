@@ -1,44 +1,37 @@
-#ifndef BATCH_BUFFER_H
-#define BATCH_BUFFER_H
-
-#ifdef USE_BATCH_BUFFER
+#pragma once
 
 #include "../common/common.h"
-#include "BtreeBlock.h"
-#include "Btree.h"
-#include "BtreeStat.h"
-#include <set>
-#include <vector>
 
 namespace Btree
 {
-  class BatchBuffer
-  {
+class BTree;
+
+enum BatchMethod {
+	kNone,
+	kFWF,
+	kFWPF,
+	kLRU,
+	kLS,
+	kRAND,
+	kRANDCUT
+};
+
+class BatchBuffer
+{
   public:
-	BatchBuffer(u32 size);
-	~BatchBuffer();
-	void registerBTree(BTree *tree);
-	void insert(const Key_t &key, const Datum_t &datum, BTree *where);
-	
-	typedef std::map<BTree*, std::vector<Entry>*> Buffers;
-  private:
-	u32 size;
-	Buffers buffers;
-	std::map<BTree*, u32> capacities;
+	BatchBuffer(u32 size, BTree *tree):size_(size), tree_(tree)
+	{
+	}
 
-	void assignBuffers();
-	void flushBuffer(Buffers::iterator it);
+	virtual ~BatchBuffer()
+	{
+	}
 
-	// Newton-Ralphson method for finding the zero of g(x)
-	double newton();
-	// g(x) and g'(x)
-	double calc_g(double x, BtreeStat *stat1, BtreeStat *stat2);
-	double calc_dg(double x, BtreeStat *stat1, BtreeStat *stat2);
-	// component of g(x) and its derivative
-	double calc_f(double x, BtreeStat *stat);
-	double calc_df(double x, BtreeStat *stat);
-  };
+	virtual void put(const Key_t &key, const Datum_t &datum) = 0;
+	virtual void flushAll() = 0;
+	virtual bool find(const Key_t &key, Datum_t &datum) = 0;
+  protected:
+	u32 size_;
+	BTree *tree_;
+};
 }
-
-#endif
-#endif

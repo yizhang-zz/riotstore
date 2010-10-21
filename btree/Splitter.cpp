@@ -38,12 +38,14 @@ int Splitter<Value>::splitHelper(BlockT<Value> **orig, BlockT<Value> **newBlock,
 														  (*orig)->getUpperBound()));
 	(*newBlock)->putRangeSorted(keys, values, newSize, &numPut);
 	(*orig)->truncate(sp, spKey);
+#ifndef DISABLE_DENSE_LEAF
 	if (leftType != (*orig)->type()) {
 		BlockT<Value> *newLeft = (*orig)->switchFormat();
 		delete *orig;
 		*orig = newLeft;
 		return 1;  // notify caller
 	}
+#endif
 	return 0;
 }
 
@@ -150,9 +152,16 @@ int RSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 			sp = i;
 		}
 	}
-	std::cout<<"split before "<<sp<<", with ratio "<<max<<std::endl;
+	//std::cout<<"split before "<<sp<<", with ratio "<<max<<std::endl;
 	return this->splitHelper(orig_, newBlock, newPh, newImage, sp, keys[sp],
 							 keys+sp, values+sp);
+}
+
+void riot_handler(const char *reason, const char *file, int line, int gsl_errno)
+{
+	if (gsl_errno == GSL_EUNDRFLW)
+		return;
+	abort();
 }
 
 template<class Value>
@@ -186,7 +195,7 @@ int SSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 			sp = i;
 		}
 	}
-	std::cout<<"split before "<<sp<<", with max S="<<max<<std::endl;
+	//std::cout<<"split before "<<sp<<", with max S="<<max<<std::endl;
 	return this->splitHelper(orig_, newBlock, newPh, newImage, sp, keys[sp],
 							 keys+sp, values+sp);
 }
@@ -238,45 +247,49 @@ int TSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 	// all elements in the right node should be >= marker1
 	// relative order: lower ... marker1 ... marker0 ... upper
 
-	double r0;
+	double r0, r0a, r0b=-100;
 	int index0, index0a, index0b;
-	Key_t spKey0;
-	Key_t marker0a = lower+config->sparseLeafCapacity;
-	binarySearch(keys, size, marker0a, &index0a);
-	double r0a = ((double) index0a)/config->sparseLeafCapacity;
-	Key_t marker0b = lower+config->denseLeafCapacity;
-	binarySearch(keys, size, marker0b, &index0b);
-	double r0b = ((double) index0b)/config->denseLeafCapacity;
+	Key_t spKey0, spKey0a, spKey0b;
+	spKey0a = lower+config->sparseLeafCapacity;
+	binarySearch(keys, size, spKey0a, &index0a);
+	r0a = ((double) index0a)/config->sparseLeafCapacity;
+#ifndef DISABLE_DENSE_LEAF
+	spKey0b = lower+config->denseLeafCapacity;
+	binarySearch(keys, size, spKey0b, &index0b);
+	r0b = ((double) index0b)/config->denseLeafCapacity;
+#endif
 	if (r0a > r0b) {
 		r0 = r0a;
 		index0 = index0a;
-		spKey0 = marker0a;
+		spKey0 = spKey0a;
 	}
 	else {
 		r0 = r0b;
 		index0 = index0b;
-		spKey0 = marker0b;
+		spKey0 = spKey0b;
 	}
 
 	// try sparse and dense for the right child
-	double r1;
+	double r1, r1a, r1b=-100;
 	int index1, index1a, index1b;
-	Key_t spKey1;
-	Key_t marker1a = upper-config->denseLeafCapacity;
-	binarySearch(keys, size, marker1a, &index1a);
-	double r1a = ((double) (size-index1a))/config->denseLeafCapacity;
-	Key_t marker1b = upper-config->sparseLeafCapacity;
-	binarySearch(keys, size, marker1b, &index1b);
-	double r1b = ((double) (size-index1b))/config->sparseLeafCapacity;
+	Key_t spKey1, spKey1a, spKey1b;
+	spKey1a = upper-config->sparseLeafCapacity;
+	binarySearch(keys, size, spKey1a, &index1a);
+	r1a = ((double) (size-index1a))/config->sparseLeafCapacity;
+#ifndef DISABLE_DENSE_LEAF
+	spKey1b = upper-config->denseLeafCapacity;
+	binarySearch(keys, size, spKey1b, &index1b);
+	r1b = ((double) (size-index1b))/config->denseLeafCapacity;
+#endif
 	if (r1a > r1b) {
 		r1 = r1a;
 		index1 = index1a;
-		spKey1 = marker1a;
+		spKey1 = spKey1a;
 	}
 	else {
 		r1 = r1b;
 		index1 = index1b;
-		spKey1 = marker1b;
+		spKey1 = spKey1b;
 	}
 	
 	// if any child is dense enough, then pick the one that results in

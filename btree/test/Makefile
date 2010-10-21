@@ -1,13 +1,12 @@
 CXX = g++
-CXXFLAGS = -g -I/usr/local/include 
-#`pkg-config --cflags-only-I apr-1`
+CXXFLAGS = -I/usr/local/include -I../..
 LDFLAGS = $(shell pkg-config --libs gsl)
-#LDFLAGS += `pkg-config --libs `
-LDFLAGS += -L../.. -R../.. -lriot_store -L/usr/local/lib -lgtest
+LDFLAGS += -L../.. -R../.. -lriot_store-1 -L/usr/local/lib -lgtest
+include ../../flags.mk
 
 .PHONY: all clean lower
 
-SRC := main.cpp TestBlock.cpp TestSplit.cpp TestBtree.cpp
+SRC := TestBatch.cpp main.cpp TestBlock.cpp TestSplit.cpp TestBtree.cpp 
 objects := $(patsubst %.cpp, %.o, $(SRC))
 #par_objects := $(patsubst %.cpp, %.o, $(wildcard ../*.cpp))
 #lower_objects := $(wildcard ../../lower/*.o)
@@ -34,4 +33,5 @@ clean :
 	rm -f *.o
 	rm -f *.out
 	rm -f *.d
+	rm -f test
 

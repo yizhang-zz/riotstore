@@ -3,6 +3,9 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#define _in
+#define _out
+
 #include <unistd.h>
 #include <stdlib.h>
 
@@ -115,13 +118,18 @@ typedef uint8_t Byte_t;
 typedef uint32_t PID_t;
 #define INVALID_PID (PID_t(-1))
 
-/*
-typedef struct 
+
+struct Entry
 {
 	Key_t  	key;
 	Datum_t 	datum;
-} Entry;
 
+	bool operator<(const Entry &other)
+	{
+		return key<other.key;
+	}
+};
+/*
 typedef struct 
 {
 	Key_t 	lowerBound;
@@ -343,4 +351,6 @@ inline int findFirstZeroBit(u32 word)
 	return pos;
 }
 
+#define TIMESTAMP(t1) \
+	double t1; { timeval tim; gettimeofday(&tim, NULL); t1 = tim.tv_sec + tim.tv_usec/1000000.0;}
 #endif

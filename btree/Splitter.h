@@ -1,7 +1,10 @@
 #ifndef SPLITTER_H
 #define SPLITTER_H
 
+#include <gsl/gsl_errno.h>
 #include "BtreeBlock.h"
+
+void riot_handler(const char *reason, const char *file, int line, int gsl_errno);
 
 namespace Btree
 {
@@ -83,9 +86,11 @@ template<class Value>
 class SSplitter : public Splitter<Value>
 {
 public:
-  /**
-   * Split to maximize the S metric.
-   */
+	SSplitter()
+	{
+		gsl_set_error_handler(&riot_handler);
+	}
+
 	int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
 			  PageHandle newPh, char *newImage);
 private:

@@ -236,7 +236,9 @@ public:
 	virtual int put(Key_t key, const T &v, int *index) = 0;
 	virtual int putRangeSorted(Key_t *keys, T *values, int num, int *numPut) = 0;
 
+#ifndef DISABLE_DENSE_LEAF
 	virtual BlockT<T> *switchFormat() = 0;
+#endif
 
 	struct OverflowEntry
 	{

@@ -12,6 +12,9 @@ Config::Config(const char *path)
 	internalCapacity = (PAGE_SIZE-internalHeaderSize)/(sizeof(PID_t)+sizeof(Key_t)+2);
 	btreeBufferSize = 10;
 	dmaBufferSize = 10;
+	TThreshold = 0.7;
+	batchBufferSize = 100;
+	batchMethod = Btree::kNone;
 	
     FILE *f = fopen(path, "r");
     if (f != NULL) {
@@ -32,6 +35,27 @@ Config::Config(const char *path)
 				btreeBufferSize = atoi(b);
 			} else if (strcmp(a, "dmaBufferSize") == 0) {
 				dmaBufferSize = atoi(b);
+			} else if (strcmp(a, "TThreshold") == 0) {
+				TThreshold = atof(b);
+			} else if (strcmp(a, "batchBufferSize") == 0) {
+				batchBufferSize = atoi(b);
+			} else if (strcmp(a, "batchMethod") == 0) {
+				if (strcmp(b, "None") == 0)
+					batchMethod = Btree::kNone;
+				else if(strcmp(b, "None") == 0)
+					batchMethod = Btree::kNone;
+				else if(strcmp(b, "FWF") == 0)
+					batchMethod = Btree::kFWF;
+				else if(strcmp(b, "FWPF") == 0)
+					batchMethod = Btree::kFWPF;
+				else if(strcmp(b, "LRU") == 0)
+					batchMethod = Btree::kLRU;
+				else if(strcmp(b, "LS") == 0)
+					batchMethod = Btree::kLS;
+				else if(strcmp(b, "RAND") == 0)
+					batchMethod = Btree::kRAND;
+				else if(strcmp(b, "RANDCUT") == 0)
+					batchMethod = Btree::kRANDCUT;
 			}
 		}
 		fclose(f);

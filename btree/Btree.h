@@ -1,17 +1,18 @@
 #pragma once
 
-#include "../lower/LinearStorage.h"
+#include "lower/LinearStorage.h"
 #include "BtreeBlock.h"
 #include "BtreeCursor.h"
 #include "Splitter.h"
+#include "BatchBuffer.h"
 #include <vector>
 
 namespace Btree
 {
 
 #ifdef USE_BATCH_BUFFER
-	class BatchBuffer;
-	class BtreeStat;
+class BatchBuffer;
+//class BtreeStat;
 #endif
 
 	struct BtreeHeader {
@@ -46,11 +47,11 @@ namespace Btree
 	public:
 		// points to the data in the header page
 		BtreeHeader *header;
-#ifdef USE_BATCH_BUFFER
+		//#ifdef USE_BATCH_BUFFER
 		BatchBuffer *batbuf;
-		BtreeStat *stat;
-		int putBatch(std::vector<Entry> &batch);
-#endif
+		//BtreeStat *stat;
+		//int putBatch(std::vector<Entry> &batch);
+		//#endif
 
 		/**
 		 * Creates a new BTree with the given file name and dimension
@@ -58,23 +59,34 @@ namespace Btree
 		 * keys in the BTree should be >=0 and < endsby. The header page
 		 * (0-th page in the file) is written immediately.
 		 */
-		BTree(const char *fileName, u32 endsBy, LeafSplitter *leafSp, InternalSplitter *intSp);
+		BTree(const char *fileName, u32 endsBy, LeafSplitter *leafSp, InternalSplitter *intSp
+			  //#ifdef USE_BATCH_BUFFER
+			  //, BatchMethod method
+			  //#endif
+			  );
 
 		/**
 		 * Initializes a BTree from the given file. Metadata is read from the
 		 * header page.
 		 */
-		BTree(const char *fileName, LeafSplitter *leafSp, InternalSplitter *intSp);
-
+		BTree(const char *fileName, LeafSplitter *leafSp, InternalSplitter *intSp
+			  //#ifdef USE_BATCH_BUFFER
+			  //,BatchMethod method
+			  //#endif
+			  );
 		/**
 		 * Destroys the BTree object (also releases the header page).
 		 */
 		~BTree();
 
+		// cursor can be a valid path, in which case the search is
+		// incremental (first up the tree and then down)
 		int search(Key_t key, Cursor *cursor);
 
 		int put(const Key_t &key, const Datum_t &datum);
 		int get(const Key_t &key, Datum_t &datum);
+
+		int put(const Entry *entries, u32 num);
 
 		ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);
 
@@ -82,6 +94,12 @@ namespace Btree
 		void setLeafSplitter(LeafSplitter *sp) { leafSplitter = sp; }
 
 		void print();
+		void flushAndPrint()
+		{
+			if (batbuf)
+				batbuf->flushAll();
+			print();
+		}
 		u32  getNumLeaves() { return header->nLeaves; }
 		/*
 		void allocatePage(PID_t &pid, PageHandle &ph) {
@@ -103,5 +121,6 @@ namespace Btree
 
 	private:
 		void print(PID_t pid, Key_t beginsAt, Key_t endsBy, int depth);
+		int putHelper(Key_t key, Datum_t datum, Cursor *cursor);
 	};
 }

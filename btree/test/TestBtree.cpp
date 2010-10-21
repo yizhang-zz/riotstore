@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 #include <iostream>
-#include "../Btree.h"
-#include "../Splitter.h"
-#include "../../common/Config.h"
+#include "btree/Btree.h"
+#include "btree/Splitter.h"
+#include "common/Config.h"
 
 using namespace Btree;
 using namespace std;
@@ -40,7 +40,7 @@ static void insert(SeqGenerator gen)
     for (int i=0; i<num; ++i) {
 		tree.put(keys[i], d);
     }
-    tree.print();
+    tree.flushAndPrint();
 }
 	/*
     cols = 4;
@@ -116,7 +116,7 @@ TEST(BTree, RandomPut_MSplitter)
 	delete isp;
 }
 
-TEST(DISABLE_BTree, InOrderPut_MSplitter)
+TEST(BTree, InOrderPut_MSplitter)
 {
 	lsp = new MSplitter<Datum_t>();
 	isp = new MSplitter<PID_t>();
@@ -127,7 +127,11 @@ TEST(DISABLE_BTree, InOrderPut_MSplitter)
 
 TEST(DISABLE_BTree, InOrderPut_BSplitter)
 {
+#ifdef DISABLE_DENSE_LEAF
+	lsp = new BSplitter<Datum_t>(config->sparseLeafCapacity);
+#else
 	lsp = new BSplitter<Datum_t>(config->denseLeafCapacity);
+#endif
 	isp = new MSplitter<PID_t>();
 	insert(genOrdered);
 	delete lsp;
@@ -136,7 +140,11 @@ TEST(DISABLE_BTree, InOrderPut_BSplitter)
 
 TEST(BTree, RandomPut_BSplitter)
 {
+#ifdef DISABLE_DENSE_LEAF
+	lsp = new BSplitter<Datum_t>(config->sparseLeafCapacity);
+#else
 	lsp = new BSplitter<Datum_t>(config->denseLeafCapacity);
+#endif
 	isp = new MSplitter<PID_t>();
 	insert(genRandom);
 	delete lsp;
