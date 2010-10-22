@@ -4,6 +4,9 @@
 
 using namespace Btree;
 
+//boost::pool<> SparseBlock<Datum_t>::memPool(sizeof(SparseBlock<Datum_t>));
+//boost::pool<> SparseBlock<PID_t>::memPool(sizeof(SparseBlock<PID_t>));
+
 /*
 template<class T>
 const int SparseBlock<T>::headerSize = 0;

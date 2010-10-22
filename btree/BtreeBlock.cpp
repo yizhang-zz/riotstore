@@ -4,9 +4,14 @@
 #include "BtreeSparseBlock.h"
 #include "Config.h"
 
+
 using namespace std;
 using namespace Btree;
+using namespace boost;
 
+//pool<> globalDenseLeafPool(sizeof(DenseLeafBlock));
+//pool<> globalInternalBlockPool(sizeof(InternalBlock));
+//pool<> globalSparseLeafPool(sizeof(SparseLeafBlock));
 
 Block * Block::create(Type t, PageHandle ph, char *image, Key_t beginsAt, Key_t endsBy)
 {

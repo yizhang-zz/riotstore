@@ -29,11 +29,22 @@ public:
 	 * 2		offset of first free space
 	 * 2		offset of first byte of cell content area
 	 */
-
+    void *operator new(size_t size)
+	{
+		return memPool.malloc();
+	}
+	void operator delete(void *p)
+	{
+		memPool.free(p);
+	}
+	
 	// ctor is specialized
 	SparseBlock(PageHandle ph, char *image, Key_t beginsAt, Key_t endsBy, bool create)
 		:BlockT<T>(ph, image, beginsAt, endsBy)
 	{}
+	~SparseBlock()
+	{}
+	
 	int search(Key_t key, int &index) const;
 	Key_t key(int i) const
 	{
@@ -106,6 +117,7 @@ public:
 		int index;
 	};
 private:
+	static boost::pool<> memPool;
 	//Datum_t *data;
 	//static u16 initCapacity();
 	//static u16 initThis->HeaderSize();
@@ -200,6 +212,9 @@ inline int SparseBlock<Datum_t>::getThis->HeaderSize() const
 
 typedef SparseBlock<PID_t> InternalBlock;
 typedef SparseBlock<Datum_t> SparseLeafBlock;
+
+template<class T>
+boost::pool<> SparseBlock<T>::memPool(sizeof(SparseBlock<T>));
 
 }
 //#endif

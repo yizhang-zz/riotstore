@@ -6,9 +6,14 @@
 #include "../common/Iterator.h"
 #include "../lower/BufferManager.h"
 #include "../lower/PageReplacer.h"
+#include <boost/pool/pool.hpp>
 
 namespace Btree
 {
+//extern boost::pool<> globalInternalBlockPool;
+//extern boost::pool<> globalDenseLeafPool;
+//extern boost::pool<> globalSparseLeafPool;
+
 	enum Status {
 		kOK = 0,
 		kOverwrite,
@@ -131,6 +136,10 @@ public:
 	{
 	}
 
+	virtual ~Block()
+	{
+	}
+	
 	virtual int search(Key_t key, int &index) const = 0;
 	// int   put(int index, Key_t key, const Value &val) = 0;
 	//virtual int del(Key_t key);

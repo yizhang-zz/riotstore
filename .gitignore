@@ -1,6 +1,7 @@
 *.save
 *.o
 *.so
+*.exe
 *.bin
 *.a
 *.d

@@ -4,6 +4,8 @@
 
 using namespace Btree;
 
+boost::pool<> DenseLeafBlock::memPool(sizeof(DenseLeafBlock));
+
 //u16 DenseLeafBlock::capacity = DenseLeafBlock::initCapacity();
 
 /*

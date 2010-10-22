@@ -20,13 +20,17 @@ TEST(Batch, FWF)
 
 	PagedStorageContainer::resetPerfCounts();
 	
+	TIMESTAMP(t1);
 	for (int i=0; i<rows; ++i)
 		for (int j=0; j<cols; ++j) {
 			tree->put(j*cols+i, 1.0);
 		}
 
+	TIMESTAMP(t2);
 	cout<<"reads\t"<<PagedStorageContainer::readCount<<endl
 		<<"writes\t"<<PagedStorageContainer::writeCount<<endl;
+	cout<<"I/O time\t"<<PagedStorageContainer::accessTime<<endl
+		<<"CPU time\t"<<t2-t1<<endl;
 	
 	Datum_t datum;
 	for (int i=0; i<rows; ++i)
