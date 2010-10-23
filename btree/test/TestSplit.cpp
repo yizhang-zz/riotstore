@@ -12,13 +12,14 @@ using namespace std;
 extern int BufferSize;
 extern const char *fileName;
 
+#ifndef DISABLE_DENSE_LEAF
 TEST(DenseBlock, MSplit)
 {
     PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePageWithPID(0,ph)==RC_OK);
-	LeafBlock *block = new DenseLeafBlock(ph,buffer->getPageImage(ph), 0, 10, true);
+	LeafBlock *block = new DenseLeafBlock(ph,buffer->getPageImage(ph), 0, 10000, true);
 	buffer->markPageDirty(ph);
 
 	int num = block->capacity+1;
@@ -38,22 +39,23 @@ TEST(DenseBlock, MSplit)
 	for (int i=0; i<num; ++i)
 		ret = block->put(keys[i], vals[i], &index);
 	ASSERT_EQ(kOverflow, ret);
-	cout<<"before split"<<endl;
-	block->print();
+	//cout<<"before split"<<endl;
+	//block->print();
 	LeafSplitter *sp = new MSplitter<Datum_t>();
 	LeafBlock *new_block;
 	PageHandle new_ph;
 	buffer->allocatePage(new_ph);
 	sp->split(&block, &new_block, new_ph, buffer->getPageImage(new_ph));
-	cout<<"after split"<<endl;
-	block->print();
-	new_block->print();
+	//cout<<"after split"<<endl;
+	//block->print();
+	//new_block->print();
 
 	delete new_block;
 	delete block;
 	delete buffer;
 	delete file;
 }
+#endif
 
 TEST(SparseBlock, MSplit)
 {
@@ -61,7 +63,7 @@ TEST(SparseBlock, MSplit)
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePageWithPID(0,ph)==RC_OK);
-	LeafBlock *block = new SparseLeafBlock(ph,buffer->getPageImage(ph), 0, 100, true);
+	LeafBlock *block = new SparseLeafBlock(ph,buffer->getPageImage(ph), 0, 100000, true);
 	buffer->markPageDirty(ph);
 
 	int index;
@@ -77,16 +79,11 @@ TEST(SparseBlock, MSplit)
 	for (int i=0; i<num; ++i)
 		ret = block->put(keys[i], vals[i], &index);
 	ASSERT_EQ(kOverflow, ret);
-	cout<<"before split"<<endl;
-	block->print();
 	LeafSplitter *sp = new MSplitter<Datum_t>();
 	LeafBlock *new_block;
 	PageHandle new_ph;
 	buffer->allocatePage(new_ph);
 	sp->split(&block, &new_block, new_ph, buffer->getPageImage(new_ph));
-	cout<<"after split"<<endl;
-	block->print();
-	new_block->print();
 
 	delete new_block;
 	delete block;

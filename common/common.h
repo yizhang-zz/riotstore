@@ -39,6 +39,8 @@ int open_direct(const char *pathname, int flags);
 #include <fcntl.h>
 int open_direct(const char *pathname, int flags);
 
+#define DTRACE_SDT	// enable application probes
+
 #else
 #error "Platform not supported"
 #endif
@@ -124,7 +126,11 @@ struct Entry
 	Key_t  	key;
 	Datum_t 	datum;
 
-	bool operator<(const Entry &other)
+	Entry()
+	{}
+	Entry(Key_t k, Datum_t d) : key(k), datum(d)
+	{}
+	bool operator<(const Entry &other) const
 	{
 		return key<other.key;
 	}

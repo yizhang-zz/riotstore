@@ -36,7 +36,7 @@ public:
 class BufferManager {
     
 public:
-#ifdef PROFILING
+#ifdef PROFILE_BUFMAN
     static double accessTime;
 
     static void resetPerfCounts()

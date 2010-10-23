@@ -5,7 +5,7 @@
 #include <iostream>
 using namespace std;
 
-#ifdef PROFILING
+#ifdef PROFILE_BUFMAN
 double BufferManager::accessTime = 0.0;
 #endif
 
@@ -58,28 +58,25 @@ BufferManager::~BufferManager() {
 // Creates a new page in buffer (with unintialized content), pins
 // it, marks it dirty, and returns the handle.
 RC_t BufferManager::allocatePage(PageHandle &ph) {
-#ifdef PROFILING
-    static timeval time1, time2;
-    gettimeofday(&time1, NULL);
+#ifdef PROFILE_BUFMAN
+	TIMESTAMP(t1)
 #endif
     RC_t ret;
     PID_t pid;
     PageRec *rec;
     if ((ret=storage->allocatePage(pid)) != RC_OK) {
         debug(stderr, "Physical storage cannot allocate page; error %d", ret);
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
+#ifdef PROFILE_BUFMAN
+	TIMESTAMP(t2)
+		accessTime += t2-t1;
 #endif
         return ret;
     }
 
 	if ((ret=replacePage(rec)) != RC_OK) {
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
+#ifdef PROFILE_BUFMAN
+	TIMESTAMP(t2)
+		accessTime += t2-t1;
 #endif
 	  return ret;
 	}
@@ -89,10 +86,9 @@ RC_t BufferManager::allocatePage(PageHandle &ph) {
     rec->dirty = true;
     ph = rec;
     pageHash->insert(PageHashMap::value_type(pid, rec));
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
+#ifdef PROFILE_BUFMAN
+	TIMESTAMP(t2)
+	accessTime += t2-t1;
 #endif
     return RC_OK;
 }
@@ -102,27 +98,24 @@ RC_t BufferManager::allocatePage(PageHandle &ph) {
 // method only works if the implementation of PagedStorageContainer
 // supports allocatePageWithPID.
 RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
-#ifdef PROFILING
-    static timeval time1, time2;
-    gettimeofday(&time1, NULL);
+#ifdef PROFILE_BUFMAN
+	TIMESTAMP(t1)
 #endif
     RC_t ret = storage->allocatePageWithPID(pid);
     PageRec *rec;
     if (ret != RC_OK) {
         debug(stderr, "Physical storage cannot allocate pid %d, error %d",pid,ret);
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
+#ifdef PROFILE_BUFMAN
+	TIMESTAMP(t2)
+	accessTime += t2-t1;
 #endif
         return ret;
     }
 
     if ((ret=replacePage(rec)) != RC_OK) {
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
+#ifdef PROFILE_BUFMAN
+	TIMESTAMP(t2)
+	accessTime += t2-t1;
 #endif
         return ret;
     }
@@ -132,10 +125,9 @@ RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
     rec->pinCount = 1;
     rec->dirty = true;
     pageHash->insert(PageHashMap::value_type(pid, rec));
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
+#ifdef PROFILE_BUFMAN
+	TIMESTAMP(t2)
+	accessTime += t2-t1;
 #endif
     return RC_OK;
 }
@@ -144,18 +136,16 @@ RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
 // removed from both the buffer and the disk storage.  Dirty bit is
 // ignored.
 RC_t BufferManager::disposePage(PageHandle ph) {
-#ifdef PROFILING
-    static timeval time1, time2;
-    gettimeofday(&time1, NULL);
+#ifdef PROFILE_BUFMAN
+	TIMESTAMP(t1)
 #endif
     RC_t ret;
     PageRec *rec = (PageRec*) ph;
     if ((ret=storage->disposePage(rec->pid)) != RC_OK) {
         fprintf(stderr, "Physical storage cannot dispose pid %d, error %d.\n", rec->pid, ret);
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
+#ifdef PROFILE_BUFMAN
+	TIMESTAMP(t2)
+	accessTime += t2-t1;
 #endif
         return ret;
     }
@@ -166,10 +156,9 @@ RC_t BufferManager::disposePage(PageHandle ph) {
     pageHash->erase(it);
     rec->reset();
     pageReplacer->add(rec);
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
+#ifdef PROFILE_BUFMAN
+	TIMESTAMP(t2)
+	accessTime += t2-t1;
 #endif
     return RC_OK;
 }
@@ -177,10 +166,6 @@ RC_t BufferManager::disposePage(PageHandle ph) {
 // Reads a page into buffer (if it is not already in), pins it, and
 // returns the handle.
 RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
-#ifdef PROFILING
-    static timeval time1, time2;
-    gettimeofday(&time1, NULL);
-#endif
     RC_t ret;
     PageRec *rec;
     // first check if already buffered
@@ -194,11 +179,6 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
     }
     else {
         if ((ret=replacePage(rec)) != RC_OK) {
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
-#endif
             return ret;
         }
         
@@ -207,11 +187,6 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
             debug("Physical storage cannot read pid %d, error %d.\n", rec->pid, ret);
             rec->pid = INVALID_PID;
             pageReplacer->add(rec);  //recycle
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
-#endif
             return ret;
         }
         rec->dirty = false;
@@ -219,19 +194,10 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
         ph = rec;
         pageHash->insert(PageHashMap::value_type(pid, rec));
     }
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
-#endif
     return RC_OK;
 }
 
 RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
-#ifdef PROFILING
-    static timeval time1, time2;
-    gettimeofday(&time1, NULL);
-#endif
     RC_t ret;
     PageRec *rec;
     // first check if already buffered
@@ -245,11 +211,6 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
     }
     else {
         if ((ret=replacePage(rec)) != RC_OK) {
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
-#endif
             return ret;
         }
         
@@ -262,11 +223,6 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
                 pageReplacer->add(rec);
                 debug("Read/Alloc: Physical storage cannot allocate page %u\n"
                       , pid);
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
-#endif
                 return ret;
             }
             rec->dirty = true;
@@ -275,60 +231,33 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
         pageHash->insert(PageHashMap::value_type(pid, rec));
         ph = rec;
     }
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
-#endif
     return RC_OK;
 }
 
 // Marks a pinned page as dirty (i.e., modified).
 RC_t BufferManager::markPageDirty(const PageHandle ph) {
-#ifdef PROFILING
-    static timeval time1, time2;
-    gettimeofday(&time1, NULL);
-#endif
     PageRec *rec = (PageRec*) ph;
     PageHashMap::iterator it = pageHash->find(rec->pid);
     assert(it != pageHash->end());
     rec->dirty = true;
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
-#endif
     return RC_OK;
 }
 
 // Pins a page.  As long as a page has at least one pin, it cannot
 // be discarded from the buffer.
 RC_t BufferManager::pinPage(const PageHandle ph) {
-#ifdef PROFILING
-    static timeval time1, time2;
-    gettimeofday(&time1, NULL);
-#endif
     // the page must have already been pinned (when it was
     // created)
     PageRec *rec = (PageRec*) ph;
     PageHashMap::iterator it = pageHash->find(rec->pid);
     assert(it != pageHash->end());
     rec->pinCount++;
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
-#endif
     return RC_OK;
 }
 
 // Unpins a page.  If a page has no pin left, it can be discarded
 // from the buffer, in which case the handle will become invalid.
 RC_t BufferManager::unpinPage(const PageHandle ph) {
-#ifdef PROFILING
-    static timeval time1, time2;
-    gettimeofday(&time1, NULL);
-#endif
     PageRec *rec = (PageRec*) ph;
     PageHashMap::iterator it = pageHash->find(rec->pid);
     assert(it != pageHash->end());
@@ -338,21 +267,12 @@ RC_t BufferManager::unpinPage(const PageHandle ph) {
         // Let PageReplacer manager this page
         pageReplacer->add(rec);
     }
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
-#endif
     return RC_OK;
 }
 
 // Flushes a pinned page to disk, if it is dirty.  A page's dirty
 // bit is unset after flushing.
 RC_t BufferManager::flushPage(const PageHandle ph) {
-#ifdef PROFILING
-    static timeval time1, time2;
-    gettimeofday(&time1, NULL);
-#endif
     RC_t ret;
     PageRec *rec = (PageRec*) ph;
     PageHashMap::iterator it = pageHash->find(rec->pid);
@@ -363,30 +283,16 @@ RC_t BufferManager::flushPage(const PageHandle ph) {
         //}
         if ((ret=storage->writePage(ph)) != RC_OK) {
             fprintf(stderr, "Physical storage cannot write pid %d, error %d.\n", rec->pid, ret);
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
-#endif
             return ret;
         }
         rec->dirty = false;
     }
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
-#endif
     return RC_OK;
 }
 
 // Flushes all dirty pages in the buffer to disk.  Pages' dirty bits
 // are unset after flushing.
 RC_t BufferManager::flushAllPages() {
-#ifdef PROFILING
-    static timeval time1, time2;
-    gettimeofday(&time1, NULL);
-#endif
     bool good = true;
     RC_t ret;
     for (PageHashMap::iterator it = pageHash->begin();
@@ -404,19 +310,10 @@ RC_t BufferManager::flushAllPages() {
             rec->dirty = false;
         }
     }
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
-#endif
     return good ? RC_OK : RC_Failure;
 }
 
 void BufferManager::print() {
-#ifdef PROFILING
-    static timeval time1, time2;
-    gettimeofday(&time1, NULL);
-#endif
     for (PageHashMap::iterator it = pageHash->begin();
          it != pageHash->end();
          it++) {
@@ -424,11 +321,6 @@ void BufferManager::print() {
         cout<<it->first<<"\t"<<rec->pid<<"\t"
             <<rec->image<<"\t"<<rec->pinCount<<endl;
     }
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
-#endif
 }
 
 RC_t BufferManager::replacePage(PageRec *&bh)

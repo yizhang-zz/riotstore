@@ -4,11 +4,37 @@
 #include "BtreeSparseBlock.h"
 #include "Btree.h"
 #include "Config.h"
-//#include "BtreeDenseIterator.h"
 #include "BtreeStat.h"
 #include "BatchBufferFWF.h"
+#include "BatchBufferLRU.h"
+#ifdef DTRACE_SDT
+#include "riot.h"
+#endif
 
 using namespace Btree;
+
+void BTree::init(const char *fileName, int fileFlag)
+{
+	file = new BitmapPagedFile(fileName, fileFlag);
+    buffer = new BufferManager(file, config->btreeBufferSize);
+	if (fileFlag&BitmapPagedFile::CREATE)
+		buffer->allocatePageWithPID(0, headerPage);
+	else
+		buffer->readPage(0, headerPage);
+    header = (BtreeHeader*) buffer->getPageImage(headerPage);
+
+	switch (config->batchMethod) {
+	case kFWF:
+		batbuf = new BatchBufferFWF(config->batchBufferSize, this);
+		break;
+	case kLRU:
+		batbuf = new BatchBufferLRU(config->batchBufferSize, this);
+		break;
+	default:
+		batbuf = NULL;
+	}
+
+}
 
 BTree::BTree(const char *fileName, u32 endsBy,
 			 LeafSplitter *leafSp, InternalSplitter *intSp
@@ -17,28 +43,14 @@ BTree::BTree(const char *fileName, u32 endsBy,
 			 //#endif
 			 ): leafSplitter(leafSp), internalSplitter(intSp)
 {
-    file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
-    buffer = new BufferManager(file, config->btreeBufferSize);
-    assert(buffer->allocatePageWithPID(0, headerPage) == RC_OK);
-    header = (BtreeHeader*) buffer->getPageImage(headerPage);
+    init(fileName, BitmapPagedFile::CREATE);
+
     header->endsBy = endsBy;
     header->nLeaves = 0;
     header->depth = 0;
     header->root = INVALID_PID;
     header->firstLeaf = 0;
     buffer->markPageDirty(headerPage);
-
-	//#ifdef USE_BATCH_BUFFER
-	//stat = new BTreeStat(Block::BlockCapacity[Block::DenseLeaf],
-	//20);
-	switch (config->batchMethod) {
-	case kFWF:
-		batbuf = new BatchBufferFWF(config->batchBufferSize, this);
-		break;
-	default:
-		batbuf = NULL;
-	}
-	//#endif
 }
 
 BTree::BTree(const char *fileName, LeafSplitter *leafSp,
@@ -48,23 +60,10 @@ BTree::BTree(const char *fileName, LeafSplitter *leafSp,
 			 //#endif
 			 ): leafSplitter(leafSp), internalSplitter(intSp)
 {
-    file = new BitmapPagedFile(fileName, 0);
-    buffer = new BufferManager(file, config->btreeBufferSize);
-    assert(buffer->readPage(0, headerPage) == RC_OK);
-    header = (BtreeHeader*) buffer->getPageImage(headerPage);
+    init(fileName, 0);
 
 	// TODO : should materialize BTreeStat when the tree is stored on disk
 	// and read it back when the tree is loaded
-
-	//#ifdef USE_BATCH_BUFFER
-	switch (config->batchMethod) {
-	case kFWF:
-		batbuf = new BatchBufferFWF(config->batchBufferSize, this);
-		break;
-	default:
-		batbuf = NULL;
-	}
-	//#endif
 }
 
 BTree::~BTree()
@@ -110,10 +109,9 @@ int BTree::search(Key_t key, Cursor *cursor)
 		BlockT<PID_t> *pidblock = static_cast<BlockT<PID_t>*>(block);
         int &idx = cursor->indices[current];
         int ret = block->search(key, idx);
-        /* idx is the position where the key should be inserted at.
-         * To follow the child pointer, the position should be
-         * decremented.
-         */
+        // idx is the position where the key should be inserted at.
+		// To follow the child pointer, the position should be
+		// decremented.
         if (ret == kNotFound)
             idx--;
         Key_t l, u;
@@ -133,6 +131,37 @@ int BTree::search(Key_t key, Cursor *cursor)
     return ret;
 }
 
+void BTree::locate(Key_t key, PID_t &pid, Key_t &l, Key_t &u)
+{
+	// If tree is empty, assume every key goes into page 1. Thus at
+	// initial stage, all requests in the buffer will have the same
+	// destination and will be flushed together. Returning 1 here
+	// won't affect future runs.
+    if (header->depth == 0) {
+		pid = 1;
+		return;
+    }
+
+	pid = header->root;
+	l=0, u=header->endsBy;
+	PageHandle ph;
+	InternalBlock *block;
+
+    for (int i=1; i<header->depth; i++) {
+		buffer->readPage(pid, ph);
+		block = new InternalBlock(ph, buffer->getPageImage(ph), l, u, true);
+        int idx;
+        // idx is the position where the key should be inserted at.
+		// To follow the child pointer, the position should be
+		// decremented.
+        if (block->search(key, idx) == kNotFound)
+            idx--;
+		block->get(idx, l, pid);
+        u = block->key(idx+1);
+		delete block;
+    }
+}
+
 int BTree::get(const Key_t &key, Datum_t &datum)
 {
 	if (batbuf && batbuf->find(key, datum))
@@ -150,6 +179,9 @@ int BTree::get(const Key_t &key, Datum_t &datum)
 
 int BTree::put(const Key_t &key, const Datum_t &datum)
 {
+#ifdef DTRACE_SDT
+	RIOT_BTREE_PUT();
+#endif
 	//#ifdef USE_BATCH_BUFFER
 	if (batbuf) {
 		batbuf->put(key, datum);
@@ -174,6 +206,9 @@ int BTree::putHelper(Key_t key, Datum_t datum, Cursor *cursor)
         header->depth++;
         header->root = buffer->getPID(ph);
         header->nLeaves++;
+#ifdef DTRACE_SDT
+		RIOT_BTREE_SPLIT_LEAF();
+#endif
         header->firstLeaf = header->root;
         buffer->markPageDirty(headerPage);
 
@@ -203,16 +238,6 @@ int BTree::putHelper(Key_t key, Datum_t datum, Cursor *cursor)
 		;
     }
     return ret;
-}
-
-int BTree::put(const Entry *entries, u32 num)
-{
-	Cursor cursor(buffer);
-	for (u32 i=0; i<num; ++i) {
-		search(entries[i].key, &cursor);
-		putHelper(entries[i].key, entries[i].datum, &cursor);
-	}
-	return kOK;
 }
 
 #ifdef USE_BATCH_BUFFER_1
@@ -292,6 +317,9 @@ void BTree::split(Cursor *cursor)
 		cursor->trace[cur] = block;
 	}
     header->nLeaves++;
+#ifdef DTRACE_SDT
+	RIOT_BTREE_SPLIT_LEAF();
+#endif
     block->setNextLeaf(buffer->getPID(newPh));
     buffer->markPageDirty(block->pageHandle);
     int ret = kOverflow;
@@ -324,6 +352,9 @@ void BTree::split(Cursor *cursor)
         if (internalSplitter->split(&parent, &newSibling, newPh, buffer->getPageImage(newPh))) {
 			cursor->trace[cur] = parent;
 		}
+#ifdef DTRACE_SDT
+		RIOT_BTREE_SPLIT_INTERNAL();
+#endif
 		newBlock = newSibling;
 		tempBlock = newSibling;
 		if (newSibling->inRange(cursor->key)) {
@@ -388,7 +419,7 @@ void BTree::print()
     using namespace std;
     cout<<"BEGIN--------------------------------------"<<endl;
 	cout<<"BTree with depth "<<header->depth<<endl;
-	if (header->depth > 1)
+	if (header->depth > 0)
 		print(header->root, 0, header->endsBy, 0);
     cout<<"END----------------------------------------"<<endl;
 }

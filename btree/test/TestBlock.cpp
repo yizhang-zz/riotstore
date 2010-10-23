@@ -19,7 +19,7 @@ TEST(DenseBlock, Create)
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePageWithPID(0,ph)==RC_OK);
-	DenseLeafBlock *block = new DenseLeafBlock(ph, buffer->getPageImage(ph), 0, 10, true);
+	DenseLeafBlock *block = new DenseLeafBlock(ph, buffer->getPageImage(ph), 0, config->denseLeafCapacity+1, true);
 	buffer->markPageDirty(ph);
 	delete block;
 	delete buffer;
@@ -28,48 +28,34 @@ TEST(DenseBlock, Create)
     file = new BitmapPagedFile(fileName, 0);
     buffer = new BufferManager(file, BufferSize);
 	ASSERT_TRUE(buffer->readPage(0,ph)==RC_OK);
-	block = new DenseLeafBlock(ph, buffer->getPageImage(ph), 0, 10, false);
+	block = new DenseLeafBlock(ph, buffer->getPageImage(ph), 0, config->denseLeafCapacity+1, false);
 	ASSERT_EQ(block->size(), 0);
 
-	Key_t key = 5;
 	Datum_t val = 1.0;
 	int index;
-	block->put(key, val, &index);
 
-	ASSERT_EQ(block->size(), 1);
-	ASSERT_EQ(block->get(key, val), kOK);
+	for (int i=1; i<=config->sparseLeafCapacity; ++i)
+		block->put(i, val, &index);
+
+	ASSERT_EQ(config->sparseLeafCapacity, block->size());
+	ASSERT_EQ(block->get(1, val), kOK);
 	ASSERT_DOUBLE_EQ(val, 1.0);
 
-	key = 9;
+	Key_t key = config->denseLeafCapacity-1;
 	block->put(key, val, &index);
-	ASSERT_EQ(block->size(), 2);
 	ASSERT_EQ(block->get(key, val), kOK);
 	ASSERT_DOUBLE_EQ(val, 1.0);
-	ASSERT_EQ(block->get(key-1, val), kOK);
-	ASSERT_DOUBLE_EQ(val, 0.0);
-	ASSERT_EQ(block->get(key-2, val), kOK);
-	ASSERT_DOUBLE_EQ(val, 0.0);
 
 	val = 1.0;
-	block->put(6, val, &index);
-	block->put(7, val, &index);
-	block->put(8, val, &index);
-	block->put(3, val, &index);
-
-	// 3 should be the first element and 9 the last
+	block->put(0, val, &index);
+	ASSERT_EQ(0, index);
 	block->get(0, key, val);
-	ASSERT_EQ(3, key);
-	block->get(5-3, key, val);
-	ASSERT_EQ(5, key);
-	block->get(9-3, key, val);
-	ASSERT_EQ(9, key);
+	ASSERT_EQ(0, key);
 
-	int ret = block->put(2, val, &index); // causing overflow
+	int ret = block->put(config->denseLeafCapacity, val, &index); // causing overflow
 	ASSERT_EQ(kOverflow, ret);
-	ASSERT_EQ(6, block->size());
-	ASSERT_EQ(7, block->sizeWithOverflow());
+	ASSERT_EQ(1+block->size(), block->sizeWithOverflow());
 
-	block->print();
 	delete block;
 	delete buffer;
 	delete file;
@@ -84,7 +70,7 @@ TEST(SparseLeafBlock, Create)
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePageWithPID(0,ph)==RC_OK);
-	SparseLeafBlock *block = new SparseLeafBlock(ph, buffer->getPageImage(ph), 0, 10, true);
+	SparseLeafBlock *block = new SparseLeafBlock(ph, buffer->getPageImage(ph), 0, config->sparseLeafCapacity, true);
 
 	int index;
 	val = 0.1;
@@ -100,7 +86,7 @@ TEST(SparseLeafBlock, Create)
 	file = new BitmapPagedFile(fileName, 0);
     buffer = new BufferManager(file, BufferSize);
 	ASSERT_EQ(buffer->readPage(0,ph), RC_OK);
-	block = new SparseLeafBlock(ph, buffer->getPageImage(ph), 0, 10, false);
+	block = new SparseLeafBlock(ph, buffer->getPageImage(ph), 0, config->sparseLeafCapacity, false);
 
 	ASSERT_EQ(block->size(), 2);
 	ASSERT_EQ(block->sizeWithOverflow(), 2);
@@ -108,7 +94,7 @@ TEST(SparseLeafBlock, Create)
 	delete block;
 
 	buffer->allocatePage(ph);
-	block = new SparseLeafBlock(ph, buffer->getPageImage(ph), 0, 10, true);
+	block = new SparseLeafBlock(ph, buffer->getPageImage(ph), 0, config->sparseLeafCapacity, true);
 	// random insertions
 	int num_keys = config->sparseLeafCapacity;
 	Key_t keys[num_keys];
@@ -129,7 +115,6 @@ TEST(SparseLeafBlock, Create)
 		block->get(key, val);
 		ASSERT_DOUBLE_EQ(val, 1.4);
 	}
-	block->print();
 	delete block;
 	delete buffer;
 	delete file;
@@ -144,7 +129,7 @@ TEST(InternalBlock, Create)
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePageWithPID(0,ph)==RC_OK);
-	InternalBlock *block = new InternalBlock(ph, buffer->getPageImage(ph), 0, 10, true);
+	InternalBlock *block = new InternalBlock(ph, buffer->getPageImage(ph), 0, config->internalCapacity*10, true);
 	
 	ASSERT_EQ(block->size(), 0);
 	int index;
@@ -178,7 +163,6 @@ TEST(InternalBlock, Create)
 		ASSERT_EQ(index, i+1);
 	}
 
-	block->print();
 	delete block;
 	delete buffer;
 	delete file;
@@ -193,7 +177,7 @@ TEST(DenseBlock, Switch)
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePage(ph)==RC_OK);
-	DenseLeafBlock *block = new DenseLeafBlock(ph, buffer->getPageImage(ph), 0, 100, true);
+	DenseLeafBlock *block = new DenseLeafBlock(ph, buffer->getPageImage(ph), 0, config->denseLeafCapacity, true);
 	buffer->markPageDirty(ph);
 
 	Datum_t val;
@@ -207,7 +191,6 @@ TEST(DenseBlock, Switch)
 	Block *new_block = block->switchFormat();
 	ASSERT_EQ(Block::kSparseLeaf, new_block->type());
 	delete block;
-	new_block->print();
 
 	delete new_block;
 	delete buffer;
@@ -222,7 +205,7 @@ TEST(SparseBlock, Switch)
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
 	ASSERT_TRUE(buffer->allocatePage(ph)==RC_OK);
-	LeafBlock *block = new SparseLeafBlock(ph,buffer->getPageImage(ph), 0, 100, true);
+	LeafBlock *block = new SparseLeafBlock(ph,buffer->getPageImage(ph), 0, config->denseLeafCapacity, true);
 	buffer->markPageDirty(ph);
 
 	Datum_t val;
@@ -236,7 +219,6 @@ TEST(SparseBlock, Switch)
 	Block *new_block = block->switchFormat();
 	ASSERT_EQ(Block::kDenseLeaf, new_block->type());
 	delete block;
-	new_block->print();
 
 	delete new_block;
 	delete buffer;

@@ -27,12 +27,10 @@ static void genRandom(Key_t *keys, int num)
 
 static void insert(SeqGenerator gen)
 {
-    BTree tree("tree.bin", 100, lsp, isp);
+	int num = config->denseLeafCapacity*5;
+    BTree tree("tree.bin", num, lsp, isp);
     Key_t k = 0;
     Datum_t d = 1.0;
-    int cols = 5;
-    int rows = 5;
-    int num = rows*cols;
 
     Key_t keys[num];
 	(*gen)(keys, num);

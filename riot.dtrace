@@ -1,0 +1,11 @@
+provider riot {
+	probe btree__put();
+	probe btree__split__leaf();
+	probe btree__split__internal();
+};
+#pragma D attributes Evolving/Evolving/Common provider riot provider
+#pragma D attributes Private/Private/Unknown provider riot module
+#pragma D attributes Private/Private/Unknown provider riot function
+#pragma D attributes Evolving/Evolving/Common provider riot name
+#pragma D attributes Evolving/Evolving/Common provider riot args
+

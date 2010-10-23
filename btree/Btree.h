@@ -83,10 +83,24 @@ class BatchBuffer;
 		// incremental (first up the tree and then down)
 		int search(Key_t key, Cursor *cursor);
 
+		// finds the PID of the leaf block where key should go into
+		void locate(Key_t key, PID_t &pid, Key_t &lower, Key_t &upper);
+
 		int put(const Key_t &key, const Datum_t &datum);
 		int get(const Key_t &key, Datum_t &datum);
 
-		int put(const Entry *entries, u32 num);
+		// Iterator iterates over a collection of type Entry
+		template<class Iterator>
+		int put(Iterator begin, Iterator end)
+		{
+			Cursor cursor(buffer);
+			for (; begin != end; ++begin) {
+				search(begin->key, &cursor);
+				putHelper(begin->key, begin->datum, &cursor);
+			}
+			return kOK;
+		}
+
 
 		ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);
 
@@ -120,6 +134,7 @@ class BatchBuffer;
 		*/
 
 	private:
+		void init(const char *fileName, int fileFlag);
 		void print(PID_t pid, Key_t beginsAt, Key_t endsBy, int depth);
 		int putHelper(Key_t key, Datum_t datum, Cursor *cursor);
 	};

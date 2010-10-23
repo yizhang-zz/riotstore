@@ -5,6 +5,7 @@ SRC += \
 	btree/BtreeBlock.cpp \
 	btree/Splitter.cpp btree/Btree.cpp \
 	btree/BtreeDenseIterator.cpp \
-	btree/BatchBufferFWF.cpp
+	btree/BatchBufferFWF.cpp \
+	btree/BatchBufferLRU.cpp
 #btree/BtreeBlock.cpp
 CXXFLAGS += `pkg-config --cflags-only-I gsl`
