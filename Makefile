@@ -8,12 +8,13 @@ include flags.mk
 #LDFLAGS += `pkg-config --libs apr-1 gsl`
 
 SRC =
-TARGET = libriot_store-1.so
+TARGET = libriot_store.so
 
 include $(patsubst %, %/module.mk,$(DIRS))
 
 OBJ := $(patsubst %.cpp,%.o,$(filter %.cpp,$(SRC))) \
 	$(patsubst %.c,%.o,$(filter %.c,$(SRC)))
+DEPS := $(OBJ:.o=.dd)
 SO_OBJ = $(OBJ)
 DTRACE_SRC := riot.dtrace
 DTRACE_OBJ := riot.o
@@ -24,6 +25,8 @@ ifeq ($(OS),SunOS)
 endif
 
 all: $(TARGET)
+
+include $(DEPS)
 
 tags: $(OBJ)
 	ctags -R
@@ -43,13 +46,11 @@ $(DTRACE_OBJ): $(DTRACE_SRC) $(OBJ)
 test1: $(OBJ)
 	$(CXX) $(LDFLAGS) -o $@ $^ btree/test/main.cpp btree/test/TestBlock.cpp -L/usr/local/lib -lgtest `pkg-config --libs gsl`
 
-include $(OBJ:.o=.dd)
-
 %.dd:%.cpp
 	#$(SHELL) -ec '$(CXX) -M $(CXXFLAGS) $< | sed "s/$*.o/& $@/g" > $@'
 	./depend.sh `dirname $*` $(CXXFLAGS) $< > $@
 
 clean:
 	rm -f $(OBJ) $(DTRACE_OBJ)
-	rm -f $(OBJ:.o=.dd)
+	rm -f $(DEPS)
 	rm -f $(TARGET)

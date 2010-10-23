@@ -1,12 +1,14 @@
 #!/usr/sbin/dtrace -s
 #pragma D option quiet
 
+uint64_t iocount;
+uint64_t iotime;
+uint64_t begintime;
+uint64_t leafcount;
+
 BEGIN
 {
-	iocount = 0;
-	iotime = 0;
 	begintime = timestamp;
-	leafcount = 0;
 	freq = 1000;
 	self->timer = 0;
 }
