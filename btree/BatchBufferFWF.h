@@ -13,6 +13,7 @@ public:
 	void put(const Key_t &key, const Datum_t &datum);
 	void flushAll();
 	bool find(const Key_t &key, Datum_t &datum);
+	void print();
 protected:
 	Entry *cache;
 };

@@ -1,8 +1,10 @@
 #include "BatchBufferFWF.h"
 #include "Btree.h"
 #include <algorithm>
+#include <iostream>
 
 using namespace Btree;
+using namespace std;
 
 struct EntryComp {
 	bool operator() (const Entry &a, const Entry &b)
@@ -47,4 +49,11 @@ bool BatchBufferFWF::find(const Key_t &key, Datum_t &datum)
 			return true;
 		}
 	return false;
+}
+
+void BatchBufferFWF::print()
+{
+	for (int i=0; i<size; ++i)
+		cout<<cache[i].key<<" ";
+	cout<<endl;
 }

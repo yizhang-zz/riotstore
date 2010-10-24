@@ -1,7 +1,6 @@
 CXX = g++
-CXXFLAGS = -g -Wall -I../.. -I../../common -I../../btree -I../../lower
-CXXFLAGS += -DDISABLE_DENSE_LEAF -DPROFILING
-CXXFLAGS += -O2
+include ../../flags.mk
+CXXFLAGS += -Wall -I../.. -I../../common -I../../btree -I../../lower
 LDFLAGS += $(shell pkg-config --libs gsl)
 LDFLAGS += -L../.. -R../.. -lriot_store
 

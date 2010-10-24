@@ -30,6 +30,7 @@ public:
 	virtual void put(const Key_t &key, const Datum_t &datum) = 0;
 	virtual void flushAll() = 0;
 	virtual bool find(const Key_t &key, Datum_t &datum) = 0;
+	virtual void print() = 0;
 protected:
 	u32 capacity;
 	u32 size;

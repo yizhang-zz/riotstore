@@ -139,6 +139,8 @@ void BTree::locate(Key_t key, PID_t &pid, Key_t &l, Key_t &u)
 	// won't affect future runs.
     if (header->depth == 0) {
 		pid = 1;
+		l = 0;
+		u = header->endsBy;
 		return;
     }
 
@@ -149,7 +151,8 @@ void BTree::locate(Key_t key, PID_t &pid, Key_t &l, Key_t &u)
 
     for (int i=1; i<header->depth; i++) {
 		buffer->readPage(pid, ph);
-		block = new InternalBlock(ph, buffer->getPageImage(ph), l, u, true);
+		// read, do not creat!
+		block = new InternalBlock(ph, buffer->getPageImage(ph), l, u, false);
         int idx;
         // idx is the position where the key should be inserted at.
 		// To follow the child pointer, the position should be
@@ -158,6 +161,7 @@ void BTree::locate(Key_t key, PID_t &pid, Key_t &l, Key_t &u)
             idx--;
 		block->get(idx, l, pid);
         u = block->key(idx+1);
+		buffer->unpinPage(ph);
 		delete block;
     }
 }

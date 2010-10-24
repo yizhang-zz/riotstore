@@ -1,5 +1,6 @@
 #include "btree/BatchBufferLRU.h"
 #include "btree/Btree.h"
+#include <iostream>
 
 using namespace Btree;
 using namespace std;
@@ -94,3 +95,17 @@ bool BatchBufferLRU::find(const Key_t &key, Datum_t &datum)
 	}
 	return false;
 }
+
+void BatchBufferLRU::print()
+{
+	Node *p = head;
+	while (p) {
+		cout<<"PID="<<p->pid<<" ["<<p->lower<<","<<p->upper<<"): ";
+		Node::EntrySet::iterator it = p->entries.begin();
+		for (; it != p->entries.end(); ++it)
+			cout<<it->key<<" ";
+		cout<<endl;
+		p = p->next;
+	}
+}
+

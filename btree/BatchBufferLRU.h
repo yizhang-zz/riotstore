@@ -19,6 +19,7 @@ public:
 	virtual void put(const Key_t &key, const Datum_t &datum);
 	virtual void flushAll();
 	virtual bool find(const Key_t &key, Datum_t &datum);
+	void print();
 protected:
 	struct Node
 	{
