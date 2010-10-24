@@ -49,6 +49,7 @@ int open_direct(const char *pathname, int flags);
 #include <typeinfo>
 #include <assert.h>
 #include <map>
+#include <iterator>
 
 /* Utilities for the NA value. Taken from arithmetic.c from R src. */
 typedef union
@@ -283,29 +284,28 @@ void permute(T* array, const int size)
     }
 }
 
-template<class T>
-bool binarySearch(T *array, int size, T target, int *index)
+template<class Iterator>
+bool binarySearch(Iterator begin, Iterator end, 
+		typename std::iterator_traits<Iterator>::value_type target, int *index)
 {
-	int p = 0;
-	int q = size - 1;
-	int mid;
-	T midKey;
+	Iterator p = begin;
+	end -= 1;
+	Iterator mid;
 
 	do {
-		mid = (p+q)/2;
-		midKey = array[mid]; 
-		if (midKey > target)
-			q = mid-1;
+		mid = p+(end-p)/2;
+		if (*mid > target)
+			end = mid-1;
 		else
 			p = mid+1;
-	} while (p <= q && midKey != target);
+	} while (p <= end && *mid != target);
 
-	if (midKey == target) {
-		*index = mid;
+	if (*mid == target) {
+		*index = mid-begin;
 		return true;
 	}
 	else {
-		*index = p;
+		*index = p-begin;
 		return false;
 	}
 }

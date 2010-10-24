@@ -251,11 +251,11 @@ int TSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 	int index0, index0a, index0b;
 	Key_t spKey0, spKey0a, spKey0b;
 	spKey0a = lower+config->sparseLeafCapacity;
-	binarySearch(keys, size, spKey0a, &index0a);
+	binarySearch(keys, keys+size, spKey0a, &index0a);
 	r0a = ((double) index0a)/config->sparseLeafCapacity;
 #ifndef DISABLE_DENSE_LEAF
 	spKey0b = lower+config->denseLeafCapacity;
-	binarySearch(keys, size, spKey0b, &index0b);
+	binarySearch(keys, keys+size, spKey0b, &index0b);
 	r0b = ((double) index0b)/config->denseLeafCapacity;
 #endif
 	if (r0a > r0b) {
@@ -274,11 +274,11 @@ int TSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 	int index1, index1a, index1b;
 	Key_t spKey1, spKey1a, spKey1b;
 	spKey1a = upper-config->sparseLeafCapacity;
-	binarySearch(keys, size, spKey1a, &index1a);
+	binarySearch(keys, keys+size, spKey1a, &index1a);
 	r1a = ((double) (size-index1a))/config->sparseLeafCapacity;
 #ifndef DISABLE_DENSE_LEAF
 	spKey1b = upper-config->denseLeafCapacity;
-	binarySearch(keys, size, spKey1b, &index1b);
+	binarySearch(keys, keys+size, spKey1b, &index1b);
 	r1b = ((double) (size-index1b))/config->denseLeafCapacity;
 #endif
 	if (r1a > r1b) {

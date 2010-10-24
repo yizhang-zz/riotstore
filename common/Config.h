@@ -27,6 +27,8 @@ public:
 
 	Btree::BatchMethod batchMethod;
 	u32 batchBufferSize;
+	int batchUseHistogram;
+	int batchHistogramNum;
 private:
     Config(const char *path);
 };

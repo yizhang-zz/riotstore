@@ -15,6 +15,8 @@ Config::Config(const char *path)
 	TThreshold = 0.7;
 	batchBufferSize = 100;
 	batchMethod = Btree::kNone;
+	batchUseHistogram = 0;
+	batchHistogramNum = 100;
 	
     FILE *f = fopen(path, "r");
     if (f != NULL) {
@@ -56,6 +58,10 @@ Config::Config(const char *path)
 					batchMethod = Btree::kRAND;
 				else if(strcmp(b, "RANDCUT") == 0)
 					batchMethod = Btree::kRANDCUT;
+			} else if (strcmp(a, "batchUseHistogram") == 0) {
+				batchUseHistogram = atoi(b);
+			} else if (strcmp(a, "batchHistogramNum") == 0) {
+				batchHistogramNum = atoi(b);
 			}
 		}
 		fclose(f);

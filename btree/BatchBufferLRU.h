@@ -40,7 +40,7 @@ protected:
 		}
 	};
 	
-	std::map<PID_t, Node*> pidMap;
+	//std::map<PID_t, Node*> pidMap;
 	Node *head;
 	Node *tail;
 };
