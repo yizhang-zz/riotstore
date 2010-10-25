@@ -167,6 +167,14 @@ public:
 	}
 
 	
+	void print(Node *p)
+	{
+		std::cout<<"PageId="<<p->pid;
+		typename Node::EntrySet::iterator it = p->entries.begin();
+		for (; it != p->entries.end(); ++it)
+			std::cout<<it->key<<" ";
+		std::cout<<std::endl;
+	}
 	//std::map<PID_t, Node*> pidMap;
 	Node *head;
 	Node *tail;

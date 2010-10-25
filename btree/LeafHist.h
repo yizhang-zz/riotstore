@@ -50,6 +50,7 @@ namespace Btree
 		void locate(Key_t key, HistPageId &pageId);
 			
 		bool contains(HistPageId *page, Key_t key);
+		void print();
 
 		int numParts;
 		Key_t endsBy;

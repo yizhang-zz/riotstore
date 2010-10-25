@@ -1,4 +1,5 @@
 #include "LeafHist.h"
+#include <iostream>
 
 using namespace Btree;
 
@@ -21,4 +22,13 @@ bool LeafHist::contains(HistPageId *page, Key_t key)
 	return (hists[i].numLeaves == 0 && page->nodeId == 0)
 		|| page->nodeId == (key-hists[i].beginsAt)/(1+
 			(hists[i].endsBy-hists[i].beginsAt-1)/hists[i].numLeaves);
+}
+
+void LeafHist::print()
+{
+	using namespace std;
+	for (int i=0; i<numParts; ++i) {
+		cout<<hists[i].numLeaves<<" ("<<hists[i].endsBy<<") ";
+	}
+	cout<<endl;
 }

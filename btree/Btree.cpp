@@ -7,6 +7,7 @@
 #include "BtreeStat.h"
 #include "BatchBufferFWF.h"
 #include "BatchBufferLRU.h"
+#include "BatchBufferLS.h"
 
 using namespace Btree;
 
@@ -75,8 +76,10 @@ BTree::BTree(const char *fileName, LeafSplitter *leafSp,
 BTree::~BTree()
 {
 #ifdef USE_BATCH_BUFFER
-	if (leafHist)
+	if (leafHist) {
+		//leafHist->print();
 		delete leafHist;
+	}
 	if (batbuf)
 		delete batbuf;
 #endif
