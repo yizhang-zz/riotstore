@@ -1,5 +1,5 @@
 #include <iostream>
-#include "../lower/BitmapPagedFile.h"
+#include "lower/BitmapPagedFile.h"
 #include "BtreeDenseLeafBlock.h"
 #include "BtreeSparseBlock.h"
 #include "Btree.h"
@@ -7,9 +7,6 @@
 #include "BtreeStat.h"
 #include "BatchBufferFWF.h"
 #include "BatchBufferLRU.h"
-#ifdef DTRACE_SDT
-#include "riot.h"
-#endif
 
 using namespace Btree;
 
@@ -22,25 +19,30 @@ void BTree::init(const char *fileName, int fileFlag)
 	else
 		buffer->readPage(0, headerPage);
     header = (BtreeHeader*) buffer->getPageImage(headerPage);
+}
 
+#ifdef USE_BATCH_BUFFER
+void BTree::initBatching()
+{
+	leafHist = new LeafHist(config->batchHistogramNum, header->endsBy);
 	switch (config->batchMethod) {
 	case kFWF:
 		batbuf = new BatchBufferFWF(config->batchBufferSize, this);
 		break;
 	case kLRU:
-		batbuf = new BatchBufferLRU(config->batchBufferSize, this);
+		if (config->batchUseHistogram) 
+			batbuf = new BatchBufferLRU<HistPageId>(config->batchBufferSize, this);
+		else 
+			batbuf = new BatchBufferLRU<BoundPageId>(config->batchBufferSize, this);
 		break;
 	default:
 		batbuf = NULL;
 	}
-
 }
+#endif
 
-BTree::BTree(const char *fileName, u32 endsBy,
+BTree::BTree(const char *fileName, Key_t endsBy,
 			 LeafSplitter *leafSp, InternalSplitter *intSp
-			 //#ifdef USE_BATCH_BUFFER
-			 //, BatchMethod method
-			 //#endif
 			 ): leafSplitter(leafSp), internalSplitter(intSp)
 {
     init(fileName, BitmapPagedFile::CREATE);
@@ -51,16 +53,20 @@ BTree::BTree(const char *fileName, u32 endsBy,
     header->root = INVALID_PID;
     header->firstLeaf = 0;
     buffer->markPageDirty(headerPage);
+
+#ifdef USE_BATCH_BUFFER
+	initBatching();
+#endif
 }
 
 BTree::BTree(const char *fileName, LeafSplitter *leafSp,
 			 InternalSplitter *intSp
-			 //#ifdef USE_BATCH_BUFFER
-			 //, BatchMethod method
-			 //#endif
 			 ): leafSplitter(leafSp), internalSplitter(intSp)
 {
     init(fileName, 0);
+#ifdef USE_BATCH_BUFFER
+	initBatching();
+#endif
 
 	// TODO : should materialize BTreeStat when the tree is stored on disk
 	// and read it back when the tree is loaded
@@ -68,11 +74,12 @@ BTree::BTree(const char *fileName, LeafSplitter *leafSp,
 
 BTree::~BTree()
 {
-	//#ifdef USE_BATCH_BUFFER
-	//delete stat;
+#ifdef USE_BATCH_BUFFER
+	if (leafHist)
+		delete leafHist;
 	if (batbuf)
 		delete batbuf;
-	//#endif
+#endif
     buffer->unpinPage(headerPage);
     delete buffer;
     delete file;
@@ -131,20 +138,30 @@ int BTree::search(Key_t key, Cursor *cursor)
     return ret;
 }
 
-void BTree::locate(Key_t key, PID_t &pid, Key_t &l, Key_t &u)
+#ifdef USE_BATCH_BUFFER
+void BTree::locate(Key_t key, HistPageId &pageId)
+{
+	leafHist->locate(key, pageId);
+}
+
+void BTree::locate(Key_t key, BoundPageId &pageId)
+//void BTree::locate(Key_t key, PID_t &pid, Key_t &l, Key_t &u)
 {
 	// If tree is empty, assume every key goes into page 1. Thus at
 	// initial stage, all requests in the buffer will have the same
 	// destination and will be flushed together. Returning 1 here
 	// won't affect future runs.
+	Key_t l,u;
     if (header->depth == 0) {
-		pid = 1;
+		//pid = 1;
 		l = 0;
 		u = header->endsBy;
+		pageId.lower = l;
+		pageId.upper = u;
 		return;
     }
 
-	pid = header->root;
+	PID_t pid = header->root;
 	l=0, u=header->endsBy;
 	PageHandle ph;
 	InternalBlock *block;
@@ -164,12 +181,17 @@ void BTree::locate(Key_t key, PID_t &pid, Key_t &l, Key_t &u)
 		buffer->unpinPage(ph);
 		delete block;
     }
+	pageId.lower = l;
+	pageId.upper = u;
 }
+#endif
 
 int BTree::get(const Key_t &key, Datum_t &datum)
 {
+#ifdef USE_BATCH_BUFFER
 	if (batbuf && batbuf->find(key, datum))
 		return kOK;
+#endif
 	
     Cursor cursor(buffer);
     int ret = search(key, &cursor);
@@ -186,12 +208,12 @@ int BTree::put(const Key_t &key, const Datum_t &datum)
 #ifdef DTRACE_SDT
 	RIOT_BTREE_PUT();
 #endif
-	//#ifdef USE_BATCH_BUFFER
+#ifdef USE_BATCH_BUFFER
 	if (batbuf) {
 		batbuf->put(key, datum);
 		return kOK;
 	}
-	//#endif
+#endif
 	
     Cursor cursor(buffer);
 	cursor.key = key;  // remember this key
@@ -208,19 +230,14 @@ int BTree::putHelper(Key_t key, Datum_t datum, Cursor *cursor)
         PageHandle ph;
         buffer->allocatePage(ph);
         header->depth++;
-        header->root = buffer->getPID(ph);
-        header->nLeaves++;
-#ifdef DTRACE_SDT
-		RIOT_BTREE_SPLIT_LEAF();
-#endif
-        header->firstLeaf = header->root;
+        header->root = header->firstLeaf = buffer->getPID(ph);
         buffer->markPageDirty(headerPage);
 
         cursor->current = 0;
-        cursor->trace[cursor->current] = Block::create(Block::kSparseLeaf,
-													 ph, buffer->getPageImage(ph),
-													 0, header->endsBy);
-        cursor->indices[cursor->current] = 0;
+		cursor->trace[0] = Block::create(Block::kSparseLeaf,
+				ph, buffer->getPageImage(ph), 0, header->endsBy);
+        cursor->indices[0] = 0;
+		onNewLeaf(cursor->trace[0]);
     }
         
     LeafBlock *block = static_cast<LeafBlock*>(cursor->trace[cursor->current]);
@@ -244,72 +261,6 @@ int BTree::putHelper(Key_t key, Datum_t datum, Cursor *cursor)
     return ret;
 }
 
-#ifdef USE_BATCH_BUFFER_1
-int BTree::putBatch(std::vector<Entry> &batch)
-{
-  lastPageInBatch = INVALID_PID;
-  std::vector<Entry>::iterator it = batch.begin();
-  for (; it != batch.end(); ++it) {
-	Key_t key = it->key;
-	Datum_t datum = it->value.datum;
-
-	Cursor cursor(buffer);
-    int ret = search(key, &cursor);
-    if (cursor.current < 0) {
-        // tree empty, create it
-        PageHandle ph;
-        buffer->allocatePage(ph);
-        header->depth++;
-        header->root = buffer->getPID(ph);
-        header->nLeaves++;
-        header->firstLeaf = header->root;
-        buffer->markPageDirty(headerPage);
-
-        cursor.current = 0;
-        cursor.trace[cursor.current] = new Block(this, ph, 0, header->endsBy,
-                                                 true, Block::SparseLeaf);
-        cursor.indices[cursor.current] = 0;
-		
-		int remain = Block::BlockCapacity[Block::SparseLeaf];
-		stat->add(remain);
-		lastPageInBatch = buffer->getPID(ph);
-		lastPageCapacity = remain;
-		lastPageChange = 0;
-    }
-    
-    Block *block = cursor.trace[cursor.current];
-	PID_t curPID = buffer->getPID(block->ph);
-	if ( curPID != lastPageInBatch && lastPageInBatch != INVALID_PID) {
-	  // udpate statistics
-	  stat->update(lastPageCapacity, lastPageCapacity-lastPageChange);
-	  lastPageInBatch = curPID;
-	  lastPageCapacity = block->getCapacity() - block->getSize();
-	  lastPageChange = 0;
-	}
-
-    Value v;
-    v.datum = datum;
-    ret = block->put(key, v);
-	Key_t origUpper = block->getUpperBound();
-    buffer->markPageDirty(block->getPageHandle());
-	lastPageChange++;
-
-    if (ret == BT_OVERFLOW) {
-        split(&cursor);
-		// stat for current page will be udpated later
-		lastPageChange = lastPageCapacity-block->getSize();
-		// stat for right sibling is new, so add it now
-		PageHandle rph;
-		buffer->readPage(*block->nextLeaf, rph);
-		Block *rb = new Block(this, rph, block->getUpperBound(), origUpper);
-		stat->add(rb->getCapacity()-rb->getSize());
-		delete rb;
-    }
-  } // end of for(it)
-  return BT_OK;
-}
-#endif
-//TODO: update the cursor so that it is valid after the split
 void BTree::split(Cursor *cursor)
 {
     PageHandle newPh;
@@ -320,10 +271,7 @@ void BTree::split(Cursor *cursor)
     if (leafSplitter->split(&block, &newLeafBlock, newPh, buffer->getPageImage(newPh))) {
 		cursor->trace[cur] = block;
 	}
-    header->nLeaves++;
-#ifdef DTRACE_SDT
-	RIOT_BTREE_SPLIT_LEAF();
-#endif
+	onNewLeaf(newLeafBlock);
     block->setNextLeaf(buffer->getPID(newPh));
     buffer->markPageDirty(block->pageHandle);
     int ret = kOverflow;

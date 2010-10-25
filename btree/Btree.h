@@ -5,15 +5,22 @@
 #include "BtreeCursor.h"
 #include "Splitter.h"
 #include "BatchBuffer.h"
+#include "LeafHist.h"
 #include <vector>
+#ifdef DTRACE_SDT
+#include "riot.h"
+#endif
 
 namespace Btree
 {
 
 #ifdef USE_BATCH_BUFFER
 class BatchBuffer;
-//class BtreeStat;
+class BoundPageId;
+class HistPageId;
+class LeafHist;
 #endif
+
 
 	struct BtreeHeader {
 		u32 endsBy;		/// all keys >=0 and < endsBy
@@ -47,11 +54,10 @@ class BatchBuffer;
 	public:
 		// points to the data in the header page
 		BtreeHeader *header;
-		//#ifdef USE_BATCH_BUFFER
+#ifdef USE_BATCH_BUFFER
 		BatchBuffer *batbuf;
-		//BtreeStat *stat;
-		//int putBatch(std::vector<Entry> &batch);
-		//#endif
+		LeafHist *leafHist;
+#endif
 
 		/**
 		 * Creates a new BTree with the given file name and dimension
@@ -83,8 +89,12 @@ class BatchBuffer;
 		// incremental (first up the tree and then down)
 		int search(Key_t key, Cursor *cursor);
 
+#ifdef USE_BATCH_BUFFER
 		// finds the PID of the leaf block where key should go into
-		void locate(Key_t key, PID_t &pid, Key_t &lower, Key_t &upper);
+		void locate(Key_t key, BoundPageId &pageId);
+		void locate(Key_t key, HistPageId &pageId);
+#endif
+		//void locate(Key_t key, PID_t &pid, Key_t &lower, Key_t &upper);
 
 		int put(const Key_t &key, const Datum_t &datum);
 		int get(const Key_t &key, Datum_t &datum);
@@ -108,12 +118,14 @@ class BatchBuffer;
 		void setLeafSplitter(LeafSplitter *sp) { leafSplitter = sp; }
 
 		void print();
+#ifdef USE_BATCH_BUFFER
 		void flushAndPrint()
 		{
 			if (batbuf)
 				batbuf->flushAll();
 			print();
 		}
+#endif
 		u32  getNumLeaves() { return header->nLeaves; }
 		/*
 		void allocatePage(PID_t &pid, PageHandle &ph) {
@@ -135,7 +147,21 @@ class BatchBuffer;
 
 	private:
 		void init(const char *fileName, int fileFlag);
+#ifdef USE_BATCH_BUFFER
+		void initBatching();
+#endif
 		void print(PID_t pid, Key_t beginsAt, Key_t endsBy, int depth);
 		int putHelper(Key_t key, Datum_t datum, Cursor *cursor);
+
+		void onNewLeaf(Block *leaf)
+		{
+			header->nLeaves++;
+#ifdef USE_BATCH_BUFFER
+			leafHist->onNewLeaf(leaf->getLowerBound(), leaf->getUpperBound());
+#endif
+#ifdef DTRACE_SDT
+			RIOT_BTREE_SPLIT_LEAF();
+#endif
+		}
 	};
 }

@@ -12,7 +12,8 @@ using namespace Btree;
 int main(int argc, char **argv)
 {
 	char fileName[] = "/riot/mb.1";
-	srand(time(NULL));
+	srand(12874938);
+	//srand(time(NULL));
 	if (argc < 4) {
 		cout<<"Usage: "<<argv[0]<<" <splitter type> <insertion sequence> <size>"<<endl;
 		cout<<"splitter type: M,B,R,S,T"<<endl
