@@ -36,6 +36,12 @@ void BTree::initBatching()
 		else 
 			batbuf = new BatchBufferLRU<BoundPageId>(config->batchBufferSize, this);
 		break;
+	case kLS:
+		if (config->batchUseHistogram)
+			batbuf = new BatchBufferLS<HistPageId>(config->batchBufferSize, this);
+		else
+			batbuf = new BatchBufferLS<BoundPageId>(config->batchBufferSize, this);
+		break;
 	default:
 		batbuf = NULL;
 	}
