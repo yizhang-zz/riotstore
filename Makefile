@@ -5,8 +5,6 @@ CXXFLAGS += -Wall -fPIC -I. $(patsubst %,-I%,$(DIRS))
 
 include flags.mk
 
-#LDFLAGS += `pkg-config --libs apr-1 gsl`
-
 SRC =
 TARGET = libriot_store.so
 
