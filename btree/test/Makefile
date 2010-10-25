@@ -1,8 +1,10 @@
 CXX = g++
-include ../../flags.mk
 CXXFLAGS += -I/usr/local/include -I../..
 LDFLAGS += $(shell pkg-config --libs gsl)
-LDFLAGS += -L../.. -R../.. -lriot_store -L/usr/local/lib -lgtest
+LDFLAGS += -L../.. -lriot_store -L/usr/local/lib -lgtest
+LD_RUN_PATH = ../..
+
+-include ../../flags.mk
 
 .PHONY: all clean lower
 
