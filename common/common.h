@@ -357,6 +357,19 @@ inline int findFirstZeroBit(u32 word)
 	return pos;
 }
 
+inline int floorLog2(unsigned int n) {
+	if (n == 0)
+		return -1;
+
+	int pos = 0;
+	if (n >= 1<<16) { n >>= 16; pos += 16; }
+	if (n >= 1<< 8) { n >>=  8; pos +=  8; }
+	if (n >= 1<< 4) { n >>=  4; pos +=  4; }
+	if (n >= 1<< 2) { n >>=  2; pos +=  2; }
+	if (n >= 1<< 1) {           pos +=  1; }
+	return pos;
+}
+
 #define TIMESTAMP(t1) \
-	double t1; { timeval tim; gettimeofday(&tim, NULL); t1 = tim.tv_sec + tim.tv_usec/1000000.0;}
+	double t1; do { timeval tim; gettimeofday(&tim, NULL); t1 = tim.tv_sec + tim.tv_usec/1000000.0;} while(0)
 #endif

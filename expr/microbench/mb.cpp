@@ -12,13 +12,20 @@ using namespace Btree;
 int main(int argc, char **argv)
 {
 	char fileName[] = "/riot/mb.1";
-	srand(12874938);
-	//srand(time(NULL));
+	//srand(12874938);
+	unsigned int tm;
+	if (argc >= 5)
+		tm = atoi(argv[4]);
+	else
+		tm = time(NULL);
+	srand(tm);
+	cout<<"seed = "<<tm<<endl;
 	if (argc < 4) {
-		cout<<"Usage: "<<argv[0]<<" <splitter type> <insertion sequence> <size>"<<endl;
+		cout<<"Usage: "<<argv[0]<<" <splitter type> <insertion sequence> <size> [rand seed]"<<endl;
 		cout<<"splitter type: M,B,R,S,T"<<endl
 			<<"insertion sequence: S(sequential), D(strided), R(random)"<<endl
-			<<"size: #rows/cols of the square matrix"<<endl;
+			<<"size: #rows/cols of the square matrix"<<endl
+			<<"rand seed: seed, unsigned int"<<endl;
 			//<<"sparsity: e.g., .4 means 40% of the elements are non-zero"<<endl;
 		return 0;
 	}

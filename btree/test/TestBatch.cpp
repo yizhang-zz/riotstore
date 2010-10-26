@@ -14,8 +14,8 @@ TEST(Btree, Batch)
 	lsp = new MSplitter<Datum_t>();
 	isp = new MSplitter<PID_t>();
 
-	const int rows = 50;
-	const int cols = 50;
+	const int rows = 1000;
+	const int cols = 1000;
 	BTree *tree = new BTree("batch.bin", rows*cols, lsp, isp);
 
 	//TIMESTAMP(t1);

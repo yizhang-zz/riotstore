@@ -9,11 +9,12 @@ class BTree;
 enum BatchMethod {
 	kNone,
 	kFWF,
-	kFWPF,
 	kLRU,
 	kLS,
-	kRAND,
-	kRANDCUT
+	kLS_RAND,
+	kLS_RANDCUT,
+	kLG,
+	kLG_RAND
 };
 
 class BatchBuffer

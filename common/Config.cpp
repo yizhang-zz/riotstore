@@ -48,16 +48,18 @@ Config::Config(const char *path)
 					batchMethod = Btree::kNone;
 				else if(strcmp(b, "FWF") == 0)
 					batchMethod = Btree::kFWF;
-				else if(strcmp(b, "FWPF") == 0)
-					batchMethod = Btree::kFWPF;
 				else if(strcmp(b, "LRU") == 0)
 					batchMethod = Btree::kLRU;
 				else if(strcmp(b, "LS") == 0)
 					batchMethod = Btree::kLS;
-				else if(strcmp(b, "RAND") == 0)
-					batchMethod = Btree::kRAND;
-				else if(strcmp(b, "RANDCUT") == 0)
-					batchMethod = Btree::kRANDCUT;
+				else if(strcmp(b, "LS_RAND") == 0)
+					batchMethod = Btree::kLS_RAND;
+				else if(strcmp(b, "LS_RANDCUT") == 0)
+					batchMethod = Btree::kLS_RANDCUT;
+				else if(strcmp(b, "LG") == 0)
+					batchMethod = Btree::kLG;
+				else if(strcmp(b, "LG_RAND") == 0)
+					batchMethod = Btree::kLG_RAND;
 			} else if (strcmp(a, "batchUseHistogram") == 0) {
 				batchUseHistogram = atoi(b);
 			} else if (strcmp(a, "batchHistogramNum") == 0) {

@@ -8,6 +8,7 @@
 #include "BatchBufferFWF.h"
 #include "BatchBufferLRU.h"
 #include "BatchBufferLS.h"
+#include "BatchBufferLG.h"
 #include "BatchBufferRand.h"
 
 using namespace Btree;
@@ -43,11 +44,17 @@ void BTree::initBatching()
 		else
 			batbuf = new BatchBufferLS<BoundPageId>(config->batchBufferSize, this);
 		break;
-	case kRAND:
+	case kLS_RAND:
 		if (config->batchUseHistogram)
 			batbuf = new BatchBufferRand<HistPageId>(config->batchBufferSize, this);
 		else
 			batbuf = new BatchBufferRand<BoundPageId>(config->batchBufferSize, this);
+		break;
+	case kLG:
+		if (config->batchUseHistogram)
+			batbuf = new BatchBufferLG<HistPageId>(config->batchBufferSize, this);
+		else
+			batbuf = new BatchBufferLG<BoundPageId>(config->batchBufferSize, this);
 		break;
 	default:
 		batbuf = NULL;
