@@ -4,6 +4,7 @@
 #include "BtreeSparseBlock.h"
 #include "Btree.h"
 #include "Config.h"
+#ifdef USE_BATCH_BUFFER
 #include "BtreeStat.h"
 #include "BatchBufferFWF.h"
 #include "BatchBufferLRU.h"
@@ -11,6 +12,7 @@
 #include "BatchBufferRand.h"
 #include "BatchBufferLG.h"
 #include "BatchBufferLGRand.h"
+#endif
 
 using namespace Btree;
 

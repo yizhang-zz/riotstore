@@ -54,3 +54,10 @@ syscall::write*:return
 	iotime += timestamp - self->ts;
 	self->ts = 0;
 }
+
+/* exit with the same code if segfault happens */
+proc:::signal-send
+/args[2]==SIGSEGV && pid==$target/
+{
+	exit(arg0);
+}

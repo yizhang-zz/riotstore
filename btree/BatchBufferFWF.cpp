@@ -1,3 +1,4 @@
+#ifdef USE_BATCH_BUFFER
 #include "BatchBufferFWF.h"
 #include "Btree.h"
 #include <algorithm>
@@ -57,3 +58,4 @@ void BatchBufferFWF::print()
 		cout<<cache[i].key<<" ";
 	cout<<endl;
 }
+#endif

@@ -1,4 +1,5 @@
 *.save
+*.bak
 *.o
 *.so
 *.exe
@@ -10,3 +11,5 @@
 *.log
 *.er
 core
+tags
+*/test/test

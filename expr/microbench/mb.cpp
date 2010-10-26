@@ -3,7 +3,6 @@
 #include <fstream>
 #include "common.h"
 #include "Config.h"
-//#include "PagedStorageContainer.h"
 #include "Btree.h"
 
 using namespace std;
@@ -19,7 +18,7 @@ int main(int argc, char **argv)
 	else
 		tm = time(NULL);
 	srand(tm);
-	cout<<"seed = "<<tm<<endl;
+	cerr<<"seed = "<<tm<<endl;
 	if (argc < 4) {
 		cout<<"Usage: "<<argv[0]<<" <splitter type> <insertion sequence> <size> [rand seed]"<<endl;
 		cout<<"splitter type: M,B,R,S,T"<<endl

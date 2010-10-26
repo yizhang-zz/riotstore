@@ -1,3 +1,4 @@
+#ifdef USE_BATCH_BUFFER
 #include "btree/BatchBufferLRU.h"
 #include "btree/Btree.h"
 #include <iostream>
@@ -107,3 +108,4 @@ void BatchBufferLRU::print()
 	}
 }
 
+#endif

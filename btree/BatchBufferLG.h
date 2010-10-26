@@ -1,3 +1,4 @@
+#ifdef USE_BATCH_BUFFER
 #pragma once
 
 #include "BatchBuffer.h"
@@ -134,3 +135,4 @@ namespace Btree
 		int numGroups;
 	};
 }
+#endif
