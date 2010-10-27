@@ -16,46 +16,42 @@ struct EntryComp {
 
 BatchBufferFWF::BatchBufferFWF(u32 cap_, BTree *tree_) : BatchBuffer(cap_,tree_)
 {
-	cache = new Entry[capacity];
 }
 
 BatchBufferFWF::~BatchBufferFWF()
 {
 	flushAll();
-	delete cache;
 }
 
 void BatchBufferFWF::put(const Key_t &key, const Datum_t &datum)
 {
 	if (size==capacity)
 		flushAll();
-	cache[size].key = key;
-	cache[size].datum = datum;
+	cache.insert(Entry(key, datum));
 	++size;
 	return;
 }
 
 void BatchBufferFWF::flushAll()
 {
-	std::sort(cache, cache+size, entryComp);
-	tree->put(cache, cache+size);
+	tree->put(cache.begin(), cache.end());
+	cache.clear();
 	size = 0;
 }
 
 bool BatchBufferFWF::find(const Key_t &key, Datum_t &datum)
 {
-	for (int i=0; i<size; ++i)
-		if (cache[i].key == key) {
-			datum = cache[i].datum;
-			return true;
-		}
-	return false;
+	std::set<Entry>::iterator it = cache.find(Entry(key, 0));
+	if (it == cache.end())
+		return false;
+	datum = it->datum;
+	return true;
 }
 
 void BatchBufferFWF::print()
 {
-	for (int i=0; i<size; ++i)
-		cout<<cache[i].key<<" ";
+	ostream_iterator<Entry> output(cout, " ");
+	copy(cache.begin(), cache.end(), output);
 	cout<<endl;
 }
 #endif

@@ -8,6 +8,7 @@
 
 #include <unistd.h>
 #include <stdlib.h>
+#include <iostream>
 
 /* Direct I/O, no caching by the OS */
 #if defined(linux)
@@ -135,7 +136,15 @@ struct Entry
 	{
 		return key<other.key;
 	}
+
+	friend std::ostream & operator<<(const std::ostream &out, const Entry &e);
 };
+
+inline std::ostream & operator<<(std::ostream &out, const Entry &e)
+{
+	return out<<e.key;
+}
+
 /*
 typedef struct 
 {

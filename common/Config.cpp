@@ -42,9 +42,7 @@ Config::Config(const char *path)
 			} else if (strcmp(a, "batchBufferSize") == 0) {
 				batchBufferSize = atoi(b);
 			} else if (strcmp(a, "batchMethod") == 0) {
-				if (strcmp(b, "None") == 0)
-					batchMethod = Btree::kNone;
-				else if(strcmp(b, "None") == 0)
+				if (strcmp(b, "NONE") == 0)
 					batchMethod = Btree::kNone;
 				else if(strcmp(b, "FWF") == 0)
 					batchMethod = Btree::kFWF;

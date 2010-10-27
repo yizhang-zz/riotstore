@@ -1,7 +1,7 @@
 #pragma once
 #include "common/common.h"
 #include "btree/BatchBuffer.h"
-//#include <set>
+#include <set>
 
 namespace Btree
 {
@@ -14,7 +14,7 @@ public:
 	void flushAll();
 	bool find(const Key_t &key, Datum_t &datum);
 	void print();
-protected:
-	Entry *cache;
+private:
+	std::set<Entry> cache;
 };
 }
