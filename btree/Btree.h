@@ -157,7 +157,8 @@ class LeafHist;
 		{
 			header->nLeaves++;
 #ifdef USE_BATCH_BUFFER
-			leafHist->onNewLeaf(leaf->getLowerBound(), leaf->getUpperBound());
+			if (leafHist)
+				leafHist->onNewLeaf(leaf->getLowerBound(), leaf->getUpperBound());
 #endif
 #ifdef DTRACE_SDT
 			RIOT_BTREE_SPLIT_LEAF();

@@ -26,8 +26,8 @@ enum StorageType {
 class LinearStorage
 {
 protected:
-    /// Total size, including empty slots
-    u32 size;
+    /// Upper bound of stored keys
+    Key_t upper;
     /// Physical storage
     PagedStorageContainer *file;
     /// Buffer manager
@@ -76,6 +76,11 @@ public:
      * \return An internal iterator.
      */
     virtual ArrayInternalIterator* createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy) = 0;    
+
+	Key_t getUpperBound()
+	{
+		return upper;
+	}
 
     friend class MDArray;
 };

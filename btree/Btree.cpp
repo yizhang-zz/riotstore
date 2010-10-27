@@ -30,7 +30,10 @@ void BTree::init(const char *fileName, int fileFlag)
 #ifdef USE_BATCH_BUFFER
 void BTree::initBatching()
 {
-	leafHist = new LeafHist(config->batchHistogramNum, header->endsBy);
+	if (config->batchUseHistogram)
+		leafHist = new LeafHist(config->batchHistogramNum, header->endsBy);
+	else
+		leafHist = NULL;
 	switch (config->batchMethod) {
 	case kFWF:
 		batbuf = new BatchBufferFWF(config->batchBufferSize, this);
@@ -77,7 +80,7 @@ BTree::BTree(const char *fileName, Key_t endsBy,
 {
     init(fileName, BitmapPagedFile::CREATE);
 
-    header->endsBy = endsBy;
+    upper = header->endsBy = endsBy;
     header->nLeaves = 0;
     header->depth = 0;
     header->root = INVALID_PID;
@@ -94,6 +97,7 @@ BTree::BTree(const char *fileName, LeafSplitter *leafSp,
 			 ): leafSplitter(leafSp), internalSplitter(intSp)
 {
     init(fileName, 0);
+	upper = header->endsBy;
 #ifdef USE_BATCH_BUFFER
 	initBatching();
 #endif
