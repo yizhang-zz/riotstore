@@ -6,21 +6,24 @@ LDFLAGS += -L../.. -R../.. -lriot_store
 
 .PHONY: all clean lower
 
-SRC :=  mb.cpp
+SRC :=  write.cpp gen.cpp
 OBJ := $(patsubst %.cpp, %.o, $(SRC))
 
 .cpp.o:
 	$(CXX) $(CXXFLAGS) -c $<
 
-all: mb
+all: write gen
 
 %.dd: %.cpp
 	$(SHELL) -ec '$(CXX) -M $(CXXFLAGS) $< | sed "s/$*.o/& $@/g" > $@'
 
 include $(OBJ:.o=.dd)
 
-mb: $(OBJ) 
+write: write.o 
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) 
+
+gen: gen.o
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean : 
 	rm -f $(OBJ)

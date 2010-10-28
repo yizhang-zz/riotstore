@@ -183,6 +183,7 @@ void BTree::locate(Key_t key, HistPageId &pageId)
 void BTree::locate(Key_t key, BoundPageId &pageId)
 //void BTree::locate(Key_t key, PID_t &pid, Key_t &l, Key_t &u)
 {
+	RIOT_BTREE_LOCATE_BEGIN();
 	// If tree is empty, assume every key goes into page 1. Thus at
 	// initial stage, all requests in the buffer will have the same
 	// destination and will be flushed together. Returning 1 here
@@ -194,6 +195,7 @@ void BTree::locate(Key_t key, BoundPageId &pageId)
 		u = header->endsBy;
 		pageId.lower = l;
 		pageId.upper = u;
+		RIOT_BTREE_LOCATE_END(0);
 		return;
     }
 
@@ -219,6 +221,7 @@ void BTree::locate(Key_t key, BoundPageId &pageId)
     }
 	pageId.lower = l;
 	pageId.upper = u;
+	RIOT_BTREE_LOCATE_END(header->depth);
 }
 #endif
 
