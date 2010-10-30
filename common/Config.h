@@ -29,6 +29,7 @@ public:
 	u32 batchBufferSize;
 	int batchUseHistogram;
 	int batchHistogramNum;
+	u16 batchKeepPidCount;
 private:
     Config(const char *path);
 };

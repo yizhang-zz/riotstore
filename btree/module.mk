@@ -1,11 +1,2 @@
-#SRC += $(wildcard btree/*.cpp)
-SRC += \
-	btree/BtreeDenseLeafBlock.cpp \
-	btree/BtreeSparseBlock.cpp \
-	btree/BtreeBlock.cpp \
-	btree/Splitter.cpp btree/Btree.cpp \
-	btree/BtreeDenseIterator.cpp \
-	btree/LeafHist.cpp \
-	btree/BatchBufferFWF.cpp 
-#btree/BtreeBlock.cpp
+SRC += $(wildcard btree/*.cpp)
 CXXFLAGS += `pkg-config --cflags-only-I gsl`

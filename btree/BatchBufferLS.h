@@ -1,8 +1,16 @@
 #pragma once
 
 #include "BatchBuffer.h"
-#include <list>
+#include <iostream>
+#include <iterator>
 #include <boost/pool/pool.hpp>
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/identity.hpp>
+#include <boost/multi_index/member.hpp>
+
+using namespace boost;
+using namespace boost::multi_index;
 
 namespace Btree
 {
@@ -10,29 +18,18 @@ namespace Btree
 	class BatchBufferLS: public BatchBuffer
 	{
 	public:
-		struct Node
-		{
-			typedef std::set<Entry> EntrySet;
-			PageId pid;
-			EntrySet entries;
-			
-			void *operator new(size_t size)
-			{
-				return pool.malloc();
-			}
-			void operator delete(void *p)
-			{
-				pool.free(p);
-			}
 
-		private:
-			static boost::pool<> pool;
-		};
+		typedef multi_index_container<PageId,
+				indexed_by<
+					ordered_unique<member<PageId, Key_t, &PageId::lower> >,
+					ordered_non_unique<member<PageId, u16, &PageId::count>, std::greater<u16> >
+				> > PidSet;
+		typedef typename PidSet::template nth_index<0>::type PidSetByRange;
+		typedef typename PidSet::template nth_index<1>::type PidSetByCount;
 
-		typedef std::list<Node*> NodeList;
-		typedef std::map<int, int> CountMap;
-
-		BatchBufferLS(u32 cap_, BTree *tree_): BatchBuffer(cap_, tree_)
+		BatchBufferLS(u32 cap_, BTree *tree_): BatchBuffer(
+				cap_-sizeof(PageId)*config->batchKeepPidCount/sizeof(Entry)
+				, tree_), knownCount(0)
 		{
 		}
 
@@ -40,120 +37,124 @@ namespace Btree
 		{
 		}
 
-		void put(const Key_t &key, const Datum_t &datum)
+		void computePids()
 		{
-			if (size == capacity) {
-				// list is already sorted according to length
-				// break ties at random
-				int longestLen = list.front()->entries.size();
-				CountMap::iterator cit = typeCount.find(longestLen);
-				int count = cit->second;
-				// sample one from count number of elements
-				int selected = rand() % count;
-				typename NodeList::iterator it = list.begin();
-				for (int i=0; i<selected; ++i)
-					++it;
-				tree->put((*it)->entries.begin(), (*it)->entries.end());
-				size -= longestLen;
-				delete *it;
-				list.erase(it);
-				//--typeCount[longestLen];
-				cit->second--;
+			EntrySet::iterator eit = entries.begin();
+			PidSetByRange &byRange = pids.get<0>();
+			typename PidSetByRange::iterator rit = byRange.begin();
+			Key_t lower;
+			if (byRange.size() == 0)
+				lower = MAX_KEY;
+			else {
+				//rit = byRange.begin();
+				lower = rit->lower;
 			}
-
-			bool found = false;
-			typename NodeList::iterator it = list.begin();
-			for (; it != list.end(); ++it) {
-				if ((*it)->pid.contains(key)) {
-					size_t nodeSize = (*it)->entries.size();
-					CountMap::iterator cit = typeCount.find(nodeSize);
-					--cit->second;
-					(*it)->entries.insert(Entry(key, datum));
-					typeCount[++nodeSize]++;
-
-					// make sure list is still sorted
-					typename NodeList::iterator t_it = it;
-					Node *node = *it;
-					do {
-						--t_it;
-					} while ( t_it != list.end()
-							&& (*t_it)->entries.size() < nodeSize );
-					if (t_it == list.end()) {
-						list.erase(it);
-						list.push_front(node);
+			while (eit != entries.end()) {
+				if (eit->key < lower) {
+					if (!needsComputePids())
+						break;
+					PageId npid;
+					tree->locate(eit->key, npid);
+					// find the last record that goes into npid
+					while (eit != entries.end() && eit->key < npid.upper) {
+						++eit;
+						++npid.count;
 					}
-					else {
-						++t_it; // insert before this position
-						if (t_it != it) {
-							list.erase(it);
-							list.insert(t_it, node);
-						}
-					}
-
-					found = true;
-					break;
+					// insert the new pid
+					byRange.insert(rit, npid);
+					knownCount += npid.count;
+					// rit hasn't moved
+				}
+				else {
+					// Since *rit is up to date, we can safely advance eit
+					// to the end of *rit's range, and rit to the next
+					eit = entries.lower_bound(rit->upper, compEntry);
+					++rit;
+					if (rit != byRange.end())
+						lower = rit->lower;
+					else
+						lower = MAX_KEY;
 				}
 			}
-			if (!found) {
-				// length 1 node should always go to the tail of the list
-				Node *node = new Node;
-				tree->locate(key, node->pid);
-				node->entries.insert(Entry(key, datum));
-				list.push_back(node);
-				typeCount[1]++;
+		}
+
+		bool needsComputePids()
+		{
+			PidSetByCount &byCount = pids.get<1>();
+			typename PidSetByCount::iterator it = byCount.begin();
+			u16 x = it->count;
+			return !(byCount.size() != 0 && x >= (++it)->count + (size-knownCount)); 
+		}
+
+		void put(const Key_t &key, const Datum_t &datum)
+		{
+			// TODO: implement random tie breaking
+			if (size == capacity) {
+				// try shortcut first: if first.count-second.count >= #records whose membership is unknown yet, 
+				// then the first will be chosen no matter what. If random tie breaking is required, then the
+				// above condition should be changed to >
+				PidSetByCount &byCount = pids.get<1>();
+				if (needsComputePids())
+					computePids();
+				typename PidSetByCount::iterator it = byCount.begin();
+
+				// evict the pid with largest count
+				EntrySet::iterator start = entries.lower_bound(it->lower, compEntry);
+				EntrySet::iterator stop  = entries.lower_bound(it->upper, compEntry);
+				tree->put(start, stop);
+				entries.erase(start, stop);
+				size -= it->count;
+				knownCount -= it->count;
+				byCount.erase(it);
+
+				// keep only limited number of pids
+				if (byCount.size() > config->batchKeepPidCount) {
+					it = byCount.begin();
+					knownCount = 0;
+					for (u16 i=0; i<config->batchKeepPidCount; ++i) {
+						knownCount += it->count;
+						++it;
+					}
+					byCount.erase(it, byCount.end());
+				}
 			}
+
+			entries.insert(Entry(key, datum));
 			++size;
+			// look up the current pid set
+			PidSetByRange &byRange = pids.get<0>();
+			typename PidSetByRange::iterator it = byRange.upper_bound(key);
+			if (it != byRange.begin() && --it != byRange.end() &&
+					(it->lower <= key && it->upper > key)) {
+				u16 newcount = it->count + 1;
+				byRange.modify(it, ChangePidCount<PageId>(newcount));
+				++knownCount;
+			}
 		}
 
 		void flushAll()
 		{
-			typename NodeList::iterator it = list.begin();
-			for (; it != list.end(); ++it) {
-				tree->put((*it)->entries.begin(), (*it)->entries.end());
-				delete *it;
-			}
-			list.clear();
-			typeCount.clear();
-		}
-
-		bool find(const Key_t &key, Datum_t &datum)
-		{
-			typename NodeList::iterator it = list.begin();
-			typename Node::EntrySet::iterator eit;
-			Entry target(key, 0.0);
-			for (; it != list.end(); ++it) {
-				if ((eit=(*it)->entries.find(target)) != (*it)->entries.end()) {
-					datum = eit->datum;
-					return true;
-				}
-			}
-			return false;
+			BatchBuffer::flushAll();
+			knownCount = 0;
 		}
 
 		void print()
 		{
+			// first print all records and then the pid table
 			using namespace std;
-			CountMap::iterator mit = typeCount.begin();
-			cout<<"Type Count:: ";
-			for (; mit != typeCount.end(); ++mit)
-				cout<<mit->first<<":"<<mit->second<<" ";
+			BatchBuffer::print();
+			PidSetByRange &byRange = pids.get<0>();
+			ostream_iterator<PageId> output(cout, "\n");
+			copy(byRange.begin(), byRange.end(), output);
 			cout<<endl;
-			typename NodeList::iterator it = list.begin();
-			typename Node::EntrySet::iterator eit;
-			for (; it != list.end(); ++it) {
-				cout<<"PID="<<(*it)->pid<<" NUM="<<(*it)->entries.size()<<" ";
-				typename Node::EntrySet::iterator eit = (*it)->entries.begin();
-				for (; eit != (*it)->entries.end(); ++eit)
-					cout<<eit->key<<", ";
-				cout<<endl;
-			}
 		}
-
-
-		NodeList list;
-		CountMap typeCount;
+private:
+		PidSet pids;
+		int knownCount;
 	};
 
+	/*
 	template<class PageId>
 	boost::pool<> BatchBufferLS<PageId>::Node::pool(sizeof(Node));
+	*/
 }

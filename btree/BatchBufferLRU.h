@@ -9,31 +9,6 @@
 
 namespace Btree
 {
-	class BoundPageId
-	{
-	public:
-		BoundPageId(): lower(0), upper(0)
-		{
-		}
-
-		BoundPageId(Key_t l, Key_t u): lower(l), upper(u)
-		{
-		}
-
-		bool contains(Key_t key)
-		{
-			return (lower<=key && upper>key);
-		}
-
-		friend std::ostream & operator<<(std::ostream &out, BoundPageId &page);
-		Key_t lower, upper;
-	};
-
-	inline std::ostream & operator<<(std::ostream &out, BoundPageId &page)
-	{
-		out<<"["<<page.lower<<","<<page.upper<<")";
-		return out;
-	}
 
 	template<class PageId>
 class BatchBufferLRU : public BatchBuffer

@@ -62,6 +62,9 @@ namespace Btree
 	public:
 		int partId;
 		u32 nodeId;
+		Key_t lower;
+		Key_t upper;
+		u16 count;
 		LeafHist *hist;
 		
 		HistPageId()
@@ -73,18 +76,21 @@ namespace Btree
 		}
 		*/
 
-		friend std::ostream & operator<<(std::ostream &out, HistPageId &page);
+		friend std::ostream & operator<<(std::ostream &out, const HistPageId &page);
 
 		bool contains(Key_t key)
 		{
 			return hist->contains(this, key);
 		}
+
+		bool operator<(const HistPageId &other) const {return lower < other.lower;}
 	};
 
-	inline std::ostream & operator<<(std::ostream &out, HistPageId &page)
+	inline std::ostream & operator<<(std::ostream &out, const Btree::HistPageId &page)
 	{
 		out<<"<"<<page.partId<<","<<page.nodeId<<">";
 		return out;
 	}
 
 }
+

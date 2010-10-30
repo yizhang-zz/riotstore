@@ -17,6 +17,7 @@ Config::Config(const char *path)
 	batchMethod = Btree::kNone;
 	batchUseHistogram = 0;
 	batchHistogramNum = 100;
+	batchKeepPidCount = 10;
 	
     FILE *f = fopen(path, "r");
     if (f != NULL) {
@@ -41,6 +42,8 @@ Config::Config(const char *path)
 				TThreshold = atof(b);
 			} else if (strcmp(a, "batchBufferSize") == 0) {
 				batchBufferSize = atoi(b);
+			} else if (strcmp(a, "batchKeepPidCount") == 0) {
+				batchKeepPidCount = atoi(b);
 			} else if (strcmp(a, "batchMethod") == 0) {
 				if (strcmp(b, "NONE") == 0)
 					batchMethod = Btree::kNone;

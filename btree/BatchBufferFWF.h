@@ -8,13 +8,14 @@ namespace Btree
 class BatchBufferFWF : public BatchBuffer
 {
 public:
-	BatchBufferFWF(u32 cap_, BTree *tree_);
-	~BatchBufferFWF();
+	BatchBufferFWF(u32 cap_, BTree *tree_): BatchBuffer(cap_,tree_)
+	{
+	}
+
+	~BatchBufferFWF()
+	{
+	}
+
 	void put(const Key_t &key, const Datum_t &datum);
-	void flushAll();
-	bool find(const Key_t &key, Datum_t &datum);
-	void print();
-private:
-	std::set<Entry> cache;
 };
 }
