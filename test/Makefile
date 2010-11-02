@@ -23,7 +23,7 @@ mat_read: mat_read.cpp
 	$(CXX) $(CXXFLAGS) -o test-mat-read mat_read.cpp ../libriot_store.so
 
 mat_write: mat_write.cpp
-	$(CXX) $(CXXFLAGS) -o test-mat-write mat_write.cpp ../libriot_store.so
+	$(CXX) $(CXXFLAGS) -o test-mat-write mat_write.cpp $(HOME)/lib/libriot_store.so
 
 elemops: elemops.cpp
 	$(CXX) $(CXXFLAGS) -o test-elemops elemops.cpp ../libriot_store.so
