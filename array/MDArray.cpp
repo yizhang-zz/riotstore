@@ -292,11 +292,11 @@ AccessCode MDArray::put(Key_t &key, const Datum_t &datum)
 
 AccessCode MDArray::batchPut(MDCoord &start, MDCoord &end, const Datum_t *data)
 {
-    if (start.coords[0] < dim.coords[0] || start.coords[1] >= dim.coords[1])
+    if (start.coords[0] >= dim.coords[0] || start.coords[1] >= dim.coords[1])
     {
         return AC_OutOfRange;
     }
-    if (end.coords[0] < dim.coords[0] || end.coords[1] >= dim.coords[1])
+    if (end.coords[0] >= dim.coords[0] || end.coords[1] >= dim.coords[1])
     {
         return AC_OutOfRange;
     }

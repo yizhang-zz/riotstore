@@ -108,8 +108,8 @@ void doArrayBatch(MDArray *array, MDCoord &dim, result &r)
     i64 rows = dim.coords[0];
     i64 cols = dim.coords[1];
 
-    MDCoord startCoord(0, 0);
-    MDCoord endCoord(rows-1, cols-1);
+    MDCoord startCoord(2, 0, 0);
+    MDCoord endCoord(2, rows-1, cols-1);
     Datum_t *values = new Datum_t[rows*cols];
     for (int i = 0; i < rows*cols; i++)
     {
@@ -122,7 +122,6 @@ void doArrayBatch(MDArray *array, MDCoord &dim, result &r)
     gettimeofday(&tim, NULL);
     double start = tim.tv_sec + tim.tv_usec/1000000.0;
 
-            cout << "here" << endl;
     array->batchPut(startCoord, endCoord, values);
 
     gettimeofday(&tim, NULL);
@@ -219,7 +218,7 @@ int main()
     pLog = fopen(logFile, "ab+");
     pResult = fopen(resultFile, "ab+");
 
-/*    // doArrayBatch
+// doArrayBatch
     for (int i = 10; i < 101; i += 500)
     {
         result r;
@@ -228,7 +227,7 @@ int main()
         i64 rows = i;
         i64 cols = i;
         MDCoord dim(2, rows, cols);
-        Linearization *lin = new ColMajor(dim);
+        Linearization *lin = new RowMajor(dim);
         StorageType type = DMA;
         cout << "i = " << i << endl;
         fprintf(pLog, "dimensions: (%li, %li)\n", rows, cols);
@@ -238,9 +237,7 @@ int main()
             //doMove(lin, dim);
             //doLinearize(lin, dim);
 
-            cout << "here" << endl;
             MDArray *array = new MDArray(dim, type, lin, array_fileName); 
-            cout << "here" << endl;
             doArrayBatch(array, dim, r);
             delete array;
             remove(array_fileName);
@@ -250,8 +247,8 @@ int main()
         fprintf(pResult, "dimensions: (%li, %li)\tcoord loop total time = %f\t reads = %i\twrites = %i\tI/O time = %f\tBuffer time = %f\n", rows, cols, r.totalTime, r.readCount, r.writeCount, r.ioTime, r.bufferTime);
         fprintf(pResult, "dma_reads = %i\tdma_writes = %i\tdma_accessTime = %f\n", r.dma_readCount, r.dma_writeCount, r.dma_ioTime);
     }
-*/
   
+/*
     // doArrayIterator
     for (int i = 500; i < 501; i += 500)
     {
@@ -282,7 +279,6 @@ int main()
         fprintf(pResult, "dimensions: (%li, %li)\titerator total time = %f\t reads = %i\twrites = %i\tI/O time = %f\tBuffer time = %f\n", rows, cols, r.totalTime, r.readCount, r.writeCount, r.ioTime, r.bufferTime);
         fprintf(pResult, "dma_reads = %i\tdma_writes = %i\tdma_accessTime = %f\n", r.dma_readCount, r.dma_writeCount, r.dma_ioTime);
     }
-/*
     // doArrayKeyLoop
     for (int i = 500; i < 501; i += 500)
     {

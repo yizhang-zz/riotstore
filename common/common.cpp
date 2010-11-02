@@ -71,7 +71,7 @@ PageImage allocPageImage(size_t num)
 PageImage allocPageImage(size_t num)
 {
     PageImage p;
-    if (posix_memalign(&p, PAGE_SIZE, PAGE_SIZE*num))
+    if (!posix_memalign(&p, PAGE_SIZE, PAGE_SIZE*num))
         return p;
     return NULL;
 }
