@@ -35,11 +35,21 @@ public:
     DirectlyMappedArray(const char* fileName, uint32_t numElements);
     virtual ~DirectlyMappedArray();
     
-    virtual int get(const Key_t &key, Datum_t &datum);
-    virtual int put(const Key_t &key, const Datum_t &datum);
-    virtual ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);
+    int get(const Key_t &key, Datum_t &datum);
+    int put(const Key_t &key, const Datum_t &datum);
+    int batchPut(i64 putCount, const KVPair_t *puts);
+    ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);
     
-    void findPage(const Key_t &key, PID_t *pid);
+    PID_t getPageId(const Key_t &key)
+    {
+        return key/DenseArrayBlock::CAPACITY + 1;
+    }
+
+    void findPage(const Key_t &key, PID_t *pid)
+    {
+        Key_t CAPACITY = DenseArrayBlock::CAPACITY;
+        *pid = key/CAPACITY + 1;
+    }
     RC_t readBlock(PID_t pid, DenseArrayBlock** block);
     RC_t newBlock(PID_t pid, DenseArrayBlock** block);
     RC_t readNextBlock(PageHandle ph, DenseArrayBlock** block);

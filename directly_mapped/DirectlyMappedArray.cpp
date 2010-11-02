@@ -135,6 +135,35 @@ int DirectlyMappedArray::put(const Key_t &key, const Datum_t &datum)
    return AC_OK;
 }
 
+int DirectlyMappedArray::batchPut(i64 putCount, const KVPair_t *puts)
+{
+    // assume puts are sorted by key
+    PID_t pid = getPageId(puts[0].key);
+    DenseArrayBlock *dab;
+    readBlock(pid, &dab);
+
+    i64 nPuts = 0;
+    for (i64 i = 0; i < putCount; i++)
+    {
+        if (pid != getPageId(puts[i].key))
+        {
+            dab->batchPut(nPuts, puts);
+            delete dab;
+            pid = getPageId(puts[i].key);
+            readBlock(pid, &dab);
+
+            puts += nPuts;
+            nPuts = 0;
+        }
+        nPuts++;
+    }
+    // don't forget put for last block!
+    dab->batchPut(nPuts, puts);
+    delete dab;
+
+    return AC_OK;
+}
+
 ArrayInternalIterator *DirectlyMappedArray::createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy)
 {
    if (t == Dense)
@@ -143,12 +172,6 @@ ArrayInternalIterator *DirectlyMappedArray::createIterator(IteratorType t, Key_t
       return NULL;
    return NULL;
    // return new DMASparseIterator(beginsAt, endsBy, this);
-}
-
-void DirectlyMappedArray::findPage(const Key_t &key, PID_t *pid) 
-{
-   Key_t CAPACITY = DenseArrayBlock::CAPACITY;
-   *pid = key/CAPACITY + 1;
 }
 
 RC_t DirectlyMappedArray::readBlock(PID_t pid, DenseArrayBlock** block) 

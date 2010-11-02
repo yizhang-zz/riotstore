@@ -28,6 +28,14 @@ void DenseArrayBlock::put(Key_t key, Datum_t datum)
 {
    *(data + (key - this->lowerBound)) = datum;
 }
+      
+void DenseArrayBlock::batchPut(i64 putCount, const KVPair_t *puts)
+{
+    for (i64 i = 0; i < putCount; i++)
+    {
+        *(data + (puts[i].key - this->lowerBound)) = *(puts[i].datum);
+    }
+}
 
 /// assume beginsAt and endsBy are within upperBound and lowerBound
 ArrayInternalIterator *DenseArrayBlock::getIterator(Key_t beginsAt, Key_t endsBy) 

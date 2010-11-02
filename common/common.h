@@ -113,6 +113,14 @@ typedef uint8_t Byte_t;
 typedef uint32_t PID_t;
 #define INVALID_PID (PID_t(-1))
 
+typedef struct
+{
+    Key_t key;
+    const Datum_t *datum;
+} KVPair_t;
+
+int compareKVPair(const void *a, const void *b);
+
 /*
 typedef struct 
 {

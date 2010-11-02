@@ -290,9 +290,53 @@ AccessCode MDArray::put(Key_t &key, const Datum_t &datum)
    return AC_OutOfRange;
 }
 
+AccessCode MDArray::batchPut(MDCoord &start, MDCoord &end, const Datum_t *data)
+{
+    if (start.coords[0] < dim.coords[0] || start.coords[1] >= dim.coords[1])
+    {
+        return AC_OutOfRange;
+    }
+    if (end.coords[0] < dim.coords[0] || end.coords[1] >= dim.coords[1])
+    {
+        return AC_OutOfRange;
+    }
+    if (!(start.coords[0] <= end.coords[0] && start.coords[1] <= end.coords[1]))
+    {
+        return AC_OutOfRange;
+    }
+
+    i64 nRows = end.coords[0] - start.coords[0] + 1;
+    i64 nCols = end.coords[1] - start.coords[1] + 1;
+    i64 putCount = nRows * nCols;
+    KVPair_t *puts = new KVPair_t[putCount];
+    KVPair_t *curPut = puts;
+    const Datum_t *curDatum = data;
+
+    for (i64 row = start.coords[0]; row <= end.coords[0]; row++)
+    {
+        for (i64 col = start.coords[1]; col <= end.coords[1]; col++)
+        {
+            curPut->key = linearization->linearize(MDCoord(2, row, col));
+            curPut->datum = curDatum;
+            curPut++;
+            curDatum++;
+        }
+    }
+
+    if (linearization->getType() != ROW)
+    {
+        qsort(puts, putCount, sizeof(KVPair_t), compareKVPair);
+    }
+
+    int ac = storage->batchPut(putCount, puts);
+    delete puts;
+    if (ac == AC_OK)
+        return AC_OK;
+    return AC_OutOfRange;
+}
+
 ArrayInternalIterator* MDArray::createInternalIterator(IteratorType t)
 {
     Key_t start = 0;
     return storage->createIterator(t, start, size);
 }
-

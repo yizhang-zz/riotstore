@@ -83,6 +83,7 @@ public:
     int search(Key_t key, Cursor *cursor);
 
   int put(const Key_t &key, const Datum_t &datum);
+  int batchPut(i64 putCount, const KVPair_t *puts) { }
   int get(const Key_t &key, Datum_t &datum);
 
     ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);

@@ -36,6 +36,7 @@ protected:
 
       /// assume key is within range
       void put(Key_t key, Datum_t datum);
+      void batchPut(i64 putCount, const KVPair_t *puts);
 
       /// assume beginsAt and endsBy are within upperBound and lowerBound
       ArrayInternalIterator* getIterator(Key_t beginsAt, Key_t endsBy);

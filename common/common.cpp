@@ -94,3 +94,8 @@ void debug(const char *format, ...)
     delete[] buf;
 }
 #endif
+
+int compareKVPair(const void *a, const void *b)
+{
+    return (int)(((KVPair_t*)a)->key - ((KVPair_t*)b)->key);
+}
