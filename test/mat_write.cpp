@@ -17,8 +17,8 @@ FILE *pLog;
 FILE *pResult;
 const char *logFile = "log.bin";
 const char *resultFile = "result.bin";
-//const char *array_fileName = "/var/tmp/local/array.bin";
-const char *array_fileName = "/riot/array.bin";
+const char *array_fileName = "/var/tmp/local/array.bin";
+//const char *array_fileName = "/riot/array.bin";
 timeval tim;
 
 struct result

@@ -59,7 +59,7 @@ BufferManager::~BufferManager() {
 // it, marks it dirty, and returns the handle.
 RC_t BufferManager::allocatePage(PageHandle &ph) {
 #ifdef PROFILE_BUFMAN
-	TIMESTAMP(t1)
+	TIMESTAMP(t1);
 #endif
     RC_t ret;
     PID_t pid;
@@ -67,7 +67,7 @@ RC_t BufferManager::allocatePage(PageHandle &ph) {
     if ((ret=storage->allocatePage(pid)) != RC_OK) {
         debug(stderr, "Physical storage cannot allocate page; error %d", ret);
 #ifdef PROFILE_BUFMAN
-	TIMESTAMP(t2)
+	TIMESTAMP(t2);
 		accessTime += t2-t1;
 #endif
         return ret;
@@ -75,7 +75,7 @@ RC_t BufferManager::allocatePage(PageHandle &ph) {
 
 	if ((ret=replacePage(rec)) != RC_OK) {
 #ifdef PROFILE_BUFMAN
-	TIMESTAMP(t2)
+	TIMESTAMP(t2);
 		accessTime += t2-t1;
 #endif
 	  return ret;
@@ -87,7 +87,7 @@ RC_t BufferManager::allocatePage(PageHandle &ph) {
     ph = rec;
     pageHash->insert(PageHashMap::value_type(pid, rec));
 #ifdef PROFILE_BUFMAN
-	TIMESTAMP(t2)
+	TIMESTAMP(t2);
 	accessTime += t2-t1;
 #endif
     return RC_OK;
@@ -99,14 +99,14 @@ RC_t BufferManager::allocatePage(PageHandle &ph) {
 // supports allocatePageWithPID.
 RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
 #ifdef PROFILE_BUFMAN
-	TIMESTAMP(t1)
+	TIMESTAMP(t1);
 #endif
     RC_t ret = storage->allocatePageWithPID(pid);
     PageRec *rec;
     if (ret != RC_OK) {
         debug(stderr, "Physical storage cannot allocate pid %d, error %d",pid,ret);
 #ifdef PROFILE_BUFMAN
-	TIMESTAMP(t2)
+	TIMESTAMP(t2);
 	accessTime += t2-t1;
 #endif
         return ret;
@@ -114,7 +114,7 @@ RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
 
     if ((ret=replacePage(rec)) != RC_OK) {
 #ifdef PROFILE_BUFMAN
-	TIMESTAMP(t2)
+	TIMESTAMP(t2);
 	accessTime += t2-t1;
 #endif
         return ret;
@@ -126,7 +126,7 @@ RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
     rec->dirty = true;
     pageHash->insert(PageHashMap::value_type(pid, rec));
 #ifdef PROFILE_BUFMAN
-	TIMESTAMP(t2)
+	TIMESTAMP(t2);
 	accessTime += t2-t1;
 #endif
     return RC_OK;
@@ -137,14 +137,14 @@ RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
 // ignored.
 RC_t BufferManager::disposePage(PageHandle ph) {
 #ifdef PROFILE_BUFMAN
-	TIMESTAMP(t1)
+	TIMESTAMP(t1);
 #endif
     RC_t ret;
     PageRec *rec = (PageRec*) ph;
     if ((ret=storage->disposePage(rec->pid)) != RC_OK) {
         fprintf(stderr, "Physical storage cannot dispose pid %d, error %d.\n", rec->pid, ret);
 #ifdef PROFILE_BUFMAN
-	TIMESTAMP(t2)
+	TIMESTAMP(t2);
 	accessTime += t2-t1;
 #endif
         return ret;
@@ -157,7 +157,7 @@ RC_t BufferManager::disposePage(PageHandle ph) {
     rec->reset();
     pageReplacer->add(rec);
 #ifdef PROFILE_BUFMAN
-	TIMESTAMP(t2)
+	TIMESTAMP(t2);
 	accessTime += t2-t1;
 #endif
     return RC_OK;
