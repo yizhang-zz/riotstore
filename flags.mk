@@ -1,30 +1,29 @@
 OS = $(shell uname -s)
 
 ifeq ($(OS), SunOS)
-	CC = g++
-	CCFLAGS += -g -O2 -Wall -fPIC
+	CXX = g++
+	CXXFLAGS += -g -O3 -DNDEBUG -Wall -fPIC 
 	DEPFLAGS = -MM -MG
-	#CC = CC
-	#CCFLAGS += -g -xO2 -xarch=native -KPIC #-library=stlport4
+	#CXX = CXX
+	#CXXFLAGS += -g -xO2 -xarch=native -KPIC -library=stlport4
 	#DEPFLAGS = -xM1
 	RPATH_FLAG := -R
 else
-	CC = g++
-	CCFLAGS += -g -O2 -Wall -fPIC
+	CXX = g++
+	CXXFLAGS += -g -O2 -Wall -fPIC
 	DEPFLAGS = -MM -MG
 	RPATH_FLAG := -Wl,-rpath,
 endif
 
-CCFLAGS += -DDISABLE_DENSE_LEAF
-CCFLAGS += -DUSE_BATCH_BUFFER
+CXXFLAGS += -DDISABLE_DENSE_LEAF
+CXXFLAGS += -DUSE_BATCH_BUFFER
 
 
 LDFLAGS += $(addprefix $(RPATH_FLAG), $(LD_RUN_PATH))
 
 %.o:%.cpp
-	$(CC) -c $(CCFLAGS) -o $@ $<
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 %.dd:%.cpp
-	@DIR=$(shell dirname $<) $(CC) $(CCFLAGS) $(DEPFLAGS) $< | sed -e "s@^\(.*\)\.o:@$DIR/\1.dd $DIR/\1.o:@" > /tmp/dd
+	@$(CXX) $(CXXFLAGS) $(DEPFLAGS) $< | sed -e "s@^\(.*\)\.o:@$(shell dirname $<)/\1.dd $(shell dirname $<)/\1.o:@" > /tmp/dd
 	@mv /tmp/dd $@
-	@#./depend.sh `dirname $*` $< > $@

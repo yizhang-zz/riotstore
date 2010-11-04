@@ -1,31 +1,23 @@
-CXX = g++
+LD_RUN_PATH = ../..
 include ../../flags.mk
-CXXFLAGS += -Wall -I../.. -I../../common -I../../btree -I../../lower
+CXXFLAGS += -I../.. -I../../common -I../../btree -I../../lower
 LDFLAGS += $(shell pkg-config --libs gsl)
-LDFLAGS += -L../.. -R../.. -lriot_store
+LDFLAGS += -L../.. -lriot_store
 
 .PHONY: all clean lower
 
-SRC :=  write.cpp gen.cpp
+SRC :=  write.cpp gen.cpp read.cpp
 OBJ := $(patsubst %.cpp, %.o, $(SRC))
+EXE := $(SRC:.cpp=)
 
-.cpp.o:
-	$(CXX) $(CXXFLAGS) -c $<
+all: $(EXE)
 
-all: write gen
+-include $(OBJ:.o=.dd)
 
-%.dd: %.cpp
-	$(SHELL) -ec '$(CXX) -M $(CXXFLAGS) $< | sed "s/$*.o/& $@/g" > $@'
-
-include $(OBJ:.o=.dd)
-
-write: write.o 
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) 
-
-gen: gen.o
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+%:%.o
+	$(CXX) -o $@ $^ $(LDFLAGS)
 
 clean : 
+	rm -f $(EXE)
 	rm -f $(OBJ)
 	rm -f $(OBJ:.o=.dd)
-	rm -f mb

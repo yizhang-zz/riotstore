@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include "btree/Btree.h"
-//#include "lower/PagedStorageContainer.h"
 
 using namespace std;
 using namespace Btree;
@@ -18,22 +17,34 @@ TEST(Btree, Batch)
 	const int cols = 200;
 	BTree *tree = new BTree("batch.bin", rows*cols, lsp, isp);
 
-	//TIMESTAMP(t1);
 	for (int i=0; i<rows; ++i)
 		for (int j=0; j<cols; ++j) {
-			tree->put(j*cols+i, 1.0);
+			tree->put(j*cols+i, j*cols+i+1.0);
 		}
 
-	//TIMESTAMP(t2);
-	//cout<<"reads\t"<<PagedStorageContainer::readCount<<endl
-	//	<<"writes\t"<<PagedStorageContainer::writeCount<<endl;
-	//cout<<"I/O time\t"<<PagedStorageContainer::accessTime<<endl
-	//	<<"CPU time\t"<<t2-t1<<endl;
-	
 	Datum_t datum;
 	for (int i=0; i<rows; ++i)
 		for (int j=0; j<cols; ++j) {
-			tree->get(i, datum);
-			ASSERT_DOUBLE_EQ(1.0, datum)<<" for key="<<i<<endl;
+			tree->get(i*rows+j, datum);
+			ASSERT_DOUBLE_EQ(i*rows+j+1.0, datum)<<" for key="<<i<<endl;
 		}
+	delete tree;
+
+	// random insertions
+	
+	tree = new BTree("batch.bin", rows*cols, lsp, isp);
+	Key_t keys[rows*cols];
+	for (int i=0; i<rows*cols; ++i)
+		keys[i] = i;
+	permute(keys, rows*cols);
+	for (int i=0; i<rows*cols; ++i) {
+		tree->put(keys[i], keys[i]+1.0);
+	}
+	for (int i=0; i<rows*cols; ++i) {
+		tree->get(keys[i], datum);
+		ASSERT_DOUBLE_EQ(keys[i]+1.0, datum)<<" for key="<<keys[i]<<endl;
+	}
+	delete tree;
+	delete lsp;
+	delete isp;
 }

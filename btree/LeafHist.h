@@ -70,11 +70,10 @@ namespace Btree
 		HistPageId()
 		{
 		}
-		/*
-		HistPageId(int pid, u32 nid): partId(pid), nodeId(nid)
+
+		HistPageId(Key_t l, Key_t u, u16 c): lower(l), upper(u), count(c)
 		{
 		}
-		*/
 
 		friend std::ostream & operator<<(std::ostream &out, const HistPageId &page);
 

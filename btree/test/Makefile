@@ -1,10 +1,9 @@
-CXX = g++
 CXXFLAGS += -I/usr/local/include -I../..
 LDFLAGS += $(shell pkg-config --libs gsl)
 LDFLAGS += -L../.. -lriot_store -L/usr/local/lib -lgtest
 LD_RUN_PATH = ../..
 
--include ../../flags.mk
+include ../../flags.mk
 
 .PHONY: all clean lower
 
@@ -17,13 +16,7 @@ DEPS := $(OBJ:.o=.dd)
 
 all: test
 
-include $(DEPS)
-
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $<
-
-%.dd: %.cpp
-	$(CXX) -M $(CXXFLAGS) $< | sed "s/$*.o/& $@/g" > $@
+-include $(DEPS)
 
 test: $(OBJ)
 	$(CXX) -o $@ $^ $(LDFLAGS)

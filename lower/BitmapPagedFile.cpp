@@ -38,7 +38,7 @@ BitmapPagedFile::BitmapPagedFile(const char *pathname, int flag) {
 	header = (u32*)allocPageImage(NUM_HEADER_PAGES);
 	// create new file
 	if (flag & CREATE) {
-		fd = open_direct(pathname, O_RDWR|O_CREAT|O_TRUNC);
+		fd = open_direct(pathname, O_RDWR|O_CREAT);
         if (fd < 0) {
             fprintf(stderr, "error %d\n", errno);
             exit(1);
@@ -64,8 +64,7 @@ BitmapPagedFile::BitmapPagedFile(const char *pathname, int flag) {
 		struct stat s;
 		fstat(fd, &s);
         numContentPages = s.st_size/PAGE_SIZE - NUM_HEADER_PAGES;
-		lseek(fd, 0, SEEK_SET);
-        read(fd, header, HEADER_SIZE);
+        pread(fd, header, HEADER_SIZE, 0);
     }
 }
 
@@ -76,12 +75,10 @@ BitmapPagedFile::~BitmapPagedFile() {
 	fstat(fd, &s);
 	u32 numTotalPages = NUM_HEADER_PAGES + numContentPages;
     if(numTotalPages > s.st_size/PAGE_SIZE) {
-        lseek(fd, (numTotalPages-1)*PAGE_SIZE, SEEK_SET);
-        write(fd, header, PAGE_SIZE); // write any data
+        pwrite(fd, header, PAGE_SIZE, (numTotalPages-1)*PAGE_SIZE); // write any data
     }
     // write header
-	lseek(fd, 0, SEEK_SET);
-    write(fd, header, HEADER_SIZE);
+    pwrite(fd, header, HEADER_SIZE, 0);
     close(fd);
     freePageImage(header);
 }
@@ -165,8 +162,7 @@ RC_t BitmapPagedFile::readPage(PageHandle ph) {
     if(!isAllocated(pid)) 
         return RC_NotAllocated;
 
-    lseek(fd, (NUM_HEADER_PAGES + pid)*PAGE_SIZE, SEEK_SET);
-    read(fd, rec->image, PAGE_SIZE);
+    pread(fd, rec->image, PAGE_SIZE, (NUM_HEADER_PAGES + pid)*PAGE_SIZE);
 #ifdef PROFILING
     gettimeofday(&time2, NULL);
     accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
@@ -202,8 +198,8 @@ RC_t BitmapPagedFile::writePage(PageHandle ph) {
         }
     }
     */
-    lseek(fd, (NUM_HEADER_PAGES + pid)*PAGE_SIZE, SEEK_SET);
-    assert(write(fd, rec->image, PAGE_SIZE)>=0);
+    ssize_t wc = pwrite(fd, rec->image, PAGE_SIZE, (NUM_HEADER_PAGES + pid)*PAGE_SIZE);
+	assert(wc >= 0);
 #ifdef PROFILING
     gettimeofday(&time2, NULL);
     accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)

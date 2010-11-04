@@ -4,6 +4,8 @@ provider riot {
 	probe btree__split__internal();
 	probe btree__locate__begin();
 	probe btree__locate__end(int);
+	probe btree__flush__begin();
+	probe btree__flush__end(int);
 };
 #pragma D attributes Evolving/Evolving/Common provider riot provider
 #pragma D attributes Private/Private/Unknown provider riot module

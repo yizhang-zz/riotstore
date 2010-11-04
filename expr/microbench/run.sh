@@ -13,20 +13,24 @@ then
 	exit
 fi
 
-if [[ -d "$1" || -f "$1" ]]
+# Should allow dir to exist, in which case results are added to that dir
+if [[ -f "$1" ]]
 then
-	echo "Error: Dir or file $1 exists!"
+	echo "Error: There exists a file named '$1' !"
 	exit
 fi
 
-mkdir $1
+if [[ ! -d "$1" ]]
+then
+	mkdir $1
+fi
 
-for x in FWF LRU LS LS_RAND LG LG_RAND
+for x in FWF LS LS_RAND LRU LG LG_RAND
 do
 	sed "s/\(batchMethod=\)\(.*\)/\1$x/g" $HOME/.riot > /tmp/.riot.tmp
 	mv /tmp/.riot.tmp $HOME/.riot
 	cat $HOME/.riot
-for a in D
+for a in I R D
 do
 	for b in 2000 #4000 #8000
 	do
@@ -38,7 +42,7 @@ do
 			[ $RET -ne 0 ] && exit
 			# use awk to calc sec from nanosec and drop the timestamp field
 			# sed removes any blank line
-			sort -n +5 /tmp/writerun.log | sed '/^$/d' | awk '{print $1,$2,$3,$4/1e9,$5/1e9}' > $1/$a$b$c-$x.log
+			sort -n +4 /tmp/writerun.log | sed '/^$/d' | awk '{print $1,$2,$3,$4/1e9,$5/1e9}' > $1/$a$b$c-$x.log
 			rm /tmp/writerun.log
 		done
 	done

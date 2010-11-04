@@ -9,7 +9,7 @@
 #include "BatchBufferFWF.h"
 #include "BatchBufferLRU.h"
 #include "BatchBufferLS.h"
-#include "BatchBufferRand.h"
+#include "BatchBufferLSRand.h"
 #include "BatchBufferLG.h"
 #include "BatchBufferLGRand.h"
 #endif
@@ -52,9 +52,9 @@ void BTree::initBatching()
 		break;
 	case kLS_RAND:
 		if (config->batchUseHistogram)
-			batbuf = new BatchBufferRand<HistPageId>(config->batchBufferSize, this);
+			batbuf = new BatchBufferLSRand<HistPageId>(config->batchBufferSize, this);
 		else
-			batbuf = new BatchBufferRand<BoundPageId>(config->batchBufferSize, this);
+			batbuf = new BatchBufferLSRand<BoundPageId>(config->batchBufferSize, this);
 		break;
 	case kLG:
 		if (config->batchUseHistogram)
@@ -156,13 +156,14 @@ int BTree::search(Key_t key, Cursor *cursor)
 		// To follow the child pointer, the position should be
 		// decremented.
         if (ret == kNotFound)
-            idx--;
+            --idx;
         Key_t l, u;
         PID_t child;
 		PageHandle ph;
         pidblock->get(idx, l, child);
         buffer->readPage(child, ph);
-        u = pidblock->key(idx+1);
+		++idx;
+        u = pidblock->size()==idx ? pidblock->getUpperBound() : pidblock->key(idx);
         // load child block
         block = Block::create(ph, buffer->getPageImage(ph), l, u);
         ++current;
@@ -215,7 +216,9 @@ void BTree::locate(Key_t key, BoundPageId &pageId)
         if (block->search(key, idx) == kNotFound)
             idx--;
 		block->get(idx, l, pid);
-        u = block->key(idx+1);
+		++idx;
+        u = block->size()==idx ? block->getUpperBound() : block->key(idx);
+        //u = block->key(idx+1);
 		buffer->unpinPage(ph);
 		delete block;
     }
@@ -414,7 +417,6 @@ void BTree::print()
 		print(header->root, 0, header->endsBy, 0);
     cout<<"END----------------------------------------"<<endl;
 }
-
 
 ArrayInternalIterator *BTree::createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy)
 {

@@ -2,7 +2,8 @@
 #define BUFFER_MANAGER_H
 
 //#include <apr_pools.h>
-#include <map>
+//#include <map>
+#include <boost/unordered_map.hpp>
 #include "../common/common.h"
 #include "PagedStorageContainer.h"
 #include "PageRec.h"
@@ -47,7 +48,8 @@ public:
 
 private:
 
-    typedef std::map<PID_t, PageRec*> PageHashMap;
+    //typedef std::map<PID_t, PageRec*> PageHashMap;
+	typedef boost::unordered_map<PID_t, PageRec*> PageHashMap;
 
     // The underlying storage.
     PagedStorageContainer *storage;

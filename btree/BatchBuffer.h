@@ -1,8 +1,11 @@
+#ifndef BTREE_BATCH_BUFFER_H
+#define BTREE_BATCH_BUFFER_H
 #pragma once
 
 #include "common/common.h"
 #include <iostream>
 #include <iterator>
+#include <set>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/identity.hpp>
@@ -29,7 +32,7 @@ public:
 	{
 	}
 
-	BoundPageId(Key_t l, Key_t u): lower(l), upper(u)
+	BoundPageId(Key_t l, Key_t u, u16 c): lower(l), upper(u), count(c)
 	{
 	}
 
@@ -55,6 +58,19 @@ struct CompPid
 {
 	bool operator()(const Pid &p, Key_t k) const { return p.lower < k; }
 	bool operator()(Key_t k, const Pid &p) const { return k < p.lower; }
+	bool operator()(const Pid &p, const Pid &q) const { return p.lower < q.lower; }
+};
+
+template<class Pid>
+struct CompPidCount
+{
+	bool operator()(const Pid &p, const Pid &q) const { return p.count < q.count; }
+};
+
+template<class Pid>
+struct CompPidCountR
+{
+	bool operator()(const Pid &p, const Pid &q) const { return p.count > q.count; }
 };
 
 template<class Pid>
@@ -72,7 +88,6 @@ private:
 class BatchBuffer
 {
 public:
-	//typedef std::set<Entry> EntrySet;
 	typedef boost::multi_index::multi_index_container<Entry,
 			boost::multi_index::indexed_by<
 				boost::multi_index::ordered_unique<
@@ -111,4 +126,4 @@ protected:
 };
 }
 
-
+#endif

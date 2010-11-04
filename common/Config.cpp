@@ -8,8 +8,8 @@ Config *config = Config::getGlobalConfig();
 Config::Config(const char *path)
 {
 	denseLeafCapacity = (PAGE_SIZE-denseLeafHeaderSize)/(sizeof(Datum_t));
-	sparseLeafCapacity = (PAGE_SIZE-sparseLeafHeaderSize)/(sizeof(Datum_t)+sizeof(Key_t)+2);
-	internalCapacity = (PAGE_SIZE-internalHeaderSize)/(sizeof(PID_t)+sizeof(Key_t)+2);
+	sparseLeafCapacity = (PAGE_SIZE-sparseLeafHeaderSize)/(sizeof(Datum_t)+sizeof(Key_t));
+	internalCapacity = (PAGE_SIZE-internalHeaderSize)/(sizeof(PID_t)+sizeof(Key_t));
 	btreeBufferSize = 10;
 	dmaBufferSize = 10;
 	TThreshold = 0.7;

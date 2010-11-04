@@ -13,6 +13,8 @@ int LinearStorage::writeCount = 0;
 double LinearStorage::accessTime = 0.0;
 #endif
 
+double const DirectlyMappedArray::DefaultValue = 0.0;
+
 /// If numElements > 0, create a new array; otherwise read from disk.
 /// Whether file exists is ignored.
 DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numElements) 
@@ -24,7 +26,8 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numEleme
       buffer = new BufferManager(file, config->dmaBufferSize); 
       this->numElements = numElements;
       PageHandle ph;
-      assert(RC_OK == buffer->allocatePageWithPID(0, ph));
+	  RC_t rc = buffer->allocatePageWithPID(0, ph);
+      assert(RC_OK == rc);
       // page is already marked dirty
       DirectlyMappedArrayHeader* header = (DirectlyMappedArrayHeader*)
           (buffer->getPageImage(ph));

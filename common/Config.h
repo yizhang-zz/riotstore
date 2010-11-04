@@ -1,3 +1,5 @@
+#ifndef CONFIG_H
+#define CONFIG_H
 #pragma once
 
 #include <string>
@@ -36,3 +38,4 @@ private:
 
 extern Config *config;
 
+#endif

@@ -46,14 +46,16 @@ public:
 	{}
 	
 	int search(Key_t key, int &index) const;
+
+
 	Key_t key(int i) const
 	{
-		return i<this->size() ? *(Key_t*) (this->header+offsets[i]): this->upper;
+		return key_(i);
 	}
 	
 	T &value(int i) const
 	{
-		return *(T*)(this->header+offsets[i]+sizeof(Key_t));
+		return value_(i);
 	}
 
 	int get(Key_t k, T &v) const
@@ -61,7 +63,7 @@ public:
 		assert(k >= this->lower && k < this->upper);
 		int index;
 		if (search(k, index) == kOK) {
-			v = value(index);
+			v = value_(index);
 			return kOK;
 		}
 		return kNotFound;
@@ -69,8 +71,8 @@ public:
 	int get(int index, Key_t &k, T &v) const
 	{
 		assert(index >= 0 && index < *(this->nEntries));
-		k = key(index);
-		v = value(index);
+		k = key_(index);
+		v = value_(index);
 		return kOK;
 	}
 
@@ -118,22 +120,22 @@ public:
 	};
 private:
 	static boost::pool<> memPool;
-	//Datum_t *data;
-	//static u16 initCapacity();
-	//static u16 initThis->HeaderSize();
-	u16 *dataOffset; // where the data section has grown to (from high-address to low-address)
+	static const int kCellSize;
+	char *pData;
+	//u16 *dataOffset; // where the data section has grown to (from high-address to low-address)
 	                 // the next record can be placed s.t. it ends at the current dataOffset
-	u16 *freeCell; // the offset of the first free cell (created by deletions); each free
+	//u16 *freeCell; // the offset of the first free cell (created by deletions); each free
 	               // cell contains a pointer to the next free cell
-	u16 *offsets; // the offset of array containing record offsets
-	u16 boundary; // the offset of the end of the above offset array, which the data section
+	//u16 *offsets; // the offset of array containing record offsets
+	//u16 boundary; // the offset of the end of the above offset array, which the data section
 	              // cannot cross
-	template<class E>
+	/*template<class E>
 	void shift(E* array, int length)
 	{
 		for (int i=length-1; i>=0; i--)
 			array[i+1] = array[i];
-	}
+	}*/
+	/*
 	char *allocFreeCell()
 	{
 		char *x = NULL;
@@ -146,31 +148,44 @@ private:
 			*freeCell = *(u16*)x;
 		}
 		return x;
-	}
+	}*/
 	void setCell(char *x, Key_t k, T v)
 	{
 		*(Key_t*)x = k;
 		*(T*)(x+sizeof(k)) = v;
 	}
+	/*
 	u16 offset(Key_t *k)
 	{
 		return ((char*)k)-this->header;
 	}
+	*/
 	bool canSwitchFormat() const
 	{
 		Key_t min, max;
-		min = key(0);
-		max = key(*(this->nEntries)-1);
+		min = key_(0);
+		max = key_(*(this->nEntries)-1);
 		if (this->overflow.key < min) min = this->overflow.key;
 		else if (this->overflow.key > max) max = this->overflow.key;
 		return (max-min+1 <= config->denseLeafCapacity);
 	}
+	/*
 	void freeCells(int from_index, int end_index)
 	{
 		for (int i=from_index; i<end_index; ++i) {
 			*(u16*) (this->header+offsets[i]) = *freeCell;
 			*freeCell = offsets[i];
 		}
+	}
+	*/
+	Key_t &key_(int i) const
+	{
+		return *(Key_t*)(this->pData+i*kCellSize);
+	}
+
+	T &value_(int i) const
+	{
+		return *(T*)(this->pData+i*kCellSize+sizeof(Key_t));
 	}
 };
 
@@ -216,5 +231,7 @@ typedef SparseBlock<Datum_t> SparseLeafBlock;
 template<class T>
 boost::pool<> SparseBlock<T>::memPool(sizeof(SparseBlock<T>));
 
+template<class T>
+const int SparseBlock<T>::kCellSize = sizeof(Key_t) + sizeof(T);
 }
 //#endif

@@ -104,13 +104,14 @@ class LeafHist;
 		int put(Iterator begin, Iterator end)
 		{
 			Cursor cursor(buffer);
+			int ret = 0;
 			for (; begin != end; ++begin) {
 				search(begin->key, &cursor);
 				putHelper(begin->key, begin->datum, &cursor);
+				++ret;
 			}
-			return kOK;
+			return ret;
 		}
-
 
 		ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);
 
@@ -127,6 +128,7 @@ class LeafHist;
 		}
 #endif
 		u32  getNumLeaves() { return header->nLeaves; }
+		Key_t getUpperBound() { return header->endsBy; }
 		/*
 		void allocatePage(PID_t &pid, PageHandle &ph) {
 			buffer->allocatePage(ph);

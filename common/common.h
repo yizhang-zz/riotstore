@@ -8,6 +8,7 @@
 
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <iostream>
 
 /* Direct I/O, no caching by the OS */
@@ -299,25 +300,23 @@ bool binarySearch(Iterator begin, Iterator end,
 		typename std::iterator_traits<Iterator>::value_type target, int *index)
 {
 	Iterator p = begin;
-	end -= 1;
+	end--;
 	Iterator mid;
 
-	do {
+	while (p <= end) {
 		mid = p+(end-p)/2;
-		if (*mid > target)
-			end = mid-1;
+		if (*mid == target) {
+			*index = mid - begin;
+			return true;
+		}
+		else if (*mid > target)
+			end = mid - 1;
 		else
-			p = mid+1;
-	} while (p <= end && *mid != target);
+			p = mid + 1;
+	}
 
-	if (*mid == target) {
-		*index = mid-begin;
-		return true;
-	}
-	else {
-		*index = p-begin;
-		return false;
-	}
+	*index = p - begin;
+	return false;
 }
 
 // generate a k-permute from [begin, end] inclusive
