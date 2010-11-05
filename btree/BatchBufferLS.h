@@ -33,10 +33,6 @@ namespace Btree
 			lst.reserve(nKeep);
 		}
 
-		~BatchBufferLS()
-		{
-		}
-
 		PageId computePids()
 		{
 			using namespace std;
@@ -46,7 +42,7 @@ namespace Btree
 			// everything in pids into lst.
 			lst = pids;
 			assert(lst.rbegin()->lower == MAX_KEY);
-			lst.pop_back();  // the last one is the senitel
+			lst.pop_back();  // the last one is the sentinel
 			make_heap(lst.begin(), lst.end(), compCountR);
 
 			EntrySet::const_iterator eit = entries.begin(),
@@ -140,6 +136,8 @@ namespace Btree
 		{
 			BatchBuffer::flushAll();
 			knownCount = 0;
+			pids.clear();
+			pids.push_back(maxPid);  // serve as sentinel
 		}
 
 		void print()

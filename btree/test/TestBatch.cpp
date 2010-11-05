@@ -13,8 +13,8 @@ TEST(Btree, Batch)
 	lsp = new MSplitter<Datum_t>();
 	isp = new MSplitter<PID_t>();
 
-	const int rows = 200;
-	const int cols = 200;
+	const int rows = 400;
+	const int cols = 400;
 	BTree *tree = new BTree("batch.bin", rows*cols, lsp, isp);
 
 	for (int i=0; i<rows; ++i)
