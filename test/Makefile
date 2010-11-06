@@ -22,6 +22,9 @@ all:elemops
 mat_read: mat_read.cpp
 	$(CXX) $(CXXFLAGS) -o test-mat-read mat_read.cpp ../libriot_store.so
 
+batch: batch.cpp
+	$(CXX) $(CXXFLAGS) -o test-batch batch.cpp ../libriot_store.so
+
 mat_write: mat_write.cpp
 	$(CXX) $(CXXFLAGS) -o test-mat-write mat_write.cpp $(HOME)/lib/libriot_store.so
 

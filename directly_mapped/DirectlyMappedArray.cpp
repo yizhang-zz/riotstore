@@ -138,29 +138,53 @@ int DirectlyMappedArray::put(const Key_t &key, const Datum_t &datum)
 int DirectlyMappedArray::batchPut(i64 putCount, const KVPair_t *puts)
 {
     // assume puts are sorted by key
-    PID_t pid = getPageId(puts[0].key);
+#ifdef PROFILING
+    static timeval time1, time2;
+    gettimeofday(&time1, NULL);
+#endif
+    PID_t pid;
     DenseArrayBlock *dab;
-    readBlock(pid, &dab);
+    findPage(puts[0].key, &pid);
+    if (readBlock(pid, &dab) != RC_OK && newBlock(pid, &dab) != RC_OK) {
+        Error("cannot read/allocate page %d",pid);
+        exit(1);
+    }   
 
+    PID_t newPid;
+    const KVPair_t *curPutHead = puts;
     i64 nPuts = 0;
     for (i64 i = 0; i < putCount; i++)
     {
-        if (pid != getPageId(puts[i].key))
+        findPage(puts[i].key, &newPid);
+        if (pid != newPid)
         {
-            dab->batchPut(nPuts, puts);
+            dab->batchPut(nPuts, curPutHead);
+            buffer->markPageDirty(dab->getPageHandle());
+            buffer->unpinPage(dab->getPageHandle());
             delete dab;
-            pid = getPageId(puts[i].key);
-            readBlock(pid, &dab);
 
-            puts += nPuts;
+            pid = newPid;
+            curPutHead += nPuts;
             nPuts = 0;
+            if (readBlock(pid, &dab) != RC_OK && newBlock(pid, &dab) != RC_OK) {
+                Error("cannot read/allocate page %d",pid);
+                exit(1);
+            }   
         }
         nPuts++;
     }
     // don't forget put for last block!
-    dab->batchPut(nPuts, puts);
+    dab->batchPut(nPuts, curPutHead);
+    buffer->markPageDirty(dab->getPageHandle());
+    buffer->unpinPage(dab->getPageHandle());
     delete dab;
 
+#ifdef PROFILING
+    gettimeofday(&time2, NULL);
+    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
+        / 1000000.0 ;
+    writeCount++;
+#endif
     return AC_OK;
 }
 

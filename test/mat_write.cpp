@@ -217,8 +217,9 @@ int main()
 {
     pLog = fopen(logFile, "ab+");
     pResult = fopen(resultFile, "ab+");
+    MDArray::init();
 
-// doArrayBatch
+    // doArrayBatch
     for (int i = 10; i < 101; i += 500)
     {
         result r;
@@ -383,6 +384,7 @@ int main()
         remove(array_fileName);
         }
     }*/
+    MDArray::cleanup();
     fclose(pLog);
     fclose(pResult);
     return 0;

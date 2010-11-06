@@ -40,11 +40,6 @@ public:
     virtual int batchPut(i64 putCount, const KVPair_t *puts);
     virtual ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);
     
-    PID_t getPageId(const Key_t &key)
-    {
-        return key/DenseArrayBlock::CAPACITY + 1;
-    }
-
     void findPage(const Key_t &key, PID_t *pid)
     {
         Key_t CAPACITY = DenseArrayBlock::CAPACITY;
