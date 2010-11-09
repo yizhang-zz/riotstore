@@ -148,6 +148,17 @@ public:
     AccessCode put(Key_t &key, const Datum_t &datum);
 
     /**
+      * Puts sub-array of entries into the array.
+      *
+      * \param [in] start Starting coordinate of sub-array.
+      * \param [in] end Last coordinate of sub-array.
+      * \param [in] data array of data values to put into array.
+      * \result OK if successful, OutOfRange is any coord within start and end
+      * is out of range.
+      */
+    AccessCode batchPut(MDCoord &start, MDCoord &end, const Datum_t *data);
+
+    /**
      * Creates an internal iterator over the 1-D storage device.
      *
      * \param t Type of iterator.

@@ -35,9 +35,15 @@ public:
     
     virtual int get(const Key_t &key, Datum_t &datum);
     virtual int put(const Key_t &key, const Datum_t &datum);
+    virtual int batchPut(i64 putCount, const KVPair_t *puts);
     virtual ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);
     
-    void findPage(const Key_t &key, PID_t *pid);
+    void findPage(const Key_t &key, PID_t *pid)
+    {
+        Key_t CAPACITY = DenseArrayBlock::CAPACITY;
+        *pid = key/CAPACITY + 1;
+    }
+
     RC_t readBlock(PID_t pid, DenseArrayBlock** block);
     RC_t newBlock(PID_t pid, DenseArrayBlock** block);
     RC_t readNextBlock(PageHandle ph, DenseArrayBlock** block);

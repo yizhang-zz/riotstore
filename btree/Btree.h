@@ -97,6 +97,7 @@ class LeafHist;
 		//void locate(Key_t key, PID_t &pid, Key_t &lower, Key_t &upper);
 
 		int put(const Key_t &key, const Datum_t &datum);
+        int batchPut(i64 putCount, const KVPair_t *puts) { }
 		int get(const Key_t &key, Datum_t &datum);
 
 		// Iterator iterates over a collection of type Entry
