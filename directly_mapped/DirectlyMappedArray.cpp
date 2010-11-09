@@ -151,21 +151,19 @@ int DirectlyMappedArray::batchPut(i64 putCount, const KVPair_t *puts)
     }   
 
     PID_t newPid;
-    const KVPair_t *curPutHead = puts;
     i64 nPuts = 0;
     for (i64 i = 0; i < putCount; i++)
     {
         findPage(puts[i].key, &newPid);
         if (pid != newPid)
         {
-            dab->batchPut(nPuts, curPutHead);
+            dab->batchPut(nPuts, puts + i - nPuts);
             buffer->markPageDirty(dab->getPageHandle());
             buffer->unpinPage(dab->getPageHandle());
             delete dab;
 
-            pid = newPid;
-            curPutHead += nPuts;
             nPuts = 0;
+            pid = newPid;
             if (readBlock(pid, &dab) != RC_OK && newBlock(pid, &dab) != RC_OK) {
                 Error("cannot read/allocate page %d",pid);
                 exit(1);
@@ -174,7 +172,7 @@ int DirectlyMappedArray::batchPut(i64 putCount, const KVPair_t *puts)
         nPuts++;
     }
     // don't forget put for last block!
-    dab->batchPut(nPuts, curPutHead);
+    dab->batchPut(nPuts, puts + putCount - nPuts);
     buffer->markPageDirty(dab->getPageHandle());
     buffer->unpinPage(dab->getPageHandle());
     delete dab;
