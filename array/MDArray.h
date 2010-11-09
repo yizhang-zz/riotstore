@@ -152,7 +152,10 @@ public:
       *
       * \param [in] start Starting coordinate of sub-array.
       * \param [in] end Last coordinate of sub-array.
-      * \param [in] data array of data values to put into array.
+      * \param [in] data array of data values to put into array. NOTE, the order
+      * of values in data should be in Row-Major order such that the first datum
+      * should correspond to the value at start, and the last to the value at
+      * end.
       * \result OK if successful, OutOfRange is any coord within start and end
       * is out of range.
       */
