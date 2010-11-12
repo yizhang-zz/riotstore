@@ -1,15 +1,11 @@
-
-#include <time.h>
-#include <stdlib.h>
-#include <assert.h>
 #include <string.h>
 #include "MDArray.h"
-#include "../directly_mapped/DirectlyMappedArray.h"
-#include "../btree/Btree.h"
-#include "../btree/Splitter.h"
-#include "MDDenseIterator.h"
+#include "directly_mapped/DirectlyMappedArray.h"
+#include "btree/Btree.h"
+#include "btree/Splitter.h"
+//#include "MDDenseIterator.h"
 //#include "MDAccelDenseIterator.h"
-#include "MDSparseIterator.h"
+//#include "MDSparseIterator.h"
 //#include "MDAccelSparseIterator.h"
 #include "BlockBased.h"
 #include "ColMajor.h"
@@ -21,7 +17,9 @@ using namespace Btree;
 
 #define OFFSET 1000
 
-MDCoord MDArray::peekDim(const char *fileName)
+/*
+template<int nDim>
+MDArray<nDim>::Coord MDArray<nDim>::peekDim(const char *fileName)
 {
     if (access(fileName, F_OK) != 0)
         throw ("File for array does not exist.");
@@ -34,28 +32,29 @@ MDCoord MDArray::peekDim(const char *fileName)
     fread(&ndim, sizeof(int), 1, file);
     fread(&linType, sizeof(int), 1, file);
    
-    i64 *dims = new i64[ndim];
-    fread(dims, sizeof(i64), ndim, file);
+	Coord dim;
+    fread(dim.coords, sizeof(i64), ndim, file);
     MDCoord dim = MDCoord(dims, ndim);
     delete[] dims;
     return dim;
 }
-
-MDArray::MDArray(MDCoord &dim, Linearization *lnrztn, LeafSplitter *leaf, InternalSplitter *internal, const char *fileName)
+*/
+template<int nDim>
+MDArray<nDim>::MDArray(MDCoord<nDim> &dim, Linearization<nDim> *lnrztn, LeafSplitter *leaf, InternalSplitter *internal, const char *fileName)
     : leafsp(leaf), intsp(internal)
 {
-    allocatedSp = false;
+    this->allocatedSp = false;
     this->dim = dim;
-    assert(dim.nDim != 0);
-    size = 1;
-    for (int i = 0; i < dim.nDim; i++)
+    assert(nDim != 0);
+    this->size = 1;
+    for (int i = 0; i < nDim; i++)
     {
-        assert(dim.coords[i] > 0);
-        size *= (u32)dim.coords[i];
+        assert(dim[i] > 0);
+        this->size *= (u32)dim[i];
     }
    
     linearization = lnrztn->clone();
-    char path[40]; // should be long enough..
+    char path[40]; // should be long enough
     if (fileName == 0)
     {
         char temp[] = "MDArXXXXXX";
@@ -71,37 +70,40 @@ MDArray::MDArray(MDCoord &dim, Linearization *lnrztn, LeafSplitter *leaf, Intern
     storage = new BTree(path, size, leafsp, intsp); 
 
     PageHandle ph;
-    storage->buffer->readPage(0, ph);
-    char *image = (char*)storage->buffer->getPageImage(ph);
+	BufferManager *buffer = storage->getBufferManager();
+    buffer->readPage(0, ph);
+    char *image = (char*)buffer->getPageImage(ph);
     int *header = (int*)(image + OFFSET);
     *header = BTREE;
-    *(header+1) = dim.nDim;
+    *(header+1) = nDim;
     *(header+2) = linearization->getType();
     i64* header_dims = (i64*)(header + 3);
-    memcpy(header_dims, dim.coords, dim.nDim*sizeof(i64));
+    memcpy(header_dims, &dim[0], nDim*sizeof(i64));
     if (linearization->getType() == BLOCK)
     {
-        memcpy(header_dims+dim.nDim, ((BlockBased*)linearization)->blockDims, dim.nDim*sizeof(i64));
-        u8 *header_order = (u8*)(header_dims+2*dim.nDim);
-        memcpy(header_order, ((BlockBased*)linearization)->blockOrders, dim.nDim*sizeof(u8));
-        memcpy(header_order+dim.nDim, ((BlockBased*)linearization)->microOrders, dim.nDim*sizeof(u8));
+		BlockBased<nDim> *bl = static_cast<BlockBased<nDim>*>(linearization);
+        memcpy(header_dims+nDim, bl->blockDims, nDim*sizeof(i64));
+        u8 *header_order = (u8*)(header_dims+2*nDim);
+        memcpy(header_order, bl->blockOrders, nDim*sizeof(u8));
+        memcpy(header_order+nDim, bl->microOrders, nDim*sizeof(u8));
     }
-    storage->buffer->markPageDirty(ph);
-    storage->buffer->unpinPage(ph);
+    buffer->markPageDirty(ph);
+    buffer->unpinPage(ph);
     this->fileName = path;
 }
 
-MDArray::MDArray(MDCoord &dim, StorageType type, Linearization *lnrztn, const char *fileName)
+template<int nDim>
+MDArray<nDim>::MDArray(MDCoord<nDim> &dim, StorageType type, Linearization<nDim> *lnrztn, const char *fileName)
     : leafsp(NULL), intsp(NULL)
 {
     allocatedSp = false;
     this->dim = dim;
-    assert(dim.nDim != 0);
+    assert(nDim != 0);
     size = 1;
-    for (int i = 0; i < dim.nDim; i++)
+    for (int i = 0; i < nDim; i++)
     {
-        assert(dim.coords[i] > 0);
-        size *= (u32)dim.coords[i];
+        assert(dim[i] > 0);
+        size *= (u32)dim[i];
     }
    
     linearization = lnrztn->clone();
@@ -135,90 +137,92 @@ MDArray::MDArray(MDCoord &dim, StorageType type, Linearization *lnrztn, const ch
         break;
     }
     PageHandle ph;
-    storage->buffer->readPage(0, ph);
-    char *image = (char*)storage->buffer->getPageImage(ph);
+	BufferManager *buffer = storage->getBufferManager();
+    buffer->readPage(0, ph);
+    char *image = (char*)buffer->getPageImage(ph);
     int *header = (int*)(image + OFFSET);
     *header = type;
-    *(header+1) = dim.nDim;
+    *(header+1) = nDim;
     *(header+2) = linearization->getType();
     i64* header_dims = (i64*)(header + 3);
-    memcpy(header_dims, dim.coords, dim.nDim*sizeof(i64));
+    memcpy(header_dims, &dim[0], nDim*sizeof(i64));
     if (linearization->getType() == BLOCK)
     {
-        memcpy(header_dims+dim.nDim, ((BlockBased*)linearization)->blockDims, dim.nDim*sizeof(i64));
-        u8 *header_order = (u8*)(header_dims+2*dim.nDim);
-        memcpy(header_order, ((BlockBased*)linearization)->blockOrders, dim.nDim*sizeof(u8));
-        memcpy(header_order+dim.nDim, ((BlockBased*)linearization)->microOrders, dim.nDim*sizeof(u8));
+		BlockBased<nDim> *bl = static_cast<BlockBased<nDim>*>(linearization);
+        memcpy(header_dims+nDim, bl->blockDims, nDim*sizeof(i64));
+        u8 *header_order = (u8*)(header_dims+2*nDim);
+        memcpy(header_order, bl->blockOrders, nDim*sizeof(u8));
+        memcpy(header_order+nDim, bl->microOrders, nDim*sizeof(u8));
     }
-    storage->buffer->markPageDirty(ph);
-    storage->buffer->unpinPage(ph);
+    buffer->markPageDirty(ph);
+    buffer->unpinPage(ph);
     this->fileName = path;
 }
 
-MDArray::MDArray(const char *fileName)
+template<int nDim>
+MDArray<nDim>::MDArray(const char *fileName)
 {
-    allocatedSp = false;
-    this->intsp = NULL;
-    this->leafsp = NULL;
-   if (access(fileName, F_OK) != 0)
-      throw ("File for array does not exist.");
-   FILE *file = fopen(fileName, "rb");
-   // first page in file is used by PagedStorageContainer
-   // the header page of the LinearStorage is actually the 2nd page
-   fseek(file, PAGE_SIZE+OFFSET, SEEK_SET);
-   int type, ndim, linType;
-   fread(&type, sizeof(int), 1, file);
-   fread(&ndim, sizeof(int), 1, file);
-   fread(&linType, sizeof(int), 1, file);
-   
-   i64 *dims = new i64[ndim];
-   fread(dims, sizeof(i64), ndim, file);
-   dim = MDCoord(dims, ndim);
-   delete[] dims;
-   
-   size = 1;
-   for (int i = 0; i < dim.nDim; i++)
-      size *= dim.coords[i];
-   
-   if (linType == BLOCK)
-   {
-      i64 *blockDims = new i64[dim.nDim];
-      u8 *blockOrders = new u8[dim.nDim];
-      u8 *microOrders = new u8[dim.nDim];
-      fread(blockDims, sizeof(i64), dim.nDim, file);
-      fread(blockOrders, sizeof(u8), dim.nDim, file);
-      fread(microOrders, sizeof(u8), dim.nDim, file);
-      linearization = new BlockBased(dim.nDim, dim.coords, blockDims,
-                                     blockOrders, microOrders);
-      delete[] blockDims;
-      delete[] blockOrders;
-      delete[] microOrders;
-   }
-   else if (linType == ROW)
-   {
-      linearization = new RowMajor(dim);      
-   }
-   else if (linType == COL)
-   {
-      linearization = new ColMajor(dim);
-   }
-   fclose(file);
-   if (type == DMA)
-   {
-      storage = new DirectlyMappedArray(fileName, 0);
-   }
-   else if (type == BTREE)
-   {
-       //TODO: should read from file
-       leafsp = new MSplitter<Datum_t>();
-       intsp = new MSplitter<PID_t>();
-       allocatedSp = true;
-       storage = new BTree(fileName, leafsp, intsp);
-   }
-   this->fileName = fileName;
+	allocatedSp = false;
+	this->intsp = NULL;
+	this->leafsp = NULL;
+	if (access(fileName, F_OK) != 0)
+		throw ("File for array does not exist.");
+	FILE *file = fopen(fileName, "rb");
+	// first page in file is used by PagedStorageContainer
+	// the header page of the LinearStorage is actually the 2nd page
+	fseek(file, PAGE_SIZE+OFFSET, SEEK_SET);
+	int type, ndim, linType;
+	fread(&type, sizeof(int), 1, file);
+	fread(&ndim, sizeof(int), 1, file);
+	assert(ndim == nDim);
+	fread(&linType, sizeof(int), 1, file);
+
+	fread(&dim[0], sizeof(i64), nDim, file);
+
+	size = 1;
+	for (int i = 0; i < nDim; i++)
+		size *= (u32) dim[i];
+
+	if (linType == BLOCK)
+	{
+		i64 *blockDims = new i64[nDim];
+		u8 *blockOrders = new u8[nDim];
+		u8 *microOrders = new u8[nDim];
+		fread(blockDims, sizeof(i64), nDim, file);
+		fread(blockOrders, sizeof(u8), nDim, file);
+		fread(microOrders, sizeof(u8), nDim, file);
+		linearization = new BlockBased<nDim>(&dim[0], blockDims,
+				blockOrders, microOrders);
+		delete[] blockDims;
+		delete[] blockOrders;
+		delete[] microOrders;
+	}
+	else if (linType == ROW)
+	{
+		linearization = new RowMajor<nDim>(&dim[0]);   
+	}
+	else if (linType == COL)
+	{
+		linearization = new ColMajor<nDim>(&dim[0]);
+	}
+	fclose(file);
+	if (type == DMA)
+	{
+		storage = new DirectlyMappedArray(fileName, 0);
+	}
+	else if (type == BTREE)
+	{
+		//TODO: should read from file
+		leafsp = new MSplitter<Datum_t>();
+		intsp = new MSplitter<PID_t>();
+		allocatedSp = true;
+		storage = new BTree(fileName, leafsp, intsp);
+	}
+	this->fileName = fileName;
 }
 
-MDArray::~MDArray()
+template<int nDim>
+MDArray<nDim>::~MDArray()
 {
     if (allocatedSp)
     {
@@ -229,17 +233,19 @@ MDArray::~MDArray()
    delete storage;
 }
 
-Linearization* MDArray::getLinearization()
+template<int nDim>
+Linearization<nDim>* MDArray<nDim>::getLinearization()
 {
    return linearization;
 }
 
-MDIterator* MDArray::createIterator(IteratorType t, Linearization *lnrztn)
+template<int nDim>
+typename MDArray<nDim>::MDIterator *MDArray<nDim>::createIterator(IteratorType t, Linearization<nDim> *lnrztn)
 {
    switch (t)
    {
       case Dense:
-         return new MDDenseIterator(this, lnrztn);
+         //return new MDDenseIterator(this, lnrztn);
       case Sparse:
           assert(false);
           // return MDSparseIterator(storage, lnrztn);
@@ -247,7 +253,8 @@ MDIterator* MDArray::createIterator(IteratorType t, Linearization *lnrztn)
    return NULL;
 }
 
-MDIterator* MDArray::createNaturalIterator(IteratorType t)
+template<int nDim>
+typename MDArray<nDim>::MDIterator *MDArray<nDim>::createNaturalIterator(IteratorType t)
 {
    switch (t)
    {
@@ -260,7 +267,8 @@ MDIterator* MDArray::createNaturalIterator(IteratorType t)
    }
 }
 
-AccessCode MDArray::get(MDCoord &coord, Datum_t &datum)
+template<int nDim>
+AccessCode MDArray<nDim>::get(MDCoord<nDim> &coord, Datum_t &datum)
 {
    Key_t key = linearization->linearize(coord);
    if (storage->get(key, datum) == AC_OK)
@@ -268,14 +276,16 @@ AccessCode MDArray::get(MDCoord &coord, Datum_t &datum)
    return AC_OutOfRange;
 }
 
-AccessCode MDArray::get(Key_t &key, Datum_t &datum)
+template<int nDim>
+AccessCode MDArray<nDim>::get(Key_t &key, Datum_t &datum)
 {
    if (storage->get(key, datum) == AC_OK)
       return AC_OK;
    return AC_OutOfRange;
 }
 
-AccessCode MDArray::put(MDCoord &coord, const Datum_t &datum)
+template<int nDim>
+AccessCode MDArray<nDim>::put(MDCoord<nDim> &coord, const Datum_t &datum)
 {
    Key_t key = linearization->linearize(coord);
    if (storage->put(key, datum) == AC_OK)
@@ -283,16 +293,23 @@ AccessCode MDArray::put(MDCoord &coord, const Datum_t &datum)
    return AC_OutOfRange;
 }
 
-AccessCode MDArray::put(Key_t &key, const Datum_t &datum)
+template<int nDim>
+AccessCode MDArray<nDim>::put(Key_t &key, const Datum_t &datum)
 {
    if (storage->put(key, datum) == AC_OK)
       return AC_OK;
    return AC_OutOfRange;
 }
 
-ArrayInternalIterator* MDArray::createInternalIterator(IteratorType t)
+template<int nDim>
+ArrayInternalIterator* MDArray<nDim>::createInternalIterator(IteratorType t)
 {
     Key_t start = 0;
-    return storage->createIterator(t, start, size);
+	return NULL;
+    //return storage->createIterator(t, start, size);
 }
 
+
+template class MDArray<1>;
+template class MDArray<2>;
+template class MDArray<3>;

@@ -1,34 +1,29 @@
-CXX = g++ 
-CXXFLAGS = -g `pkg-config --cflags-only-I apr-1`
-LDFLAGS = -lgtest `pkg-config --libs apr-1`
+CXXFLAGS += -I/usr/local/include -I../..
+LDFLAGS += $(shell pkg-config --libs gsl) -pthread
+LDFLAGS += -L../.. -lriot_store -L/usr/local/lib -lgtest
+LD_RUN_PATH = ../..
+
+include ../../flags.mk
 
 .PHONY: all clean lower
 
-objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp))
-par_objects := $(patsubst %.cpp, %.o, $(wildcard ../*.cpp))
+SRC := main.cpp TestBlockBased.cpp TestRowMajor.cpp #TestSplit.cpp TestBtree.cpp 
+OBJ := $(patsubst %.cpp, %.o, $(SRC))
+DEPS := $(OBJ:.o=.dd)
+#par_objects := $(patsubst %.cpp, %.o, $(wildcard ../*.cpp))
+#lower_objects := $(wildcard ../../lower/*.o)
 
-.c.o:
-	$(CXX) $(CXXFLAGS) -c $<
 
-.cpp.o:
-	$(CXX) $(CXXFLAGS) -c $<
+all: test
 
-all: lower test
-	./test
+-include $(DEPS)
 
-%.d: %.cpp
-	$(SHELL) -ec '$(CXX) -M $(CXXFLAGS) $< | sed "s/$*.o/& $@/g" > $@'
-
-include $(objects:.o=.d)
-
-lower:
-	cd .. ; $(MAKE)
-
-test: $(objects) $(par_objects) ../../common/common.o ../../lower/BitmapPagedFile.o ../../lower/LRUPageReplacer.o ../../lower/BufferManager.o ../../directly_mapped/DirectlyMappedArray.o ../../directly_mapped/DenseArrayBlock.o ../../directly_mapped/DMADenseIterator.o ../../directly_mapped/DABIterator.o
-	$(CXX) $(LDFLAGS) -o test $^ 
+test: $(OBJ)
+	$(CXX) -o $@ $^ $(LDFLAGS)
 
 
 clean : 
-	rm -f *.o
-	rm -f *.d
-	rm test
+	rm -f $(OBJ)
+	rm -f $(DEPS)
+	rm -f test
+

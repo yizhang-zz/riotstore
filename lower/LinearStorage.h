@@ -6,8 +6,6 @@
 #include "PagedStorageContainer.h"
 #include "BufferManager.h"
 
-class MDArray;
-
 enum StorageType {
     DMA,
     BTREE
@@ -77,12 +75,15 @@ public:
      */
     virtual ArrayInternalIterator* createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy) = 0;    
 
-	Key_t getUpperBound()
+	Key_t getUpperBound() const
 	{
 		return upper;
 	}
 
-    friend class MDArray;
+	BufferManager *getBufferManager() const
+	{
+		return buffer;
+	}
 };
 
 #endif

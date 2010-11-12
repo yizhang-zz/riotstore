@@ -3,8 +3,9 @@
 
 #include "../common/common.h"
 #include <stdlib.h>
-#include <stdarg.h>
+#include <string.h>
 #include <string>
+#include <iostream>
 
 #define COORD(x) ((i64)(x))
 
@@ -25,21 +26,21 @@
  * http://www.cs.caltech.edu/courses/cs11/material/cpp/donnie/cpp-ops.html 
  */
 
+typedef i64 Coord;
+
+template<int nDim>
 class MDCoord
 {
+private:
+	Coord coords[nDim];
+
 public:
-    /// Number of dimensions.
-    u8 nDim;
-    /// Array of coordinates in each dimension.
-    i64 *coords;
 
     /**
      * Constructs an empty MDCoord.
      */
     MDCoord()
     {
-        nDim = 0;
-        coords = NULL;
     }
 
     /**
@@ -51,7 +52,23 @@ public:
      * \param ... Variable length argument specifying the coordinates
      */
     
-    MDCoord(u8 nDim, ...);
+	MDCoord(Coord x1)
+	{
+		coords[0] = x1;
+	}
+
+    MDCoord(Coord x1, Coord x2)
+	{
+		coords[0] = x1;
+		coords[1] = x2;
+	}
+
+    MDCoord(Coord x1, Coord x2, Coord x3)
+	{
+		coords[0] = x1;
+		coords[1] = x2;
+		coords[2] = x3;
+	}
 
     /**
      * Constructs a MDCoord using the given coordinates and number of
@@ -61,14 +78,11 @@ public:
      * \param nDim Number of dimensions
      */ 
 
-    MDCoord(i64 *coords, u8 nDim);
+    MDCoord(Coord *coords)
+	{
+		memcpy(this->coords, coords, sizeof(Coord)*nDim);
+	}
 
-    /**
-     * Destructor. Memory resource for keeping the coordinates is
-     * released.
-     */
-    
-    ~MDCoord();
 
     /**
      * Copy constructor.
@@ -76,7 +90,12 @@ public:
      * \param src Source MDCoord object to be copied.
      */
     
-    MDCoord(const MDCoord &src);
+    MDCoord(const MDCoord<nDim> &src)
+	{
+		//memcpy(coords, src.coords, sizeof(Coord)*nDim);
+		for (int i=0; i<nDim; ++i)
+			this->coords[i] = src.coords[i];
+	}
 
     /**
      * Assignment operator. Should be careful with self assignment.
@@ -85,7 +104,16 @@ public:
      * \return A reference to self.
      */
     
-    MDCoord & operator=(const MDCoord &src);
+    MDCoord & operator=(const MDCoord<nDim> &src)
+	{
+		if (this != &src) {
+			for (int i=0; i<nDim; ++i)
+				coords[i] = src.coords[i];
+			//memcpy(coords, src.coords, sizeof(Coord)*nDim);
+		}
+		return *this;
+	}
+
 
     /**
      * \name Comparison Operators
@@ -99,7 +127,13 @@ public:
      * \return true self is equal to other.
      */
 
-    bool operator==(const MDCoord &other) const;
+    bool operator==(const MDCoord<nDim> &other) const
+	{
+		for (int i=0; i<nDim; ++i)
+			if (other.coords[i] != coords[i])
+				return false;
+		return true;
+	}
 
     /**
      * Non-equality comparison operator.
@@ -108,7 +142,7 @@ public:
      * \return true self is not equal to other.
      */
     
-    bool operator!=(const MDCoord &other) const
+    bool operator!=(const MDCoord<nDim> &other) const
     {
        return !(*this == other);
     }
@@ -118,8 +152,20 @@ public:
      * \name Compound Assignment Operators
      */
     //@{
-    MDCoord & operator+=(const MDCoord &other);
-    MDCoord & operator-=(const MDCoord &other);
+    MDCoord<nDim> & operator+=(const MDCoord<nDim> &other)
+	{
+		for (int i=0; i<nDim; ++i)
+			coords[i] += other.coords[i];
+		return *this;
+	}
+
+    MDCoord<nDim> & operator-=(const MDCoord<nDim> &other)
+	{
+		for (int i=0; i<nDim; ++i)
+			coords[i] -= other.coords[i];
+		return *this;
+	}
+
     //@}
 
     /**
@@ -127,20 +173,57 @@ public:
      */
     //@{
 
-    const MDCoord operator+(const MDCoord &other) const
+    MDCoord<nDim> operator+(const MDCoord<nDim> &other) const
     {
-        return MDCoord(*this) += other;
+        return MDCoord<nDim>(*this) += other;
     }
     
-    const MDCoord operator-(const MDCoord &other) const
+    MDCoord<nDim> operator-(const MDCoord<nDim> &other) const
     {
-        return MDCoord(*this) -= other;
+        return MDCoord<nDim>(*this) -= other;
     }
 
     //@}
 
-    std::string toString() const;
-    
+	i64& operator[] (unsigned i)
+	{
+		return coords[i];
+	}
+
+	const i64& operator[] (unsigned i) const
+	{
+		return coords[i];
+	}
+
+	/*
+	i64* operator&() const
+	{
+		return coords;
+	}
+	 */
+    std::string toString() const
+	{
+		char buf[256] = "[";
+		char num[20];
+		if (nDim > 0) {
+			sprintf(num, "%"D64"", coords[0]);
+			strcat(buf, num);
+		}
+		for (int i=1; i<nDim; i++) {
+			sprintf(num, " %"D64"", coords[i]); 
+			strcat(buf, num);
+		}
+		strcat(buf, "]");
+		return std::string(buf);
+	}
+
+	template<int N>
+	friend std::ostream & operator<<(std::ostream &out, const MDCoord<N> &coord);
 };
 
+template<int N>
+std::ostream & operator<<(std::ostream &out, const MDCoord<N> &coord)
+{
+	return out<<coord.toString();
+}
 #endif

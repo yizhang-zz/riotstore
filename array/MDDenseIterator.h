@@ -3,7 +3,6 @@
 
 #include "../common/common.h"
 #include "MDArray.h"
-#include "MDIterator.h"
 #include "MDCoord.h"
 #include "Linearization.h"
 
@@ -28,7 +27,8 @@
  * \sa Linearization
  */
 
-class MDDenseIterator: public MDIterator
+template<int nDim>
+class MDDenseIterator: public MDArray<nDim>::MDIterator
 {
 public:
     /**

@@ -6,6 +6,12 @@
 #define _in
 #define _out
 
+#ifdef _LP64
+#define D64 "ld"
+#else
+#define D64 "lld"
+#endif
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>

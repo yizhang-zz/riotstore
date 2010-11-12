@@ -1,8 +1,7 @@
 #ifndef MD_SPARSE_ITERATOR_H
 #define MD_SPARSE_ITERATOR_H
 
-#include "../common/common.h"
-#include "MDIterator.h"
+#include "common/common.h"
 #include "MDCoord.h"
 #include "MDArray.h"
 #include "Linearization.h"
@@ -34,7 +33,8 @@
  * \sa Linearization
  */
 
-class MDSparseIterator: public MDIterator
+template<class nDim>
+class MDSparseIterator: public MDArray<nDim>::Iterator
 {
 public:
     

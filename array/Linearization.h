@@ -47,6 +47,7 @@ enum LinearizationType
  * \sa MDIterator
  */
 
+template<int nDim>
 class Linearization
 {
 public:
@@ -59,7 +60,7 @@ public:
      * \param coord The coord to be linearized.
      * \return Result of linearization.
      */
-    virtual Key_t linearize(const MDCoord &coord) = 0;
+    virtual Key_t linearize(const MDCoord<nDim> &coord) = 0;
 
     /**
      * Unlinearizes the given 1-D coord.
@@ -67,7 +68,7 @@ public:
      * \param key Key in 1-D to be unlinearized.
      * \return The result f unlinearization.
      */
-    virtual MDCoord unlinearize(Key_t key) = 0;
+    virtual MDCoord<nDim> unlinearize(Key_t key) = 0;
 
     /*
      * Incrementally linearizes the coord specified as the sum of the
@@ -78,7 +79,7 @@ public:
      * \param diff The difference in coordinate based on last state.
      * \return The result of linearization.
      */
-    // virtual Key_t linearizeIncremental(MDCoord &diff) = 0;
+    // virtual Key_t linearizeIncremental(MDCoord<N> &diff) = 0;
 
     /**
      * Incrementally calculate \f$y\f$ such that \f$ f(y)=f(from)+diff
@@ -90,7 +91,7 @@ public:
      * \param diff The difference in linearized space.
      * \return The new coordinate in n-D space.
      */
-    virtual MDCoord move(const MDCoord &from, KeyDiff_t diff) = 0;
+    virtual MDCoord<nDim> move(const MDCoord<nDim> &from, KeyDiff_t diff) = 0;
 
     /**
      * Clone method to simulate virtual copy constructor. IMPORTANT: a
@@ -113,8 +114,8 @@ protected:
      * incremental computation.
      */
     //@{
-    //MDCoord linIn;
-    //MDCoord unlinOut;
+    //MDCoord<N> linIn;
+    //MDCoord<N> unlinOut;
     //Key_t linOut;
     //Key_t unlinIn;
     //@}

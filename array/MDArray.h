@@ -1,12 +1,11 @@
 #ifndef MDARRAY_H
 #define MDARRAY_H
 
-#include "../common/common.h"
-#include "MDIterator.h"
-#include "../lower/LinearStorage.h"
-#include "../common/ArrayInternalIterator.h"
+#include "common/common.h"
+#include "lower/LinearStorage.h"
+#include "common/ArrayInternalIterator.h"
 #include "Linearization.h"
-#include "../btree/Splitter.h"
+#include "btree/Splitter.h"
 #include <string>
 
 /**
@@ -43,34 +42,14 @@
  * \sa Linearization
  */
 
+template<int nDim> 
 class MDArray
 {
-protected:
-    /// The underlying 1-D storage.
-    LinearStorage *storage;
-    /// The Linearization tied to the underlying 1-D storage.
-    Linearization *linearization;
-    MDCoord dim;
-    std::string fileName;
-
-private:
-    Btree::LeafSplitter *leafsp;
-    Btree::InternalSplitter *intsp;
-    bool allocatedSp;
-    
 public:
-    static MDCoord peekDim(const char *fileName);
+	typedef Iterator<MDCoord<nDim>, Datum_t> MDIterator;
+	typedef MDCoord<nDim> Coord;
+    //static Coord peekDim(const char *fileName);
 
-    static void init()
-    {
-        //apr_initialize();
-    }
-
-    static void cleanup()
-    {
-        //apr_terminate();
-    }
-    
     u32 size; // number of elements
     /**
      * Constructs a new MDArray with given dimensions.
@@ -82,9 +61,9 @@ public:
      * stored. If omitted, a random name consisting 10 hex digits is
      * generated. Guaranteed no existing file will be overwritten.
      */
-    MDArray(MDCoord &dim, StorageType type, Linearization *lrnztn, const char *fileName=0);
+    MDArray(MDCoord<nDim> &dim, StorageType type, Linearization<nDim> *lrnztn, const char *fileName=0);
 
-    MDArray(MDCoord &dim, Linearization *lrnztn, Btree::LeafSplitter *leaf, Btree::InternalSplitter *internal, const char *fileName=0);
+    MDArray(MDCoord<nDim> &dim, Linearization<nDim> *lrnztn, Btree::LeafSplitter *leaf, Btree::InternalSplitter *internal, const char *fileName=0);
     /**
      * Constructs and initializes a MDArray from a file stored on
      * disk. ArrayStorage's factory method can analyze the file and
@@ -105,7 +84,7 @@ public:
      *
      * \return Linearization.
      */
-    Linearization * getLinearization();
+    Linearization<nDim> * getLinearization();
 
     /**
      * Creates a new iterator with the specified linearization.
@@ -114,7 +93,7 @@ public:
      * \param lnrztn The specified linearization for the iterator.
      * \return An iterator for this array.
      */
-    MDIterator* createIterator(IteratorType t, Linearization *lnrztn);
+    MDIterator* createIterator(IteratorType t, Linearization<nDim> *lnrztn);
     //ArrayInternalIterator *getStorageIterator();
 
     /**
@@ -134,7 +113,7 @@ public:
      * \param [out] datum Datum at coord.
      * \return OK if successful, OutOfRange if coord is out of range.
      */
-    AccessCode get(MDCoord &coord, Datum_t &datum);
+    AccessCode get(Coord &coord, Datum_t &datum);
     AccessCode get(Key_t &key, Datum_t &datum);
 
     /**
@@ -144,7 +123,7 @@ public:
      * \param [in] datum Datum at coord.
      * \result OK if successful, OutOfRange if coord is out of range.
      */
-    AccessCode put(MDCoord &coord, const Datum_t &datum);
+    AccessCode put(Coord &coord, const Datum_t &datum);
     AccessCode put(Key_t &key, const Datum_t &datum);
 
     /**
@@ -156,7 +135,21 @@ public:
     ArrayInternalIterator* createInternalIterator(IteratorType t);
     
     const char* getFileName() { return fileName.c_str(); }
-    int getNDim() { return dim.nDim; }
+    int getNDim() { return nDim; }
+
+protected:
+    MDCoord<nDim> dim;
+
+private:
+    /// The underlying 1-D storage.
+    LinearStorage *storage;
+    /// The Linearization tied to the underlying 1-D storage.
+    Linearization<nDim> *linearization;
+    std::string fileName;
+
+    Btree::LeafSplitter *leafsp;
+    Btree::InternalSplitter *intsp;
+    bool allocatedSp;
 };
 
 #endif

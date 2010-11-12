@@ -6,24 +6,17 @@
 #include <map>
 
 #include "../MDCoord.h"
-#include "../BlockBased.h"
 #include "../RowMajor.h"
-#include "../ColMajor.h"
 #include "../MDArray.h"
 
 using namespace std;
 
-TEST(BlockBased, Linearize)
+TEST(RowMajor, Linearize)
 {
 	i64 arrayDims[] = {5L, 7L};
 	i64 rows = arrayDims[0];
 	i64 cols = arrayDims[1];
-    i64 blockDims[] = {2L, 3L};
-    u8 blockOrders[] = {0, 1};
-    u8 microOrders[] = {0, 1};
-    MDCoord<2> dim(arrayDims);
-    BlockBased<2> *block = new BlockBased<2>(arrayDims, blockDims,
-                                          blockOrders, microOrders);
+    RowMajor<2> *block = new RowMajor<2>(arrayDims);
     for (int i=0; i<rows; i++) {
         for (int j=0; j<cols; j++) {
             MDCoord<2> c(i,j);
@@ -33,17 +26,12 @@ TEST(BlockBased, Linearize)
     }
 }
 
-TEST(BlockBased, Unlinearize)
+TEST(RowMajor, Unlinearize)
 {
-	i64 arrayDims[] = {4L, 6L};
+	i64 arrayDims[] = {5L, 7L};
 	i64 rows = arrayDims[0];
 	i64 cols = arrayDims[1];
-    i64 blockDims[] = {2L, 3L};
-    u8 blockOrders[] = {0, 1};
-    u8 microOrders[] = {0, 1};
-    MDCoord<2> dim(arrayDims);
-    BlockBased<2> *block = new BlockBased<2>(arrayDims, blockDims,
-                                          blockOrders, microOrders);
+    RowMajor<2> *block = new RowMajor<2>(arrayDims);
 	i64 count = rows*cols;
     for (i64 i=0; i<count; i++) {
             cout<<block->unlinearize(i).toString()<<"\t";
@@ -51,17 +39,12 @@ TEST(BlockBased, Unlinearize)
 	cout<<endl;
 }
 
-TEST(BlockBased, Inverse)
+TEST(RowMajor, Inverse)
 {
 	i64 arrayDims[] = {5L, 7L};
 	i64 rows = arrayDims[0];
 	i64 cols = arrayDims[1];
-    i64 blockDims[] = {2L, 3L};
-    u8 blockOrders[] = {0, 1};
-    u8 microOrders[] = {0, 1};
-    MDCoord<2> dim(arrayDims);
-    BlockBased<2> *block = new BlockBased<2>(arrayDims, blockDims,
-                                          blockOrders, microOrders);
+    RowMajor<2> *block = new RowMajor<2>(arrayDims);
     for (int i=0; i<rows; i++) {
         for (int j=0; j<cols; j++) {
             MDCoord<2> c(i,j);
@@ -70,17 +53,13 @@ TEST(BlockBased, Inverse)
     }
 }
 
-TEST(BlockBased, Move)
+TEST(RowMajor, Move)
 {
+
 	i64 arrayDims[] = {15L, 17L};
 	i64 rows = arrayDims[0];
 	i64 cols = arrayDims[1];
-    i64 blockDims[] = {3L, 4L};
-    u8 blockOrders[] = {0, 1};
-    u8 microOrders[] = {0, 1};
-    MDCoord<2> dim(arrayDims);
-    BlockBased<2> *block = new BlockBased<2>(arrayDims, blockDims,
-                                          blockOrders, microOrders);
+    RowMajor<2> *block = new RowMajor<2>(arrayDims);
     for (int i=0; i<rows; i++) {
         for (int j=0; j<cols; j++) {
             MDCoord<2> c(i,j);
