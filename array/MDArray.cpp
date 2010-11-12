@@ -53,7 +53,9 @@ MDArray<nDim>::MDArray(MDCoord<nDim> &dim, Linearization<nDim> *lnrztn, LeafSpli
         this->size *= (u32)dim[i];
     }
    
-    linearization = lnrztn->clone();
+    //linearization = lnrztn->clone();
+	linearization = lnrztn;
+
     char path[40]; // should be long enough
     if (fileName == 0)
     {
@@ -106,7 +108,9 @@ MDArray<nDim>::MDArray(MDCoord<nDim> &dim, StorageType type, Linearization<nDim>
         size *= (u32)dim[i];
     }
    
-    linearization = lnrztn->clone();
+    //linearization = lnrztn->clone();
+	linearization = lnrztn;
+
     char path[40]; // should be long enough..
     if (fileName == 0)
     {
@@ -229,7 +233,7 @@ MDArray<nDim>::~MDArray()
         delete intsp;
         delete leafsp;
     }
-   delete linearization;
+   //delete linearization;
    delete storage;
 }
 
@@ -237,6 +241,12 @@ template<int nDim>
 Linearization<nDim>* MDArray<nDim>::getLinearization()
 {
    return linearization;
+}
+
+template<int nDim>
+void MDArray<nDim>::setLinearization(Linearization<nDim>* nl)
+{
+	linearization = nl;
 }
 
 template<int nDim>
@@ -268,7 +278,7 @@ typename MDArray<nDim>::MDIterator *MDArray<nDim>::createNaturalIterator(Iterato
 }
 
 template<int nDim>
-AccessCode MDArray<nDim>::get(MDCoord<nDim> &coord, Datum_t &datum)
+AccessCode MDArray<nDim>::get(const MDCoord<nDim> &coord, Datum_t &datum) const
 {
    Key_t key = linearization->linearize(coord);
    if (storage->get(key, datum) == AC_OK)
@@ -277,7 +287,7 @@ AccessCode MDArray<nDim>::get(MDCoord<nDim> &coord, Datum_t &datum)
 }
 
 template<int nDim>
-AccessCode MDArray<nDim>::get(Key_t &key, Datum_t &datum)
+AccessCode MDArray<nDim>::get(const Key_t &key, Datum_t &datum) const
 {
    if (storage->get(key, datum) == AC_OK)
       return AC_OK;
@@ -285,7 +295,7 @@ AccessCode MDArray<nDim>::get(Key_t &key, Datum_t &datum)
 }
 
 template<int nDim>
-AccessCode MDArray<nDim>::put(MDCoord<nDim> &coord, const Datum_t &datum)
+AccessCode MDArray<nDim>::put(const MDCoord<nDim> &coord, const Datum_t &datum)
 {
    Key_t key = linearization->linearize(coord);
    if (storage->put(key, datum) == AC_OK)
@@ -294,17 +304,63 @@ AccessCode MDArray<nDim>::put(MDCoord<nDim> &coord, const Datum_t &datum)
 }
 
 template<int nDim>
-AccessCode MDArray<nDim>::put(Key_t &key, const Datum_t &datum)
+AccessCode MDArray<nDim>::put(const Key_t &key, const Datum_t &datum)
 {
    if (storage->put(key, datum) == AC_OK)
       return AC_OK;
    return AC_OutOfRange;
+}
+
+template<int nDim>
+AccessCode MDArray<nDim>::batchPut(const Coord &start, const Coord &end, const Datum_t *data)
+{
+    if (start[0] >= dim[0] || start[1] >= dim[1])
+    {
+        return AC_OutOfRange;
+    }
+    if (end[0] >= dim[0] || end[1] >= dim[1])
+    {
+        return AC_OutOfRange;
+    }
+    if (!(start[0] <= end[0] && start[1] <= end[1]))
+    {
+        return AC_OutOfRange;
+    }
+
+    i64 nRows = end[0] - start[0] + 1;
+    i64 nCols = end[1] - start[1] + 1;
+    i64 putCount = nRows * nCols;
+    KVPair_t *puts = new KVPair_t[putCount];
+    KVPair_t *curPut = puts;
+    const Datum_t *curDatum = data;
+
+    for (i64 row = start[0]; row <= end[0]; row++)
+    {
+        for (i64 col = start[1]; col <= end[1]; col++)
+        {
+            curPut->key = linearization->linearize(Coord(row, col));
+            curPut->datum = curDatum;
+            curPut++;
+            curDatum++;
+        }
+    }
+
+    if (linearization->getType() != ROW)
+    {
+        qsort(puts, putCount, sizeof(KVPair_t), compareKVPair);
+    }
+
+    int ac = storage->batchPut(putCount, puts);
+    delete puts;
+    if (ac == AC_OK)
+        return AC_OK;
+    return AC_OutOfRange;
 }
 
 template<int nDim>
 ArrayInternalIterator* MDArray<nDim>::createInternalIterator(IteratorType t)
 {
-    Key_t start = 0;
+    //Key_t start = 0;
 	return NULL;
     //return storage->createIterator(t, start, size);
 }
@@ -313,3 +369,4 @@ ArrayInternalIterator* MDArray<nDim>::createInternalIterator(IteratorType t)
 template class MDArray<1>;
 template class MDArray<2>;
 template class MDArray<3>;
+

@@ -423,6 +423,16 @@ void BTree::print()
     cout<<"END----------------------------------------"<<endl;
 }
 
+int BTree::batchPut(i64 putCount, const KVPair_t *puts)
+{
+	Cursor cursor(buffer);
+	for (i64 i=0; i<putCount; ++i) {
+		search(puts[i].key, &cursor);
+		putHelper(puts[i].key, *puts[i].datum, &cursor);
+	}
+	return AC_OK;
+}
+
 ArrayInternalIterator *BTree::createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy)
 {
     //if (t == Dense)

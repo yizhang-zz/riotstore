@@ -87,6 +87,13 @@ public:
     Linearization<nDim> * getLinearization();
 
     /**
+     * Sets the linearization of the array.
+     *
+     * \return Linearization.
+     */
+    void setLinearization(Linearization<nDim>*);
+
+    /**
      * Creates a new iterator with the specified linearization.
      *
      * \param t Type of iterator.
@@ -113,8 +120,8 @@ public:
      * \param [out] datum Datum at coord.
      * \return OK if successful, OutOfRange if coord is out of range.
      */
-    AccessCode get(Coord &coord, Datum_t &datum);
-    AccessCode get(Key_t &key, Datum_t &datum);
+    AccessCode get(const Coord &coord, Datum_t &datum) const;
+    AccessCode get(const Key_t &key, Datum_t &datum) const;
 
     /**
      * Puts an entry in the array.
@@ -123,8 +130,22 @@ public:
      * \param [in] datum Datum at coord.
      * \result OK if successful, OutOfRange if coord is out of range.
      */
-    AccessCode put(Coord &coord, const Datum_t &datum);
-    AccessCode put(Key_t &key, const Datum_t &datum);
+    AccessCode put(const Coord &coord, const Datum_t &datum);
+    AccessCode put(const Key_t &key, const Datum_t &datum);
+
+    /**
+      * Puts sub-array of entries into the array.
+      *
+      * \param [in] start Starting coordinate of sub-array.
+      * \param [in] end Last coordinate of sub-array.
+      * \param [in] data array of data values to put into array. NOTE, the order
+      * of values in data should be in Row-Major order such that the first datum
+      * should correspond to the value at start, and the last to the value at
+      * end.
+      * \result OK if successful, OutOfRange is any coord within start and end
+      * is out of range.
+      */
+    AccessCode batchPut(const Coord &start, const Coord &end, const Datum_t *data);
 
     /**
      * Creates an internal iterator over the 1-D storage device.

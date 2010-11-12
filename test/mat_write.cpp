@@ -17,8 +17,8 @@ FILE *pLog;
 FILE *pResult;
 const char *logFile = "log.bin";
 const char *resultFile = "result.bin";
-//const char *array_fileName = "/var/tmp/local/array.bin";
-const char *array_fileName = "/riot/array.bin";
+const char *array_fileName = "/var/tmp/local/array.bin";
+//const char *array_fileName = "/riot/array.bin";
 timeval tim;
 
 struct result
@@ -94,6 +94,40 @@ void doArrayKeyLoop(MDArray *array, result &r)
     double end = tim.tv_sec + tim.tv_usec/1000000.0;
     
     fprintf(pLog, "array key loop time: %f\treads: %i\twrites: %i\tI/O time: %f\tBuffer time: %f\n", end - start, PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, BufferManager::accessTime);
+    r.totalTime += (end - start);
+    r.readCount += PagedStorageContainer::readCount;
+    r.writeCount += PagedStorageContainer::writeCount;
+    r.ioTime += PagedStorageContainer::accessTime;
+    r.bufferTime += BufferManager::accessTime;
+    r.dma_readCount += LinearStorage::readCount;
+    r.dma_writeCount += LinearStorage::writeCount;
+    r.dma_ioTime += LinearStorage::accessTime;
+}
+
+void doArrayBatch(MDArray *array, MDCoord &dim, result &r)
+{
+    i64 rows = dim.coords[0];
+    i64 cols = dim.coords[1];
+
+    MDCoord startCoord(2, 0, 0);
+    MDCoord endCoord(2, rows-1, cols-1);
+    Datum_t *values = new Datum_t[rows*cols];
+    memset(values, 1, sizeof(Datum_t)*rows*cols);
+
+    PagedStorageContainer::resetPerfCounts();
+    BufferManager::resetPerfCounts();
+    LinearStorage::resetPerfCounts();
+    gettimeofday(&tim, NULL);
+    double start = tim.tv_sec + tim.tv_usec/1000000.0;
+
+    array->batchPut(startCoord, endCoord, values);
+
+    gettimeofday(&tim, NULL);
+    double end = tim.tv_sec + tim.tv_usec/1000000.0;
+
+    delete values;
+    
+    fprintf(pLog, "batch array loop time: %f\treads: %i\twrites: %i\tI/O time: %f\tBuffer time: %f\n", end - start, PagedStorageContainer::readCount, PagedStorageContainer::writeCount, PagedStorageContainer::accessTime, BufferManager::accessTime);
     r.totalTime += (end - start);
     r.readCount += PagedStorageContainer::readCount;
     r.writeCount += PagedStorageContainer::writeCount;
@@ -182,6 +216,36 @@ int main()
     pLog = fopen(logFile, "ab+");
     pResult = fopen(resultFile, "ab+");
 
+    // doArrayBatch
+    for (int i = 500; i < 4001; i += 500)
+    {
+        result r;
+        r.resetCounts();
+
+        i64 rows = i;
+        i64 cols = i;
+        MDCoord dim(2, rows, cols);
+        Linearization *lin = new ColMajor(dim);
+        StorageType type = DMA;
+        cout << "i = " << i << endl;
+        fprintf(pLog, "dimensions: (%li, %li)\n", rows, cols);
+
+        for (int j = 0; j < 10; j++)
+        {
+            //doMove(lin, dim);
+            //doLinearize(lin, dim);
+
+            MDArray *array = new MDArray(dim, type, lin, array_fileName); 
+            doArrayBatch(array, dim, r);
+            delete array;
+            remove(array_fileName);
+        }
+
+        delete lin;
+        fprintf(pResult, "dimensions: (%li, %li)\tbatch total time = %f\t reads = %i\twrites = %i\tI/O time = %f\tBuffer time = %f\n", rows, cols, r.totalTime, r.readCount, r.writeCount, r.ioTime, r.bufferTime);
+        fprintf(pResult, "dma_reads = %i\tdma_writes = %i\tdma_accessTime = %f\n", r.dma_readCount, r.dma_writeCount, r.dma_ioTime);
+    }
+  
     // doArrayIterator
     for (int i = 500; i < 501; i += 500)
     {
@@ -203,7 +267,7 @@ int main()
             //doLinearize(lin, dim);
 
             MDArray *array = new MDArray(dim, type, lin, array_fileName); 
-            doArrayIterator(array, new RowMajor(dim), r);
+            doArrayIterator(array, new ColMajor(dim), r);
             delete array;
             remove(array_fileName);
         }
@@ -272,48 +336,7 @@ int main()
         fprintf(pResult, "dimensions: (%li, %li)\tcoord loop total time = %f\t reads = %i\twrites = %i\tI/O time = %f\tBuffer time = %f\n", rows, cols, r.totalTime, r.readCount, r.writeCount, r.ioTime, r.bufferTime);
         fprintf(pResult, "dma_reads = %i\tdma_writes = %i\tdma_accessTime = %f\n", r.dma_readCount, r.dma_writeCount, r.dma_ioTime);
     }
-/*    for (int i = 500000; i < 4001*4001; i += 500000)
-    {
-        for (int j = 0; j < 10; j++)
-        {
-        i64 rows = i;
-        MDCoord dim(2, rows, 1);
-        Linearization *lin = new RowMajor(dim);
-        cout << "i = " << i << endl;
-        //doMove(lin, dim);
-        //doLinearize(lin, dim);
-        StorageType type = DMA;
-        MDArray *array = new MDArray(dim, type, lin, array_fileName); 
-        //doArrayIterator(array, lin);
-        //doArrayLoop(array);
-        doArrayNativeLoop(array);
-        fprintf(pLog, "\n");
-        delete lin;
-        delete array;
-        remove(array_fileName);
-        }
-    }
-    for (int i = 500000; i < 4001*4001; i += 500000)
-    {
-        for (int j = 0; j < 10; j++)
-        {
-        i64 cols = i;
-        MDCoord dim(2, 1, cols);
-        Linearization *lin = new RowMajor(dim);
-        cout << "i = " << i << endl;
-        //doMove(lin, dim);
-        //doLinearize(lin, dim);
-        StorageType type = DMA;
-        MDArray *array = new MDArray(dim, type, lin, array_fileName); 
-        //doArrayIterator(array, lin);
-        //doArrayLoop(array);
-        doArrayNativeLoop(array);
-        fprintf(pLog, "\n");
-        delete lin;
-        delete array;
-        remove(array_fileName);
-        }
-    }*/
+
     fclose(pLog);
     fclose(pResult);
     return 0;

@@ -67,6 +67,8 @@ public:
      */
     virtual int put(const Key_t &key, const Datum_t &datum) = 0;
 
+    virtual int batchPut(i64 putCount, const KVPair_t *puts) = 0;
+
     /**
      * Creates an internal iterator.
      *

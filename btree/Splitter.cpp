@@ -12,6 +12,7 @@
 using namespace Btree;
 
 // Needed to force the compiler to compile the template classes
+/*
 MSplitter<Datum_t> md;
 MSplitter<PID_t> mp;
 RSplitter<Datum_t> rd;
@@ -22,7 +23,7 @@ TSplitter<Datum_t> td(.6);
 TSplitter<PID_t> tp(.6);
 SSplitter<Datum_t> sd;
 SSplitter<PID_t> sp;
-
+*/
 template<class Value>
 int Splitter<Value>::splitHelper(BlockT<Value> **orig, BlockT<Value> **newBlock,
 								 PageHandle newPh, char *newImage,
@@ -312,3 +313,14 @@ int TSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 	return this->splitHelper(orig_, newBlock, newPh, newImage, sp, spKey,
 							 keys+sp, values+sp);
 }
+
+template class MSplitter<Datum_t>;
+template class MSplitter<PID_t>;
+template class RSplitter<Datum_t>;
+template class RSplitter<PID_t>;
+template class BSplitter<Datum_t>;
+template class BSplitter<PID_t>;
+template class TSplitter<Datum_t>;
+template class TSplitter<PID_t>;
+template class SSplitter<Datum_t>;
+template class SSplitter<PID_t>;

@@ -1,7 +1,7 @@
 export RIOT_DMA_BUFFER=10
 export RIOT_BTREE_BUFFER=10
 
-./test-mat-write
+./mat_write
 
 #for i in {1..2}
 

@@ -128,6 +128,57 @@ int DirectlyMappedArray::put(const Key_t &key, const Datum_t &datum)
    return AC_OK;
 }
 
+int DirectlyMappedArray::batchPut(i64 putCount, const KVPair_t *puts)
+{
+    // assume puts are sorted by key
+#ifdef PROFILING
+    static timeval time1, time2;
+    gettimeofday(&time1, NULL);
+#endif
+    PID_t pid;
+    DenseArrayBlock *dab;
+    findPage(puts[0].key, &pid);
+    if (readBlock(pid, &dab) != RC_OK && newBlock(pid, &dab) != RC_OK) {
+        Error("cannot read/allocate page %d",pid);
+        exit(1);
+    }   
+
+    PID_t newPid;
+    i64 nPuts = 0;
+    for (i64 i = 0; i < putCount; i++)
+    {
+        findPage(puts[i].key, &newPid);
+        if (pid != newPid)
+        {
+            dab->batchPut(nPuts, puts + i - nPuts);
+            buffer->markPageDirty(dab->getPageHandle());
+            buffer->unpinPage(dab->getPageHandle());
+            delete dab;
+
+            nPuts = 0;
+            pid = newPid;
+            if (readBlock(pid, &dab) != RC_OK && newBlock(pid, &dab) != RC_OK) {
+                Error("cannot read/allocate page %d",pid);
+                exit(1);
+            }   
+        }
+        nPuts++;
+    }
+    // don't forget put for last block!
+    dab->batchPut(nPuts, puts + putCount - nPuts);
+    buffer->markPageDirty(dab->getPageHandle());
+    buffer->unpinPage(dab->getPageHandle());
+    delete dab;
+
+#ifdef PROFILING
+    gettimeofday(&time2, NULL);
+    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
+        / 1000000.0 ;
+    writeCount++;
+#endif
+    return AC_OK;
+}
+
 ArrayInternalIterator *DirectlyMappedArray::createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy)
 {
    if (t == Dense)
@@ -136,12 +187,6 @@ ArrayInternalIterator *DirectlyMappedArray::createIterator(IteratorType t, Key_t
       return NULL;
    return NULL;
    // return new DMASparseIterator(beginsAt, endsBy, this);
-}
-
-void DirectlyMappedArray::findPage(const Key_t &key, PID_t *pid) 
-{
-   Key_t CAPACITY = DenseArrayBlock::CAPACITY;
-   *pid = key/CAPACITY + 1;
 }
 
 RC_t DirectlyMappedArray::readBlock(PID_t pid, DenseArrayBlock** block) 
