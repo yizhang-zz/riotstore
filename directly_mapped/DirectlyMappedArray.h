@@ -36,8 +36,9 @@ public:
     virtual ~DirectlyMappedArray();
     
     virtual int get(const Key_t &key, Datum_t &datum);
+    virtual int batchGet(i64 getCount, KVPair_t *gets);
     virtual int put(const Key_t &key, const Datum_t &datum);
-    virtual int batchPut(i64 putCount, const KVPair_t *puts);
+    virtual int batchPut(i64 putCount, KVPair_t *puts);
     virtual ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);
     
     void findPage(const Key_t &key, PID_t *pid)
