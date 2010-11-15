@@ -277,6 +277,10 @@ AccessCode MDArray::get(Key_t &key, Datum_t &datum)
 
 AccessCode MDArray::batchGet(MDCoord &start, MDCoord &end, Datum_t *data)
 {
+    if (start.coords[0] >= dim.coords[0] || start.coords[1] >= dim.coords[1])
+    {
+        return AC_OutOfRange;
+    }
     if (end.coords[0] >= dim.coords[0] || end.coords[1] >= dim.coords[1])
     {
         return AC_OutOfRange;
