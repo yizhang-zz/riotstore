@@ -138,6 +138,20 @@ public:
     AccessCode get(Key_t &key, Datum_t &datum);
 
     /**
+      * Gets sub-array of entries
+      *
+      * \param [in] start Starting coordinate of sub-array.
+      * \param [in] end Last coordinate of sub-array.
+      * \param [out] data array of data values ut into array. NOTE, the order
+      * of values in data should be in Row-Major order such that the first datum
+      * should correspond to the value at start, and the last to the value at
+      * end.
+      * \result OK if successful, OutOfRange is any coord within start and end
+      * is out of range.
+      */
+    AccessCode batchGet(MDCoord &start, MDCoord &end, Datum_t *data);
+
+    /**
      * Puts an entry in the array.
      *
      * \param [in] coord Coordinate of the entry.
@@ -159,7 +173,7 @@ public:
       * \result OK if successful, OutOfRange is any coord within start and end
       * is out of range.
       */
-    AccessCode batchPut(MDCoord &start, MDCoord &end, const Datum_t *data);
+    AccessCode batchPut(MDCoord &start, MDCoord &end, Datum_t *data);
 
     /**
      * Creates an internal iterator over the 1-D storage device.

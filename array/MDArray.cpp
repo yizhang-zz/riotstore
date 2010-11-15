@@ -275,6 +275,47 @@ AccessCode MDArray::get(Key_t &key, Datum_t &datum)
    return AC_OutOfRange;
 }
 
+AccessCode MDArray::batchGet(MDCoord &start, MDCoord &end, Datum_t *data)
+{
+    if (end.coords[0] >= dim.coords[0] || end.coords[1] >= dim.coords[1])
+    {
+        return AC_OutOfRange;
+    }
+    if (!(start.coords[0] <= end.coords[0] && start.coords[1] <= end.coords[1]))
+    {
+        return AC_OutOfRange;
+    }
+
+    i64 nRows = end.coords[0] - start.coords[0] + 1;
+    i64 nCols = end.coords[1] - start.coords[1] + 1;
+    i64 getCount = nRows * nCols;
+    KVPair_t *gets = new KVPair_t[getCount];
+    KVPair_t *curGet = gets;
+    Datum_t *curDatum = data;
+
+    for (i64 col = start.coords[1]; col <= end.coords[1]; col++)
+    {
+        for (i64 row = start.coords[0]; row <= end.coords[0]; row++)
+        {
+            curGet->key = linearization->linearize(MDCoord(2, row, col));
+            curGet->datum = curDatum;
+            curGet++;
+            curDatum++;
+        }
+    }
+
+    if (linearization->getType() != COL)
+    {
+        qsort(gets, getCount, sizeof(KVPair_t), compareKVPair);
+    }
+
+    int ac = storage->batchGet(getCount, gets);
+    delete gets;
+    if (ac == AC_OK)
+        return AC_OK;
+    return AC_OutOfRange;
+}
+
 AccessCode MDArray::put(MDCoord &coord, const Datum_t &datum)
 {
    Key_t key = linearization->linearize(coord);
@@ -290,12 +331,8 @@ AccessCode MDArray::put(Key_t &key, const Datum_t &datum)
    return AC_OutOfRange;
 }
 
-AccessCode MDArray::batchPut(MDCoord &start, MDCoord &end, const Datum_t *data)
+AccessCode MDArray::batchPut(MDCoord &start, MDCoord &end, Datum_t *data)
 {
-    if (start.coords[0] >= dim.coords[0] || start.coords[1] >= dim.coords[1])
-    {
-        return AC_OutOfRange;
-    }
     if (end.coords[0] >= dim.coords[0] || end.coords[1] >= dim.coords[1])
     {
         return AC_OutOfRange;
@@ -310,11 +347,11 @@ AccessCode MDArray::batchPut(MDCoord &start, MDCoord &end, const Datum_t *data)
     i64 putCount = nRows * nCols;
     KVPair_t *puts = new KVPair_t[putCount];
     KVPair_t *curPut = puts;
-    const Datum_t *curDatum = data;
+    Datum_t *curDatum = data;
 
-    for (i64 row = start.coords[0]; row <= end.coords[0]; row++)
+    for (i64 col = start.coords[1]; col <= end.coords[1]; col++)
     {
-        for (i64 col = start.coords[1]; col <= end.coords[1]; col++)
+        for (i64 row = start.coords[0]; row <= end.coords[0]; row++)
         {
             curPut->key = linearization->linearize(MDCoord(2, row, col));
             curPut->datum = curDatum;
@@ -323,7 +360,7 @@ AccessCode MDArray::batchPut(MDCoord &start, MDCoord &end, const Datum_t *data)
         }
     }
 
-    if (linearization->getType() != ROW)
+    if (linearization->getType() != COL)
     {
         qsort(puts, putCount, sizeof(KVPair_t), compareKVPair);
     }
