@@ -33,6 +33,7 @@ protected:
 
       /// assume key is within range
       Datum_t get(Key_t key) const;
+      void batchGet(i64 getCount, KVPair_t *gets);
 
       /// assume key is within range
       void put(Key_t key, Datum_t datum);

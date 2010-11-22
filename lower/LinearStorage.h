@@ -58,6 +58,8 @@ public:
      */
     virtual int get(const Key_t &key, Datum_t &datum) = 0;
 
+    virtual int batchGet(i64 getCount, KVPair_t *gets) = 0;
+
     /**
      * Sets the datum for the specified key.
      *
@@ -68,8 +70,6 @@ public:
     virtual int put(const Key_t &key, const Datum_t &datum) = 0;
 
     virtual int batchPut(i64 putCount, const KVPair_t *puts) = 0;
-
-	virtual int batchGet(i64 getCount, KVPair_t *gets) {}
 
     /**
      * Creates an internal iterator.

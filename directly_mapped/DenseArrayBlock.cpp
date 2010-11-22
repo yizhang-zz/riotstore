@@ -23,6 +23,14 @@ Datum_t DenseArrayBlock::get(Key_t key) const
    return *(data + (key - this->lowerBound));
 }
 
+void DenseArrayBlock::batchGet(i64 getCount, KVPair_t *gets)
+{
+    for (i64 i = 0; i < getCount; i++)
+    {
+        *(gets[i].datum) = *(data + (gets[i].key - this->lowerBound));
+    }
+}
+
 /// assume key is within range
 void DenseArrayBlock::put(Key_t key, Datum_t datum)  
 {

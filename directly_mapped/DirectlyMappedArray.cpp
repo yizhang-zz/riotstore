@@ -101,6 +101,68 @@ int DirectlyMappedArray::get(const Key_t &key, Datum_t &datum)
    return AC_OK;
 }
 
+int DirectlyMappedArray::batchGet(i64 getCount, KVPair_t *gets)
+{
+    // assume puts are sorted by key
+#ifdef PROFILING
+    static timeval time1, time2;
+    gettimeofday(&time1, NULL);
+#endif
+    PID_t pid;
+    DenseArrayBlock *dab;
+    RC_t ret;
+    findPage(gets[0].key, &pid);
+    if ((ret=readBlock(pid, &dab)) != RC_OK && ret != RC_NotAllocated) 
+    {
+        Error("cannot read page %d",pid);
+        exit(ret);
+    }   
+
+    PID_t newPid;
+    i64 nGets = 0;
+    for (i64 i = 0; i < getCount; i++)
+    {
+        findPage(gets[i].key, &newPid);
+        if (pid != newPid)
+        {
+            if (ret == RC_NotAllocated)
+            {
+                for (i64 k = nGets; k > 0; k--)
+                {
+                    *(gets[i-k].datum) = DefaultValue;
+                }
+            }
+            else
+            {
+                dab->batchGet(nGets, gets + i - nGets);
+                buffer->unpinPage(dab->getPageHandle());
+                delete dab;
+            }
+
+            nGets = 0;
+            pid = newPid;
+            if ((ret=readBlock(pid, &dab)) != RC_OK && ret != RC_NotAllocated) 
+            {
+                Error("cannot read page %d",pid);
+                exit(ret);
+            }   
+        }
+        nGets++;
+    }
+    // don't forget last block!
+    dab->batchGet(nGets, gets + getCount - nGets);
+    buffer->unpinPage(dab->getPageHandle());
+    delete dab;
+
+#ifdef PROFILING
+    gettimeofday(&time2, NULL);
+    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
+        / 1000000.0 ;
+    writeCount++;
+#endif
+    return AC_OK;
+}
+
 int DirectlyMappedArray::put(const Key_t &key, const Datum_t &datum) 
 {
 #ifdef PROFILING
@@ -110,7 +172,7 @@ int DirectlyMappedArray::put(const Key_t &key, const Datum_t &datum)
    PID_t pid;
    DenseArrayBlock *dab;
    findPage(key, &(pid));
-   if (readBlock(pid, &dab) != RC_OK && newBlock(pid, &dab) != RC_OK) {
+   if (readOrAllocBlock(pid, &dab) != RC_OK) {
        Error("cannot read/allocate page %d",pid);
        exit(1);
    }   
@@ -138,7 +200,7 @@ int DirectlyMappedArray::batchPut(i64 putCount, const KVPair_t *puts)
     PID_t pid;
     DenseArrayBlock *dab;
     findPage(puts[0].key, &pid);
-    if (readBlock(pid, &dab) != RC_OK && newBlock(pid, &dab) != RC_OK) {
+    if (readOrAllocBlock(pid, &dab) != RC_OK) {
         Error("cannot read/allocate page %d",pid);
         exit(1);
     }   
@@ -157,7 +219,7 @@ int DirectlyMappedArray::batchPut(i64 putCount, const KVPair_t *puts)
 
             nPuts = 0;
             pid = newPid;
-            if (readBlock(pid, &dab) != RC_OK && newBlock(pid, &dab) != RC_OK) {
+            if (readOrAllocBlock(pid, &dab) != RC_OK) {
                 Error("cannot read/allocate page %d",pid);
                 exit(1);
             }   
@@ -194,6 +256,17 @@ RC_t DirectlyMappedArray::readBlock(PID_t pid, DenseArrayBlock** block)
    PageHandle ph;
    RC_t ret;
    if ((ret=buffer->readPage(pid, ph)) != RC_OK)
+      return ret;
+   Key_t CAPACITY = DenseArrayBlock::CAPACITY;
+   *block = new DenseArrayBlock(this, ph, CAPACITY*(pid-1), CAPACITY*pid);
+   return RC_OK;
+}
+
+RC_t DirectlyMappedArray::readOrAllocBlock(PID_t pid, DenseArrayBlock** block) 
+{
+   PageHandle ph;
+   RC_t ret;
+   if ((ret=buffer->readOrAllocatePage(pid, ph)) != RC_OK)
       return ret;
    Key_t CAPACITY = DenseArrayBlock::CAPACITY;
    *block = new DenseArrayBlock(this, ph, CAPACITY*(pid-1), CAPACITY*pid);

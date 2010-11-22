@@ -34,6 +34,7 @@ public:
     virtual ~DirectlyMappedArray();
     
     virtual int get(const Key_t &key, Datum_t &datum);
+    virtual int batchGet(i64 getCount, KVPair_t *gets);
     virtual int put(const Key_t &key, const Datum_t &datum);
     virtual int batchPut(i64 putCount, const KVPair_t *puts);
     virtual ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);
@@ -45,6 +46,7 @@ public:
     }
 
     RC_t readBlock(PID_t pid, DenseArrayBlock** block);
+    RC_t readOrAllocBlock(PID_t pid, DenseArrayBlock** block);
     RC_t newBlock(PID_t pid, DenseArrayBlock** block);
     RC_t readNextBlock(PageHandle ph, DenseArrayBlock** block);
     RC_t releaseBlock(DenseArrayBlock* block, bool dirty=false);
