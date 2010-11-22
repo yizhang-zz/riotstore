@@ -20,7 +20,7 @@ public:
 		{
 			blockSize *= blockDims[i];
 			numBlocks[i] = (1+(arrayDims[i]-1)/blockDims[i]);
-			arrayDimsAug[i] = blockDims[i]*numBlocks[i];
+			actualDims[i] = blockDims[i]*numBlocks[i];
 		}
 	}
 
@@ -50,7 +50,7 @@ public:
 		{
 			blockSize *= blockDims[i];
 			numBlocks[i] = (1+(arrayDims[i]-1)/blockDims[i]);
-			arrayDimsAug[i] = blockDims[i]*numBlocks[i];
+			actualDims[i] = blockDims[i]*numBlocks[i];
 		}
 	}
 
@@ -65,17 +65,19 @@ public:
      * \param coord The coord to be linearized.
      * \return Result of linearization.
      */
-    Key_t linearize(const MDCoord<nDim> &coord)
+    Key_t linearize(const MDCoord<nDim> &coord) const
 	{
 		if (nDim == 1) {
 			return (Key_t)coord[0];
 		}
+		for (int i=0; i<nDim; ++i)
+			if (coord[i] >= actualDims[i])
+				return MAX_KEY; // makes it invalid
 
 		i64 blockCoords[nDim];
 		i64 microCoords[nDim];
 		for (int i = 0; i < nDim; i++)
 		{
-			assert(coord[i] < arrayDims[i]);
 			blockCoords[i] = coord[i] / blockDims[i];
 			microCoords[i] = coord[i] % blockDims[i];
 		}
@@ -98,7 +100,7 @@ public:
      * \param key Key in 1-D to be unlinearized.
      * \return The result f unlinearization.
      */
-    MDCoord<nDim> unlinearize(Key_t key)
+    MDCoord<nDim> unlinearize(Key_t key) const
 	{
 		if (nDim == 1)
 			return MDCoord<nDim>(key);
@@ -142,7 +144,7 @@ public:
      * \param diff The difference in linearized space.
      * \return The new coordinate in n-D space.
      */
-    MDCoord<nDim> move(const MDCoord<nDim> &from, KeyDiff_t diff)
+    MDCoord<nDim> move(const MDCoord<nDim> &from, KeyDiff_t diff) const
 	{
 		using namespace std;
 		i64 blockCoords[nDim];
@@ -205,12 +207,12 @@ public:
      *
      * \return A pointer to a clone of subclass type.
      */
-    Linearization<nDim>* clone()
+    Linearization<nDim>* clone() const
 	{
 		return new BlockBased<nDim>(arrayDims, blockDims, blockOrders, microOrders);
 	}
 
-    bool equals(Linearization<nDim> *l)
+    bool equals(Linearization<nDim> *l) const 
 	{
 		if (l->getType() != this->getType())
 			return false;
@@ -218,10 +220,10 @@ public:
 		return (equals(arrayDims,ll->arrayDims)
 				&& equals(blockDims,ll->blockDims)
 				&& equals(blockOrders, ll->blockOrders)
-				&& equals(microOrders, ll->microOrders));
+				&& this->equals(microOrders, ll->microOrders));
 	}
 
-    LinearizationType getType() { return BLOCK; }
+    LinearizationType getType() const { return BLOCK; }
 
     Linearization<nDim> *transpose()
 	{
@@ -239,6 +241,15 @@ public:
 			mo[i] = microOrders[nDim-1-i];
 		return new BlockBased<nDim>(ad, bd, bo, mo);
 	}
+
+	MDCoord<nDim> getBlockDims() const
+	{
+		return MDCoord<nDim>(blockDims);
+	}
+
+	i64 getBlockSize() const { return blockSize; }
+
+	MDCoord<nDim> getActualDims() const { return actualDims; }
 
 	/*
     void getBlock(Key_t key, Key_t &begin, Key_t &end)
@@ -305,7 +316,7 @@ public:
 	}
     */
 	i64 arrayDims[nDim]; /// size of array in each dimension
-	i64 arrayDimsAug[nDim]; /// augmented array size (multiples of block dims)
+	i64 actualDims[nDim]; /// augmented array size (multiples of block dims)
 	i64 numBlocks[nDim];
 	i64 blockDims[nDim]; /// size of block in each dimension
 	u8 blockOrders[nDim]; /// ordering of dimensions between blocks, descending order of significance
@@ -314,7 +325,8 @@ protected:
     i64 blockSize;
 
 	template<class T>
-    bool equals(T *a, T *b) {
+    bool equals(const T *a, const T *b) const 
+	{
         for (int i=0; i<nDim; i++)
             if (a[i]!=b[i])
                 return false;

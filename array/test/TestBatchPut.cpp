@@ -8,8 +8,8 @@ void checkRect(const MDArray<2> &array, const MDCoord<2> &begin, const MDCoord<2
 {
 	int k = 0;
 	Datum_t datum;
-	for (i64 i=begin[0]; i<=end[0]; ++i)
-		for (i64 j=begin[1]; j<=end[1]; ++j) {
+	for (i64 j=begin[1]; j<=end[1]; ++j) 
+		for (i64 i=begin[0]; i<=end[0]; ++i) {
 			array.get(MDCoord<2>(i,j), datum);
 			ASSERT_EQ(data[k++], datum);
 		}

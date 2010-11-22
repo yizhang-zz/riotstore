@@ -9,6 +9,7 @@ include ../../flags.mk
 
 SRC = main.cpp TestBlockBased.cpp TestRowMajor.cpp #TestSplit.cpp TestBtree.cpp 
 SRC += TestBatchPut.cpp
+SRC += TestArith.cpp
 OBJ := $(patsubst %.cpp, %.o, $(SRC))
 DEPS := $(OBJ:.o=.dd)
 #par_objects := $(patsubst %.cpp, %.o, $(wildcard ../*.cpp))

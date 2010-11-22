@@ -26,11 +26,11 @@
  * http://www.cs.caltech.edu/courses/cs11/material/cpp/donnie/cpp-ops.html 
  */
 
-typedef i64 Coord;
 
 template<int nDim>
 class MDCoord
 {
+	typedef i64 Coord;
 private:
 	Coord coords[nDim];
 
@@ -78,7 +78,7 @@ public:
      * \param nDim Number of dimensions
      */ 
 
-    MDCoord(Coord *coords)
+    MDCoord(const Coord *coords)
 	{
 		memcpy(this->coords, coords, sizeof(Coord)*nDim);
 	}

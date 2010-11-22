@@ -6,10 +6,10 @@
 
 enum LinearizationType 
 {
-   NONE,
-   ROW,
-   COL,
-   BLOCK
+   NONE = 0x01,
+   ROW = 0x11,
+   COL = 0x12,
+   BLOCK = 0x10
 };
 
 /**
@@ -60,7 +60,7 @@ public:
      * \param coord The coord to be linearized.
      * \return Result of linearization.
      */
-    virtual Key_t linearize(const MDCoord<nDim> &coord) = 0;
+    virtual Key_t linearize(const MDCoord<nDim> &coord) const = 0;
 
     /**
      * Unlinearizes the given 1-D coord.
@@ -68,7 +68,7 @@ public:
      * \param key Key in 1-D to be unlinearized.
      * \return The result f unlinearization.
      */
-    virtual MDCoord<nDim> unlinearize(Key_t key) = 0;
+    virtual MDCoord<nDim> unlinearize(Key_t key) const = 0;
 
     /*
      * Incrementally linearizes the coord specified as the sum of the
@@ -91,7 +91,7 @@ public:
      * \param diff The difference in linearized space.
      * \return The new coordinate in n-D space.
      */
-    virtual MDCoord<nDim> move(const MDCoord<nDim> &from, KeyDiff_t diff) = 0;
+    virtual MDCoord<nDim> move(const MDCoord<nDim> &from, KeyDiff_t diff) const = 0;
 
     /**
      * Clone method to simulate virtual copy constructor. IMPORTANT: a
@@ -101,12 +101,13 @@ public:
      */
     //virtual Linearization* clone() = 0;
 
-    virtual bool equals(Linearization*) = 0;
+    virtual bool equals(Linearization<nDim> *) const = 0;
 
-    virtual LinearizationType getType() = 0;
+    virtual LinearizationType getType() const = 0;
 
-    virtual Linearization* transpose() { return NULL; }
+    virtual Linearization<nDim>* transpose() { return NULL; }
     
+	virtual MDCoord<nDim> getActualDims() const = 0;
 protected:
     /*
      * \name States

@@ -50,7 +50,6 @@ public:
 	typedef MDCoord<nDim> Coord;
     //static Coord peekDim(const char *fileName);
 
-    u32 size; // number of elements
     /**
      * Constructs a new MDArray with given dimensions.
      *
@@ -61,9 +60,9 @@ public:
      * stored. If omitted, a random name consisting 10 hex digits is
      * generated. Guaranteed no existing file will be overwritten.
      */
-    MDArray(MDCoord<nDim> &dim, StorageType type, Linearization<nDim> *lrnztn, const char *fileName=0);
+    MDArray(const Coord &dim, StorageType type, Linearization<nDim> *lrnztn, const char *fileName=0);
 
-    MDArray(MDCoord<nDim> &dim, Linearization<nDim> *lrnztn, Btree::LeafSplitter *leaf, Btree::InternalSplitter *internal, const char *fileName=0);
+    MDArray(const Coord &dim, Linearization<nDim> *lrnztn, Btree::LeafSplitter *leaf, Btree::InternalSplitter *internal, const char *fileName=0);
     /**
      * Constructs and initializes a MDArray from a file stored on
      * disk. ArrayStorage's factory method can analyze the file and
@@ -145,8 +144,9 @@ public:
       * \result OK if successful, OutOfRange is any coord within start and end
       * is out of range.
       */
-    AccessCode batchPut(const Coord &start, const Coord &end, const Datum_t *data);
+    AccessCode batchPut(const Coord &start, const Coord &end, Datum_t *data);
 
+	AccessCode batchGet(const Coord &start, const Coord &end, Datum_t *data) const;
     /**
      * Creates an internal iterator over the 1-D storage device.
      *
@@ -155,13 +155,16 @@ public:
      */
     ArrayInternalIterator* createInternalIterator(IteratorType t);
     
-    const char* getFileName() { return fileName.c_str(); }
-    int getNDim() { return nDim; }
+    const char* getFileName() const { return fileName.c_str(); }
+    int getNDim() const { return nDim; }
+	Coord getDims() const { return dim; }
+
+	// math methods
+	MDArray<nDim> & operator+=(const MDArray<nDim> &other);
 
 protected:
     MDCoord<nDim> dim;
-
-private:
+    u32 size; // number of elements
     /// The underlying 1-D storage.
     LinearStorage *storage;
     /// The Linearization tied to the underlying 1-D storage.
@@ -173,4 +176,23 @@ private:
     bool allocatedSp;
 };
 
+class Matrix : public MDArray<2>
+{
+public:
+    Matrix(const Coord &dim, StorageType type, Linearization<2> *lrnztn, const char *fileName=0)
+		: MDArray<2>(dim, type, lrnztn, fileName)
+	{
+	}
+
+    Matrix(const Coord &dim, Linearization<2> *lrnztn, Btree::LeafSplitter *leaf, Btree::InternalSplitter *internal, const char *fileName=0)
+		: MDArray<2>(dim, lrnztn, leaf, internal, fileName)
+	{
+	}
+
+    Matrix(const char *fileName) : MDArray<2>(fileName)
+	{
+	}
+
+	Matrix operator*(const Matrix &other);
+};
 #endif
