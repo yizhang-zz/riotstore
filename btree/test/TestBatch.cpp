@@ -16,17 +16,23 @@ TEST(Btree, Batch)
 	const int rows = 400;
 	const int cols = 400;
 	BTree *tree = new BTree("batch.bin", rows*cols, lsp, isp);
+	Datum_t datum;
+
+	tree->put(0, 0.0);
+	tree->put(1, 1.0);
+	tree->print();
+	tree->put(1, 0.0);
+	tree->print();
 
 	for (int i=0; i<rows; ++i)
 		for (int j=0; j<cols; ++j) {
-			tree->put(j*cols+i, j*cols+i+1.0);
+			tree->put(j*cols+i, (double)j*cols+i);
 		}
 
-	Datum_t datum;
 	for (int i=0; i<rows; ++i)
 		for (int j=0; j<cols; ++j) {
 			tree->get(i*rows+j, datum);
-			ASSERT_DOUBLE_EQ(i*rows+j+1.0, datum)<<" for key="<<i<<endl;
+			ASSERT_DOUBLE_EQ(i*rows+j, datum)<<"for key="<<i*rows+j<<endl;
 		}
 	delete tree;
 

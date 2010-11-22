@@ -155,7 +155,7 @@ inline std::ostream & operator<<(std::ostream &out, const Entry &e)
 typedef struct
 {
     Key_t key;
-    const Datum_t *datum;
+    Datum_t *datum;
 } KVPair_t;
 
 int compareKVPair(const void *a, const void *b);

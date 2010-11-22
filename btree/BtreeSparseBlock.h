@@ -82,10 +82,10 @@ public:
 	int put(Key_t key, const T &v, int *index);
 	int putRangeSorted(Key_t *keys, T *values, int num, int *numPut);
 	void truncate(int sp, Key_t spKey);
-	BlockT<T> *switchFormat()
-	{
-		return NULL;
-	}
+
+	// Actual implementations in specializations
+	int put(int index, Key_t key, const T &v) { return kOK; }
+	BlockT<T> *switchFormat() { return NULL; }
 
 	//u16 getCapacity() const { return 0; }
 	//int getThis->HeaderSize() const { return 0; }
@@ -199,6 +199,12 @@ SparseBlock<Datum_t>::SparseBlock(PageHandle ph, char *image, Key_t beginsAt, Ke
 
 template<>
 BlockT<Datum_t> * SparseBlock<Datum_t>::switchFormat();
+
+template<>
+int SparseBlock<PID_t>::put(int index, Key_t key, const PID_t &val);
+
+template<>
+int SparseBlock<Datum_t>::put(int index, Key_t key, const Datum_t &val);
 /*
 template<>
 inline u16 SparseBlock<PID_t>::getCapacity() const

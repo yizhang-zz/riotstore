@@ -51,19 +51,21 @@ public:
 	int getRange(int beginsAt, int endsBy, Key_t *keys, Datum_t *values) const;
 	int getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, Datum_t *values) const;
 	int put(Key_t key, const Datum_t &v, int *index);
+	int put(int index, Key_t key, const Datum_t &v);
 	int putRangeSorted(Key_t *keys, Datum_t *values, int num, int *numPut);
 	void truncate(int pos, Key_t end);
 	LeafBlock *switchFormat();
 	void print() const;
 
-	Key_t key(int index) const
+	Key_t key(int index) const { return key_(index); }
+	Key_t key_(int index) const { return *headKey + index; }
+	Datum_t &value(int index) const { return value_(index); }
+	Datum_t &value_(int index) const
 	{
-		return *headKey + index;
-	}
-
-	Datum_t &value(int index) const
-	{
-		return data[(index+*headIndex)%capacity];
+		int i = index + *headIndex;
+		if (i >= capacity)
+			i -= capacity;
+		return data[i];
 	}
 
 	class DenseIterator : public boost::iterator_facade<

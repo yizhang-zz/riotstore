@@ -160,7 +160,6 @@ template<class T>
 int SparseBlock<T>::put(Key_t key, const T &v, int *index)
 {
 	assert(key >= this->lower && key < this->upper);
-	//int index;
 
 	// check if overwriting a record
 	if (search(key, *index) == kOK) {
@@ -193,6 +192,67 @@ int SparseBlock<T>::put(Key_t key, const T &v, int *index)
 	memmove(pData+(*index+1)*kCellSize, pData+(*index)*kCellSize, kCellSize*(*this->nEntries-*index));
 	setCell(pData+kCellSize*(*index), key, v);
 	*this->nEntries += 1;
+	return kOK;
+}
+
+template<>
+int SparseBlock<Datum_t>::put(int index, Key_t key, const Datum_t &v)
+{
+	assert(key >= this->lower && key < this->upper);
+
+	// check if overwriting a record
+	if (index < *this->nEntries && key_(index) == key) {
+		if (v == Block::kDefaultValue) { // delete existent
+			memmove(pData+index*kCellSize, pData+(index+1)*kCellSize, kCellSize*(*this->nEntries-index-1));
+			--*this->nEntries;
+		}
+		else  // overwrite existent
+			value_(index) = v;
+		return kOK;
+	}
+	else if (v == Block::kDefaultValue) // delete non-existent
+		return kOK;
+
+	if (*this->nEntries >= this->capacity) { // block full
+		this->isOverflowed = true;
+		this->overflow.key = key;
+		this->overflow.value = v;
+		this->overflow.index = index;
+#ifndef DISABLE_DENSE_LEAF
+		return canSwitchFormat()? kSwitchFormat : kOverflow;
+#else
+		return kOverflow;
+#endif
+	}
+
+	memmove(pData+(index+1)*kCellSize, pData+index*kCellSize, kCellSize*(*this->nEntries-index));
+	setCell(pData+kCellSize*index, key, v);
+	++*this->nEntries;
+	return kOK;
+}
+
+template<>
+int SparseBlock<PID_t>::put(int index, Key_t key, const PID_t &v)
+{
+	assert(key >= this->lower && key < this->upper);
+
+	// check if overwriting a record
+	if (index < *nEntries && key_(index) == key) {
+		value_(index) = v;
+		return kOK;
+	}
+
+	if (*this->nEntries >= this->capacity) { // block full
+		this->isOverflowed = true;
+		this->overflow.key = key;
+		this->overflow.value = v;
+		this->overflow.index = index;
+		return kOverflow;
+	}
+
+	memmove(pData+(index+1)*kCellSize, pData+index*kCellSize, kCellSize*(*this->nEntries-index));
+	setCell(pData+kCellSize*index, key, v);
+	++*this->nEntries;
 	return kOK;
 }
 

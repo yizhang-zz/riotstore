@@ -45,7 +45,7 @@ class LeafHist;
 		PageHandle headerPage;
 		static const PID_t headerPID = 0;
   
-		void split(Cursor *cursor);
+		void split(Cursor &cursor);
   
 		PID_t lastPageInBatch; // for batch insertion
 		int   lastPageCapacity;
@@ -87,7 +87,7 @@ class LeafHist;
 
 		// cursor can be a valid path, in which case the search is
 		// incremental (first up the tree and then down)
-		int search(Key_t key, Cursor *cursor);
+		int search(Key_t key, Cursor &cursor);
 
 #ifdef USE_BATCH_BUFFER
 		// finds the PID of the leaf block where key should go into
@@ -99,6 +99,7 @@ class LeafHist;
 		int put(const Key_t &key, const Datum_t &datum);
         int batchPut(i64 putCount, const KVPair_t *puts); 
 		int get(const Key_t &key, Datum_t &datum);
+        int batchGet(i64 getCount, KVPair_t *gets); 
 
 		// Iterator iterates over a collection of type Entry
 		template<class Iterator>
@@ -107,8 +108,7 @@ class LeafHist;
 			Cursor cursor(buffer);
 			int ret = 0;
 			for (; begin != end; ++begin) {
-				search(begin->key, &cursor);
-				putHelper(begin->key, begin->datum, &cursor);
+				putHelper(begin->key, begin->datum, cursor);
 				++ret;
 			}
 			return ret;
@@ -154,7 +154,8 @@ class LeafHist;
 		void initBatching();
 #endif
 		void print(PID_t pid, Key_t beginsAt, Key_t endsBy, int depth);
-		int putHelper(Key_t key, Datum_t datum, Cursor *cursor);
+		int putHelper(Key_t key, Datum_t datum, Cursor &cursor);
+		int getHelper(Key_t key, Datum_t &datum, Cursor &cursor);
 
 		void onNewLeaf(Block *leaf)
 		{

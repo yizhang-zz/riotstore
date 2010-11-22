@@ -106,12 +106,8 @@ Status DenseLeafBlock::extendStoredRange(Key_t key)
 int DenseLeafBlock::search(Key_t key, int &index) const
 {
 	assert(key >= lower && key < upper);
-	Key_t tailKey = getTailKey();
-	if (key >= *headKey && key < tailKey) {
-		index = key-*headKey;
-		return kOK;
-	}
-	return kNotFound;
+	index = key-*headKey;
+	return (key >= *headKey && key < getTailKey()) ? kOK : kNotFound;
 }
 
 //TODO: if key is outside of [head, tail) range, should we return value
@@ -121,7 +117,7 @@ int DenseLeafBlock::get(Key_t key, Datum_t &v) const
 	assert(key >= lower && key < upper);
 	Key_t tailKey = getTailKey();
 	if (key >= *headKey && key < tailKey) {
-		v = value(key-*headKey);
+		v = value_(key-*headKey);
 		return kOK;
 	}
 	return kNotFound;
@@ -130,8 +126,8 @@ int DenseLeafBlock::get(Key_t key, Datum_t &v) const
 int DenseLeafBlock::get(int index, Key_t &key, Datum_t &v) const
 {
 	assert(index >= 0 && index < getSpan());
-	key = this->key(index);
-	v = this->value(index);
+	key = key_(index);
+	v = value_(index);
 	return kOK;
 }
 
@@ -166,7 +162,7 @@ int DenseLeafBlock::put(Key_t key, const Datum_t &v, int *index)
 	Status s;
 	switch(s=extendStoredRange(key)) {
 	case kOK:
-		this->value(key-*headKey) = v;
+		value_(key-*headKey) = v;
 		*nEntries += 1;
 		*index = key-*headKey;
 		return kOK;
@@ -253,6 +249,48 @@ int DenseLeafBlock::put(Key_t key, const Datum_t &v, int *index)
 		}
 	}
 	*/
+}
+
+int DenseLeafBlock::put(int index, Key_t key, const Datum_t &v)
+{
+	assert(key >= lower && key < upper);
+	if (v == Block::kDefaultValue) {
+		if (*nEntries == 0 || key < *headKey || key >= getTailKey()
+				|| value_(index) == Block::kDefaultValue)
+			return kOK;
+		else { // deleting a value
+			value_(index) = v;
+			--*nEntries;
+			return kOK;
+		}
+	}
+			
+	// Is block empty?
+	if (*nEntries == 0) {
+		*headKey = key;
+		*headIndex = 0;
+		*tailIndex = 1;
+		data[0] = v;
+		*nEntries = 1;
+		return kOK;
+	}
+
+	Status s;
+	switch(s=extendStoredRange(key)) {
+	case kOK:
+		value_(key-*headKey) = v;
+		++*nEntries;
+		return kOK;
+	case kOverflow:
+	case kSwitchFormat:
+		isOverflowed = true;
+		overflow.key = key;
+		overflow.value = v;
+		overflow.index = key-*headKey;
+		return s;
+	default:
+		return s;
+	}
 }
 
 int DenseLeafBlock::getRange(Key_t beginsAt, Key_t endsBy, Datum_t *values) const

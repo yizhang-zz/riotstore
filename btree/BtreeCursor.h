@@ -12,9 +12,15 @@ class Cursor
 public:
     static const int MaxDepth = 20;
 
+	struct Level {
+		Block *block;
+		int index;
+	};
+
 	BufferManager *buffer;
-    Block *trace[MaxDepth];
-    int indices[MaxDepth];
+	Level levels[MaxDepth];
+    //Block *trace[MaxDepth];
+    //int indices[MaxDepth];
     int current; // current position in the trace
 	Key_t key;   // the key searched/inserted using this cursor
 	
@@ -25,8 +31,8 @@ public:
     ~Cursor()
 	{
 		for (int i=current; i>=0; i--) {
-			buffer->unpinPage(trace[i]->pageHandle);
-			delete trace[i];
+			buffer->unpinPage(levels[i].block->pageHandle);
+			delete levels[i].block;
 		}
 	}
 
@@ -34,10 +40,21 @@ public:
 	{
 		assert(current<MaxDepth);
 		for (int i=current; i>=0; i--) {
-			trace[i+1] = trace[i];
-			indices[i+1] = indices[i];
+			levels[i+1] = levels[i];
+			//trace[i+1] = trace[i];
+			//indices[i+1] = indices[i];
 		}
 		current++;
+	}
+
+	Level & operator[](int i) 
+	{
+		return levels[i];
+	}
+
+	const Level & operator[](int i) const
+	{
+		return levels[i];
 	}
 };
 }

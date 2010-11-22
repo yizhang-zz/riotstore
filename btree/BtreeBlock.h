@@ -19,6 +19,7 @@ namespace Btree
 		kOverwrite,
 		kOverflow,
 		kNotFound,
+		kOutOfBound,
 		kSwitchFormat
 	};
 
@@ -230,9 +231,11 @@ public:
 	BlockT(PageHandle ph, char *image, Key_t lower, Key_t upper):Block(ph,image,lower,upper)
 	{
 	}
-	virtual int get(Key_t key, T &v) const = 0;
+
 	virtual Key_t key(int index) const = 0;
 	virtual T &value(int index) const = 0;
+
+	virtual int get(Key_t key, T &v) const = 0;
 	virtual int get(int index, Key_t &key, T &val) const = 0;
 	// Returns the beginsAt-th to the endsBy-th (exclusive) records, counting
 	// either default-valued or non-default-valued records (in dense format).
@@ -242,7 +245,8 @@ public:
 	virtual int getRange(int beginsAt, int endsBy, Key_t *keys, T *values) const = 0;
 	virtual int getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, T *values) const = 0;
 
-	virtual int put(Key_t key, const T &v, int *index) = 0;
+	//virtual int put(Key_t key, const T &v, int *index) = 0;
+	virtual int put(int index, Key_t key, const T &v) = 0;
 	virtual int putRangeSorted(Key_t *keys, T *values, int num, int *numPut) = 0;
 
 #ifndef DISABLE_DENSE_LEAF
