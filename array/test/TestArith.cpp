@@ -28,29 +28,45 @@ void printMDArray(const MDArray<nDim> &array)
 
 TEST(Arith, Add)
 {
-	i64 arrayDims[] = {3L, 3L};
-	i64 blockDims[] = {2L, 2L};
+	i64 arrayDims[] = {50L, 40L};
+	i64 blockDims[] = {10L, 10L};
 	u8  orders[] = {0,1};
 	i64 rows = arrayDims[0];
 	i64 cols = arrayDims[1];
 	BlockBased<2> *block = new BlockBased<2>(arrayDims, blockDims, orders, orders);
-	Matrix a(MDCoord<2>(arrayDims), block, NULL, NULL, "1.bin");
+	//Matrix a(MDCoord<2>(arrayDims), DMA, block, "a.bin");
+	Matrix a(MDCoord<2>(arrayDims), BTREE, block, "a.bin");
 
 	i64 total = rows*cols;
 	Datum_t *initial = new Datum_t[total];
 	for (int i=0; i<total; ++i)
-		initial[i] = i+1;
+		initial[i] = i;
 
 	a.batchPut(MDCoord<2>(0,0), MDCoord<2>(rows-1, cols-1), initial);
+	cout<<"a="<<endl;
 	printMDArray(a);
 
-	Matrix b(MDCoord<2>(arrayDims), block, NULL, NULL, "1.bin");
+	Matrix b(MDCoord<2>(arrayDims), BTREE, block, "b.bin");
 	b.batchPut(MDCoord<2>(0,0), MDCoord<2>(rows-1, cols-1), initial);
+	cout<<"b="<<endl;
+	printMDArray(b);
+
 	a += b;
-	cout<<"--- after addition ---"<<endl;
+	cout<<"a+b="<<endl;
 	printMDArray(a);
 
-	cout<<"--- after multiplication ---"<<endl;
-	Matrix c(a*a);
+	Linearization<2> *block1 = block->transpose();
+	Matrix t(MDCoord<2>(cols, rows), BTREE, block1, "t.bin");
+	//Matrix t(MDCoord<2>(cols, rows), DMA, block1, "t.bin");
+	t.batchPut(MDCoord<2>(0,0), MDCoord<2>(cols-1, rows-1), initial);
+	cout<<"t="<<endl;
+	printMDArray(t);
+
+	cout<<"b*t="<<endl;
+	Matrix c(b*t);
 	printMDArray(c);
+
+	delete[] initial;
+	delete block;
+	delete block1;
 }

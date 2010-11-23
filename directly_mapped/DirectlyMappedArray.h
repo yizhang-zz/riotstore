@@ -7,8 +7,8 @@
 
 struct DirectlyMappedArrayHeader 
 {
-   uint32_t numElements;
-   enum DataType dataType;
+	Key_t endsBy;
+	enum DataType dataType;
     char ch;
 };
 
@@ -23,9 +23,6 @@ struct DirectlyMappedArrayHeader
  */
 class DirectlyMappedArray : public LinearStorage 
 {
-protected:
-    u32 numElements;
-
 public:
     const static double DefaultValue;
     /// If numElements > 0, create a new array; otherwise read from disk.
@@ -52,8 +49,6 @@ public:
     RC_t releaseBlock(DenseArrayBlock* block, bool dirty=false);
     Key_t getPageLowerBound(PID_t pid);
     Key_t getPageUpperBound(PID_t pid);
-    uint32_t getLowerBound();
-    uint32_t getUpperBound();
     void *getPageImage(PageHandle ph);
 };
 

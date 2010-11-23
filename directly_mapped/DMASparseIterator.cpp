@@ -40,7 +40,7 @@ bool DMASparseIterator::isZero()
 DMASparseIterator::DMASparseIterator(Key_t _beginsAt, Key_t _endsBy, DirectlyMappedArray* array) 
 {
    this->array = array;
-   if (array->getLowerBound() > beginsAt || array->getUpperBound() < endsBy)
+   if (0 > beginsAt || array->getUpperBound() < endsBy)
       throw std::string("Iterator range out of array range.");
    this->beginsAt = _beginsAt;
    this->endsBy = _endsBy;

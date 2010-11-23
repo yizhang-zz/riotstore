@@ -7,7 +7,7 @@ OS = $(shell uname -s)
 
 ifeq ($(OS), SunOS)
 	CXX = g++
-	CXXFLAGS += -g -O3 -DNDEBUG -Wall -fPIC 
+	CXXFLAGS += -g -DDEBUG -Wall -fPIC 
 	DEPFLAGS = -MM -MG
 	#CXX = CXX
 	#CXXFLAGS += -g -xO2 -xarch=native -KPIC -library=stlport4

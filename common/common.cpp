@@ -6,17 +6,6 @@
 #include <map>
 using namespace std;
 
-void Error(const char *s, ...)
-{
-	va_list(arg);
-	va_start(arg, s);
-    char *buf = new char[strlen(s)+16];
-    sprintf(buf, "[ERROR] %s\n", s);
-	vfprintf(stderr, buf, arg);
-	va_end(arg);
-    delete[] buf;
-}
-
 static double R_ValueOfNA()
 {
 	/* The gcc shipping with RedHat 9 gets this wrong without
@@ -82,19 +71,6 @@ void freePageImage(PageImage p)
 {
     free(p);
 }
-
-#ifdef DEBUG
-void debug(const char *format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    char *buf = new char[strlen(format)+12];
-    sprintf(buf, "[DEBUG] %s\n", format);
-    vfprintf(stderr, buf, args);
-    va_end(args);
-    delete[] buf;
-}
-#endif
 
 int compareKVPair(const void *a, const void *b)
 {

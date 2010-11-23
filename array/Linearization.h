@@ -105,7 +105,7 @@ public:
 
     virtual LinearizationType getType() const = 0;
 
-    virtual Linearization<nDim>* transpose() { return NULL; }
+    virtual Linearization<nDim>* transpose() const { return NULL; }
     
 	virtual MDCoord<nDim> getActualDims() const = 0;
 protected:

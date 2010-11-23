@@ -358,12 +358,12 @@ void kPermute(T *array, T begin, T end, int k)
 	}
 }
 
-void Error(const char *format, ...);
+#define Error(format, ...) fprintf(stderr, "[ERROR] " __FILE__ ":%d " format "\n", __LINE__, __VA_ARGS__)
 
 #ifdef DEBUG
-void debug(const char *format, ...);
+#define Debug(format, ...) fprintf(stderr, "[DEBUG] " __FILE__ ":%d " format "\n", __LINE__, __VA_ARGS__)
 #else
-#define debug(...)
+#define Debug(...)
 #endif
 
 inline int findFirstZeroBit(u32 word)

@@ -38,7 +38,7 @@ DMADenseIterator::DMADenseIterator(Key_t _beginsAt, Key_t _endsBy, DirectlyMappe
     dirty = false;
     block = NULL;
     this->array = array;
-    if (array->getLowerBound() > _beginsAt || array->getUpperBound() < _endsBy)
+    if (0 > _beginsAt || array->getUpperBound() < _endsBy)
         throw std::string("Iterator range out of array range.");
     setIndexRange(_beginsAt, _endsBy);
 }

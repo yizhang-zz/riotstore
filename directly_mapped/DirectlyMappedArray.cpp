@@ -24,14 +24,14 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numEleme
       remove(fileName);
       file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
       buffer = new BufferManager(file, config->dmaBufferSize); 
-      this->numElements = numElements;
+      upper = numElements;
       PageHandle ph;
 	  RC_t rc = buffer->allocatePageWithPID(0, ph);
       assert(RC_OK == rc);
       // page is already marked dirty
       DirectlyMappedArrayHeader* header = (DirectlyMappedArrayHeader*)
           (buffer->getPageImage(ph));
-      header->numElements = numElements;
+      header->endsBy = numElements;
       Datum_t x;
       header->dataType = GetDataType(x);
       header->ch = 'z';
@@ -49,7 +49,7 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numEleme
       DirectlyMappedArrayHeader* header = (DirectlyMappedArrayHeader*)
           (buffer->getPageImage(ph));
       buffer->unpinPage(ph);
-      this->numElements = header->numElements;
+      upper = header->endsBy;
       Datum_t x;
       assert(IsSameDataType(x, header->dataType));
    }
@@ -69,29 +69,22 @@ int DirectlyMappedArray::get(const Key_t &key, Datum_t &datum)
     static timeval time1, time2;
     gettimeofday(&time1, NULL);
 #endif
-   if (key < 0 || numElements <= key) 
-   {
-      return AC_OutOfRange;
-   }
+	if (key >= upper) {
+		datum = DefaultValue;
+		return AC_OutOfRange;
+	}
 
    PID_t pid;
    DenseArrayBlock *dab;
    RC_t ret;
    findPage(key, &(pid));
-   if ((ret=readBlock(pid, &dab)) != RC_OK) {
-       if (ret == RC_NotAllocated) {
-           datum = DefaultValue;
-           return AC_OK;
-       }
-       else {
-           Error("cannot read page %d", pid);
-           exit(ret);
-       }
+   if ((ret=readBlock(pid, &dab)) != RC_OK)
+	   datum = DefaultValue;
+   else {
+	   datum = dab->get(key);
+	   buffer->unpinPage(dab->getPageHandle());
+	   delete dab;
    }
-
-   datum = dab->get(key);
-   buffer->unpinPage(dab->getPageHandle());
-   delete dab;
 #ifdef PROFILING
     gettimeofday(&time2, NULL);
     accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
@@ -108,51 +101,49 @@ int DirectlyMappedArray::batchGet(i64 getCount, KVPair_t *gets)
     static timeval time1, time2;
     gettimeofday(&time1, NULL);
 #endif
-    PID_t pid;
+    PID_t lastPid = INVALID_PID;
     DenseArrayBlock *dab;
-    RC_t ret;
-    findPage(gets[0].key, &pid);
-    if ((ret=readBlock(pid, &dab)) != RC_OK && ret != RC_NotAllocated) 
-    {
-        Error("cannot read page %d",pid);
-        exit(ret);
-    }   
 
     PID_t newPid;
     i64 nGets = 0;
-    for (i64 i = 0; i < getCount; i++)
-    {
-        findPage(gets[i].key, &newPid);
-        if (pid != newPid)
-        {
-            if (ret == RC_NotAllocated)
-            {
-                for (i64 k = nGets; k > 0; k--)
-                {
-                    *(gets[i-k].datum) = DefaultValue;
-                }
-            }
-            else
-            {
-                dab->batchGet(nGets, gets + i - nGets);
-                buffer->unpinPage(dab->getPageHandle());
-                delete dab;
-            }
+    for (i64 i = 0; i < getCount; i++) {
+		if (gets[i].key >= upper) {
+			*gets[i].datum = DefaultValue;
+			newPid = INVALID_PID;
+		}
+		else
+			findPage(gets[i].key, &newPid);
 
-            nGets = 0;
-            pid = newPid;
-            if ((ret=readBlock(pid, &dab)) != RC_OK && ret != RC_NotAllocated) 
-            {
-                Error("cannot read page %d",pid);
-                exit(ret);
-            }   
-        }
-        nGets++;
-    }
+		if (lastPid != newPid) {
+			if (lastPid != INVALID_PID) {
+				if (readBlock(lastPid, &dab) != RC_OK) {
+					for (i64 k = nGets; k > 0; k--)
+						*(gets[i-k].datum) = DefaultValue;
+				}
+				else {
+					dab->batchGet(nGets, gets + i - nGets);
+					buffer->unpinPage(dab->getPageHandle());
+					delete dab;
+				}
+			}
+
+			nGets = 0;
+			lastPid = newPid;
+		}
+		nGets++;
+	}
     // don't forget last block!
-    dab->batchGet(nGets, gets + getCount - nGets);
-    buffer->unpinPage(dab->getPageHandle());
-    delete dab;
+	if (nGets > 0 && lastPid != INVALID_PID) {
+		if (readBlock(lastPid, &dab) != RC_OK) {
+			for (i64 k = nGets; k > 0; k--)
+				*(gets[getCount-k].datum) = DefaultValue;
+		}
+		else {
+			dab->batchGet(nGets, gets + getCount - nGets);
+			buffer->unpinPage(dab->getPageHandle());
+			delete dab;
+		}
+	}
 
 #ifdef PROFILING
     gettimeofday(&time2, NULL);
@@ -166,28 +157,32 @@ int DirectlyMappedArray::batchGet(i64 getCount, KVPair_t *gets)
 int DirectlyMappedArray::put(const Key_t &key, const Datum_t &datum) 
 {
 #ifdef PROFILING
-    static timeval time1, time2;
+	static timeval time1, time2;
     gettimeofday(&time1, NULL);
 #endif
-   PID_t pid;
-   DenseArrayBlock *dab;
-   findPage(key, &(pid));
-   if (readOrAllocBlock(pid, &dab) != RC_OK) {
-       Error("cannot read/allocate page %d",pid);
-       exit(1);
-   }   
-   
-   dab->put(key, datum);
-   buffer->markPageDirty(dab->getPageHandle());
-   buffer->unpinPage(dab->getPageHandle());
-   delete dab;
+	PID_t pid;
+	DenseArrayBlock *dab;
+	findPage(key, &(pid));
+	int ret = readBlock(pid, &dab);
+	if (datum == DefaultValue && ret != RC_OK)
+		return AC_OK; // delete non-existent
+
+	if (ret != RC_OK && newBlock(pid, &dab) != RC_OK) {
+		Error("cannot read/allocate page %d",pid);
+		exit(1);
+	}   
+
+	dab->put(key, datum);
+	buffer->markPageDirty(dab->getPageHandle());
+	buffer->unpinPage(dab->getPageHandle());
+	delete dab;
 #ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
-    writeCount++;
+	gettimeofday(&time2, NULL);
+	accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
+		/ 1000000.0 ;
+	writeCount++;
 #endif
-   return AC_OK;
+	return AC_OK;
 }
 
 int DirectlyMappedArray::batchPut(i64 putCount, const KVPair_t *puts)
@@ -197,40 +192,57 @@ int DirectlyMappedArray::batchPut(i64 putCount, const KVPair_t *puts)
     static timeval time1, time2;
     gettimeofday(&time1, NULL);
 #endif
-    PID_t pid;
+    PID_t lastPid =  INVALID_PID;
     DenseArrayBlock *dab;
-    findPage(puts[0].key, &pid);
-    if (readOrAllocBlock(pid, &dab) != RC_OK) {
-        Error("cannot read/allocate page %d",pid);
-        exit(1);
-    }   
+    //findPage(puts[0].key, &pid);
+    //if (readOrAllocBlock(pid, &dab) != RC_OK) {
+    //    Error("cannot read/allocate page %d",pid);
+    //    exit(1);
+    //}   
 
     PID_t newPid;
     i64 nPuts = 0;
+	bool hasNonDefault = false;
+	int ret;
     for (i64 i = 0; i < putCount; i++)
     {
-        findPage(puts[i].key, &newPid);
-        if (pid != newPid)
+		if (puts[i].key >= upper)
+			newPid = INVALID_PID;
+		else
+			findPage(puts[i].key, &newPid);
+		if (*puts[i].datum != DefaultValue)
+			hasNonDefault = true;
+
+        if (lastPid != newPid)
         {
-            dab->batchPut(nPuts, puts + i - nPuts);
-            buffer->markPageDirty(dab->getPageHandle());
-            buffer->unpinPage(dab->getPageHandle());
-            delete dab;
+			if (lastPid != INVALID_PID) {
+				if ((ret=readBlock(lastPid, &dab)) == RC_OK || hasNonDefault) {
+					if (ret != RC_OK)
+						newBlock(lastPid, &dab);
+					dab->batchPut(nPuts, puts + i - nPuts);
+					buffer->markPageDirty(dab->getPageHandle());
+					buffer->unpinPage(dab->getPageHandle());
+					delete dab;
+				}
+			}
 
             nPuts = 0;
-            pid = newPid;
-            if (readOrAllocBlock(pid, &dab) != RC_OK) {
-                Error("cannot read/allocate page %d",pid);
-                exit(1);
-            }   
+			hasNonDefault = false;
+            lastPid = newPid;
         }
         nPuts++;
     }
     // don't forget put for last block!
-    dab->batchPut(nPuts, puts + putCount - nPuts);
-    buffer->markPageDirty(dab->getPageHandle());
-    buffer->unpinPage(dab->getPageHandle());
-    delete dab;
+	if (nPuts > 0 && lastPid != INVALID_PID) {
+		if ((ret=readBlock(lastPid, &dab)) == RC_OK || hasNonDefault) {
+			if (ret != RC_OK)
+				newBlock(lastPid, &dab);
+			dab->batchPut(nPuts, puts + putCount - nPuts);
+			buffer->markPageDirty(dab->getPageHandle());
+			buffer->unpinPage(dab->getPageHandle());
+			delete dab;
+		}
+	}
 
 #ifdef PROFILING
     gettimeofday(&time2, NULL);
@@ -276,7 +288,7 @@ RC_t DirectlyMappedArray::readOrAllocBlock(PID_t pid, DenseArrayBlock** block)
 RC_t DirectlyMappedArray::readNextBlock(PageHandle ph, DenseArrayBlock** block) 
 {
     PID_t pid = buffer->getPID(ph);
-    if (DenseArrayBlock::CAPACITY*pid >= numElements)
+    if (DenseArrayBlock::CAPACITY*pid >= upper)
         return RC_OutOfRange;
     RC_t ret;
     if ((ret=buffer->readPage(pid+1, ph)) != RC_OK)
@@ -303,16 +315,6 @@ RC_t DirectlyMappedArray::releaseBlock(DenseArrayBlock* block, bool dirty)
         buffer->markPageDirty(block->getPageHandle());
     }
     return buffer->unpinPage((block->getPageHandle()));
-}
-
-uint32_t DirectlyMappedArray::getLowerBound() 
-{
-   return 0;
-}
-
-uint32_t DirectlyMappedArray::getUpperBound() 
-{
-   return numElements;
 }
 
 uint32_t DirectlyMappedArray::getPageLowerBound(PID_t pid) 

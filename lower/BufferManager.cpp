@@ -65,7 +65,7 @@ RC_t BufferManager::allocatePage(PageHandle &ph) {
     PID_t pid;
     PageRec *rec;
     if ((ret=storage->allocatePage(pid)) != RC_OK) {
-        debug("Physical storage cannot allocate page; error %d", ret);
+        Debug("Physical storage cannot allocate page; error %d", ret);
 #ifdef PROFILE_BUFMAN
 	TIMESTAMP(t2);
 		accessTime += t2-t1;
@@ -104,7 +104,7 @@ RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
     RC_t ret = storage->allocatePageWithPID(pid);
     PageRec *rec;
     if (ret != RC_OK) {
-        debug("Physical storage cannot allocate pid %d, error %d",pid,ret);
+        Debug("Physical storage cannot allocate pid %d, error %d",pid,ret);
 #ifdef PROFILE_BUFMAN
 	TIMESTAMP(t2);
 	accessTime += t2-t1;
@@ -184,7 +184,7 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
         
         rec->pid = pid;
         if ((ret=storage->readPage(rec)) != RC_OK) {
-            debug("Physical storage cannot read pid %d, error %d.\n", rec->pid, ret);
+            //Debug("Physical storage cannot read pid %d, error %d.\n", rec->pid, ret);
             rec->pid = INVALID_PID;
             pageReplacer->add(rec);  //recycle
             return ret;
@@ -221,7 +221,7 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
             if (ret != RC_OK) {
                 rec->pid = INVALID_PID;
                 pageReplacer->add(rec);
-                debug("Read/Alloc: Physical storage cannot allocate page %u\n"
+                Debug("Read/Alloc: Physical storage cannot allocate page %u"
                       , pid);
                 return ret;
             }

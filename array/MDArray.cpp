@@ -474,7 +474,8 @@ Matrix Matrix::operator*(const Matrix &other)
 	static BlockBased<2> retLin(retDims, &blockDims[0], orders, orders); 
 	static MSplitter<PID_t> msp;// = new MSplitter<PID_t>;
 	static BSplitter<Datum_t> bsp(config->denseLeafCapacity);// = new BSplitter<Datum_t>
-	Matrix ret(Coord(retDims), &retLin, &bsp, &msp);
+	//Matrix ret(Coord(retDims), &retLin, &bsp, &msp);
+	Matrix ret(Coord(retDims), DMA, &retLin);
 
 	i64 temp[2] = {0};
 	Coord begin = Coord(temp);

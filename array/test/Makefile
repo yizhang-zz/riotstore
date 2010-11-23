@@ -7,7 +7,7 @@ include ../../flags.mk
 
 .PHONY: all clean lower
 
-SRC = main.cpp TestBlockBased.cpp TestRowMajor.cpp #TestSplit.cpp TestBtree.cpp 
+SRC = main.cpp TestBlockBased.cpp TestRowMajor.cpp 
 SRC += TestBatchPut.cpp
 SRC += TestArith.cpp
 OBJ := $(patsubst %.cpp, %.o, $(SRC))
