@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <iostream>
+#include <fstream>
 #include "btree/Btree.h"
 
 using namespace std;
@@ -7,7 +8,7 @@ using namespace Btree;
 
 static LeafSplitter *lsp;
 static InternalSplitter *isp;
-
+/*
 TEST(Btree, Batch)
 {
 	lsp = new MSplitter<Datum_t>();
@@ -29,11 +30,23 @@ TEST(Btree, Batch)
 			tree->put(j*cols+i, (double)j*cols+i);
 		}
 
+<<<<<<< Updated upstream
+=======
+	
+	//TIMESTAMP(t2);
+	//cout<<"reads\t"<<PagedStorageContainer::readCount<<endl
+	//	<<"writes\t"<<PagedStorageContainer::writeCount<<endl;
+	//cout<<"I/O time\t"<<PagedStorageContainer::accessTime<<endl
+	//	<<"CPU time\t"<<t2-t1<<endl;
+	
+	Datum_t datum;
+>>>>>>> Stashed changes
 	for (int i=0; i<rows; ++i)
 		for (int j=0; j<cols; ++j) {
 			tree->get(i*rows+j, datum);
 			ASSERT_DOUBLE_EQ(i*rows+j, datum)<<"for key="<<i*rows+j<<endl;
 		}
+<<<<<<< Updated upstream
 	delete tree;
 
 	// random insertions
@@ -53,4 +66,24 @@ TEST(Btree, Batch)
 	delete tree;
 	delete lsp;
 	delete isp;
+=======
+}*/
+
+TEST(Btree, BatchPut){
+  ofstream outFile("BatchPutTest.out");
+  lsp = new MSplitter<Datum_t>();
+  isp = new MSplitter<PID_t>();
+  int max = 100000000;
+  BTree *tree = new BTree("batchput.bin", max, lsp, isp);
+  int ret = tree->batchPut("../test.in.50k", 5000);
+  Datum_t datum;
+  int getret = -1;
+  for (int i=0; i<max; i++){
+    getret = tree->get(i,datum);
+    if (datum != 0){
+      outFile << i << " " << datum << endl;
+    }
+  }  
+  outFile.close();
+>>>>>>> Stashed changes
 }

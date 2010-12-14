@@ -107,7 +107,7 @@ public:
 
     virtual Linearization<nDim>* transpose() const { return NULL; }
     
-	virtual MDCoord<nDim> getActualDims() const = 0;
+    virtual MDCoord<nDim> getActualDims() const = 0;
 protected:
     /*
      * \name States

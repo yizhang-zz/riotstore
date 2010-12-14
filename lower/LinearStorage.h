@@ -88,6 +88,9 @@ public:
 	{
 		return buffer;
 	}
+
+	//friend class MDArray;
+
 };
 
 #endif

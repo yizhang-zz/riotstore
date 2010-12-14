@@ -3,6 +3,9 @@
 #include "array/RowMajor.h"
 #include "array/ColMajor.h"
 #include "array/BlockBased.h"
+#include "array/RBParser.h"
+//#include "array/Parser.h"
+
 
 void checkRect(const MDArray<2> &array, const MDCoord<2> &begin, const MDCoord<2> &end, const Datum_t *data)
 {
@@ -58,7 +61,7 @@ TEST(MDArray, BatchPutBtree)
 	const MDCoord<2> end = begin + MDCoord<2>(rows,cols) - MDCoord<2>(1,1);
 	Datum_t data[size];
 	for (int i=0; i<size; ++i)
-		data[i] = i+1;
+	  data[i] = i+1;
 
 	// put range [0,1]x[0,1]
 	RowMajor<2> rowMajor(&dim[0]);
@@ -78,3 +81,32 @@ TEST(MDArray, BatchPutBtree)
 	array.batchPut(begin, end, data);
 	checkRect(array, begin, end, data);
 }
+
+TEST(MDArray, BatchPutFromFileToBtree)
+{
+  const int rows = 1965;
+  const int cols = 1035;
+  const MDCoord<2> begin(0,0);
+  const MDCoord<2> end = begin + MDCoord<2>(rows,cols) - MDCoord<2>(1,1);
+
+  MDCoord<2> dim(rows,cols);
+  RowMajor<2> rowMajor(&dim[0]);
+  
+  // must specify the number of column pointers and 
+  // row indexes per line in the original file
+  int colPerLine = 13;
+  int rowPerLine = 16;
+
+  RBParser<2> parser(colPerLine, rowPerLine);
+  const int bufferSize = 5000;
+  MDArray<2> array("Maragal_4.rb", &rowMajor, &parser, bufferSize);
+  Datum_t datum;
+  for (i64 j=begin[1]; j<=end[1]; ++j) {
+    for (i64 i=begin[0]; i<=end[0]; ++i) {
+      array.get(MDCoord<2>(i,j), datum);
+      if (datum != 0) 
+	cout << "[Test] " << MDCoord<2>(i,j) << ", " << datum << endl;
+    }
+  }
+}
+

@@ -1,4 +1,5 @@
 #include <string.h>
+
 #include <gsl/gsl_cblas.h>
 #include "common/Config.h"
 #include "MDArray.h"
@@ -6,12 +7,22 @@
 #include "btree/Btree.h"
 #include "btree/Splitter.h"
 //#include "MDDenseIterator.h"
+
+/*
+#include "../directly_mapped/DirectlyMappedArray.h"
+#include "../btree/Btree.h"
+#include "../btree/Splitter.h"
+#include "MDArray.h"
+#include "MDDenseIterator.h"
+>>>>>>> Stashed changes
+*/
 //#include "MDAccelDenseIterator.h"
 //#include "MDSparseIterator.h"
 //#include "MDAccelSparseIterator.h"
 #include "BlockBased.h"
 #include "ColMajor.h"
 #include "RowMajor.h"
+#include "../btree/ExternalSort.h"
 
 using namespace std;
 using namespace Btree;
@@ -223,6 +234,68 @@ MDArray<nDim>::MDArray(const char *fileName)
 	for (int i=0; i<nDim; ++i)
 		size *= (u32) coord[i];
 }
+
+
+// for batch put
+template<int nDim>
+MDArray<nDim>::MDArray(const char* fileName, Linearization<nDim> *lnrztn, Parser<nDim> *parser, const int bufferSize)
+{
+  if (access(fileName, F_OK) != 0)
+    throw ("File for array does not exist.");
+
+    linearization = lnrztn;
+
+    Key_t *key = new Key_t[bufferSize];
+    Datum_t *datum = new Datum_t[bufferSize];
+    char path[40];
+    size = 1;
+    Coord coord = linearization->getActualDims();
+    for (int i = 0; i < nDim; i++)
+    {
+      // assert(dim.coords[i] > 0);
+      size *= (u32) coord[i];
+    }
+    strcpy(path, fileName);
+
+    leafsp = new MSplitter<Datum_t>();
+    intsp = new MSplitter<PID_t>();
+    storage = new BTree(path, size, leafsp, intsp);
+    ExternalSort sorter(bufferSize);
+    Coord *inputCoord = new Coord[bufferSize];
+
+    ifstream in(fileName);
+    int parsedCount = bufferSize;
+    while(parsedCount == bufferSize){
+      parsedCount = parser->parse(in, bufferSize, inputCoord, datum); 
+      if (parsedCount <= 0) break;
+      for (int i=0; i<parsedCount; i++){
+	key[i] = linearization->linearize(inputCoord[i]);
+      }
+      sorter.streamToChunk(key,datum,parsedCount);
+    }
+    in.close();
+
+    i64 maxRec = sorter.getBufferSize(); //not always equal
+    KVPair_t *rec = new KVPair_t[maxRec];
+    i64 sortedCount = maxRec;
+    cout << "[MDArray] Entering mergeSort phase..." << endl;
+    while (sortedCount == maxRec){
+      sortedCount = sorter.mergeSortToStream(rec, maxRec);
+      storage->batchPut(sortedCount, rec);
+      cout << "[MDArray] batchput sortedCount = " << sortedCount << endl;
+      for (int i=0; i<sortedCount; i++){
+	//cout << rec[i].key << ", " << *(rec[i].datum) << endl;
+      }
+    }
+    cout << "[MDArray] Closing batch-loading..." << endl;
+
+    delete[] rec;
+    delete[] key;
+    delete[] datum;
+    delete[] inputCoord;
+}
+
+
 
 template<int nDim>
 MDArray<nDim>::~MDArray()

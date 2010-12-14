@@ -7,6 +7,7 @@
 #include "Linearization.h"
 #include "btree/Splitter.h"
 #include <string>
+#include "Parser.h"
 
 /**
  * A class for multi-dimensional arrays.  A MDArray presents a logical
@@ -72,6 +73,11 @@ public:
      * \param fileName Name of file.
      */
     MDArray(const char *fileName);
+
+    /**
+     * Constructor used for batch loading a file
+     */
+    MDArray(const char*fileName, Linearization<nDim> *lrnztn, Parser<nDim> *parser, const int bufferSize);
 
     /**
      * Destructor.
