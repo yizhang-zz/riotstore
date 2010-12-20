@@ -1,31 +1,25 @@
-CXX = g++
-CXXFLAGS = -g `pkg-config --cflags-only-I apr-1`
-LDFLAGS = -L/usr/local/lib -lgtest
-LDFLAGS += $(shell pkg-config --libs gsl)
-LDFLAGS += -L../.. -R../.. -lriot_store
+LDFLAGS += -lgtest -L../.. -lriot_store
+LD_RUN_PATH = ../..
+VPATH = ../..
+CXXFLAGS += -I../..
 
-.PHONY: all clean lower
+.PHONY: all clean 
 
-SRC := main.cpp TestBufferManager.cpp TestBitmapPagedFile.cpp
-OBJ := $(patsubst %.cpp, %.o, $(SRC))
-
-.cpp.o:
-	$(CXX) $(CXXFLAGS) -c $<
+src := $(wildcard *.cpp)
+objects := $(src:.cpp=.o)
 
 all: test
+	./test
 
-%.d: %.cpp
-	$(SHELL) -ec '$(CXX) -M $(CXXFLAGS) $< | sed "s/$*.o/& $@/g" > $@'
+include ../../flags.mk
+include $(objects:.o=.dd)
 
-include $(objects:.o=.d)
 
-lower:
-	cd .. ; $(MAKE)
-
-test: $(OBJ) 
+test: $(objects) 
 	$(CXX) -o $@ $^ $(LDFLAGS) 
 
 clean : 
 	rm -f *.o
 	rm -f *.out
-	rm -f *.d
+	rm -f *.dd
+	rm -f test

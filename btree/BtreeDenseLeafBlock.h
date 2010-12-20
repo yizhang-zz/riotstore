@@ -39,7 +39,7 @@ public:
 		memPool.free(p);
 	}
 	
-	DenseLeafBlock(PageHandle ph, char *image, Key_t beginsAt, Key_t endsBy, bool create);
+	DenseLeafBlock(PageHandle ph, Key_t beginsAt, Key_t endsBy, bool create);
 	~DenseLeafBlock()
 	{
 	}
@@ -50,8 +50,9 @@ public:
 	int getRange(Key_t beginsAt, Key_t endsBy, Datum_t *values) const;
 	int getRange(int beginsAt, int endsBy, Key_t *keys, Datum_t *values) const;
 	int getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, Datum_t *values) const;
-	int put(Key_t key, const Datum_t &v, int *index);
+	int batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &v) const;
 	int put(int index, Key_t key, const Datum_t &v);
+	int del(int index);
 	int putRangeSorted(Key_t *keys, Datum_t *values, int num, int *numPut);
 	void truncate(int pos, Key_t end);
 	LeafBlock *switchFormat();
@@ -70,9 +71,9 @@ public:
 
 	class DenseIterator : public boost::iterator_facade<
 						  DenseIterator,
-						  std::pair<Key_t,Datum_t>,
+						  Entry,
 						  boost::forward_traversal_tag,
-						  std::pair<Key_t,Datum_t>
+						  Entry
 						  >
 	{
 	public:
@@ -89,16 +90,16 @@ public:
 		bool equal(DenseIterator const & other) const {
 			return index == other.index;
 		}
-		std::pair<Key_t,Datum_t> dereference() const {
-			return std::pair<Key_t,Datum_t>(block->key(index),block->value(index));
+		Entry dereference() const {
+			return Entry(block->key_(index),block->value_(index));
 		}
 	};
 
 	class SparseIterator : public boost::iterator_facade<
 						  SparseIterator,
-						  std::pair<Key_t,Datum_t>,
+						  Entry,
 						  boost::forward_traversal_tag,
-						  std::pair<Key_t,Datum_t>
+						  Entry
 						  >
 	{
 	public:
@@ -106,7 +107,7 @@ public:
 		{
 			d_index = -1;
 			int numNonDefault = 0;
-			int span = block->getSpan();
+			int span = block->tailKey - *block->headKey;
 			while (d_index < span && numNonDefault < index+1) {
 				++d_index;
 				if (block->value(d_index) != kDefaultValue)
@@ -128,68 +129,92 @@ public:
 		bool equal(SparseIterator const & other) const {
 			return index == other.index;
 		}
-		std::pair<Key_t,Datum_t> dereference() const {
-			return std::pair<Key_t,Datum_t>(block->key(d_index),block->value(d_index));
-		}
-	};
-	/*
-	struct IsNonDefaultValue {
-		bool operator()(std::pair<Key_t,Datum_t> x) {
-			return x.second!=kDefaultValue;
+		Entry dereference() const {
+			return Entry(block->key(d_index),block->value(d_index));
 		}
 	};
 
-	typedef boost::filter_iterator<IsNonDefaultValue, DenseIterator>
-		_SparseIterator;
-
-	class SparseIterator:public _SparseIterator
+	// The two KeyIterator classes below work even if the block's lower and
+	// upper bounds are not set.  This makes it possible to traverse leaf nodes
+	// by following nextLeaf pointers, without having access to parent nodes
+	// (from which the bounds are obtained).
+	
+	class DenseKeyIterator : public boost::iterator_facade<
+						  DenseKeyIterator,
+						  Entry,
+						  boost::forward_traversal_tag,
+						  Entry
+						  >
 	{
 	public:
-		SparseIterator(const DenseLeafBlock *b, int i):_SparseIterator(predicate, DenseIterator(b,i), DenseIterator(b,b->getSpan()))
-		{}
+		DenseKeyIterator(const DenseLeafBlock *b, Key_t k):block(b)
+		{
+			if (k > block->upper) k = block->upper;
+			else if (k < block->lower) k = block->lower;
+		}
+
 	private:
-		static IsNonDefaultValue predicate;
+		const DenseLeafBlock *block;
+		Key_t key;
+		friend class boost::iterator_core_access;
+		void increment() {
+			++key;
+		}
+		bool equal(DenseKeyIterator const & other) const {
+			return key == other.key;
+		}
+		Entry dereference() const {
+			if (key < *block->headKey || key >= block->tailKey)
+				return Entry(key, kDefaultValue);
+			return Entry(key, block->value_(key-*block->headKey));
+		}
 	};
-	*/
 
-	/*
-	class SparseIterator
+	class SparseKeyIterator : public boost::iterator_facade<
+						  SparseKeyIterator,
+						  Entry,
+						  boost::forward_traversal_tag,
+						  Entry
+						  >
 	{
 	public:
-		SparseIterator(DenseLeafBlock *block) {
-			this->block = block;
-			index = 0;
+		SparseKeyIterator(const DenseLeafBlock *b, Key_t k):block(b)
+		{
+			if (k > block->tailKey) k = block->tailKey;
+			if (k < *block->headKey) k = *block->headKey;
+			index = k - *block->headKey;
+			while (k < block->tailKey && block->value_(index) == Block::kDefaultValue)
+				k++, index++;
 		}
 
-		SparseIterator& operator++() {
+	private:
+		const DenseLeafBlock *block;
+		int index;
+		friend class boost::iterator_core_access;
+		void increment() {
 			do {
 				++index;
-			} while (IsDefaultValue(block->data[(index+*(block->headIndex))%block->capacity]));
-			return *this;
+			} while (block->key_(index) < block->tailKey 
+					&& block->value_(index) == Block::kDefaultValue);
 		}
-
-		Key_t key() const {
-			return index+*(block->headKey);
-
+		bool equal(SparseKeyIterator const & other) const {
+			return index == other.index;
 		}
-
-		Datum_t value() const {
-			return block->data[(index+*(block->headIndex))%block->capacity];
+		Entry dereference() const {
+			return Entry(block->key_(index),block->value_(index));
 		}
-
-	private:
-		DenseLeafBlock *block;
-		int index;
 	};
-	*/
+
 private:
 	static boost::pool<> memPool;
 
-	i16 *headIndex;
-	i16 *tailIndex;
+	i16 *headIndex; // inclusive
+	i16 *tailIndex;	// exclusive
 	Key_t *headKey;
+	Key_t tailKey;
 	Datum_t *data;
 	
+	/*
 	Key_t getTailKey() const
 	{
 		if (*tailIndex > *headIndex) {
@@ -205,7 +230,10 @@ private:
 				return *headKey;
 		}
 	}
+	*/
 
+	int put(Key_t key, const Datum_t &v);
+	/*
 	int getSpan() const
 	{
 		int span = *tailIndex - *headIndex;
@@ -213,7 +241,7 @@ private:
 			return capacity;
 		return span>=0?span:span+capacity;
 	}
-
+	*/
 	bool canSwitchFormat() const
 	{
 		return (*nEntries + 1) <= config->sparseLeafCapacity;

@@ -7,6 +7,7 @@
 #include "Linearization.h"
 #include "btree/Splitter.h"
 #include <string>
+#include "cholmod.h"
 
 /**
  * A class for multi-dimensional arrays.  A MDArray presents a logical
@@ -73,6 +74,11 @@ public:
      */
     MDArray(const char *fileName);
 
+	/**
+	 * Copy constructor
+	 */
+	MDArray(const MDArray<nDim> &other);
+
     /**
      * Destructor.
      */
@@ -135,7 +141,8 @@ public:
       * \result OK if successful, OutOfRange is any coord within start and end
       * is out of range.
       */
-	AccessCode batchGet(const Coord &start, const Coord &end, Datum_t *data) const;
+	AccessCode batchGet(const Coord &begin, const Coord &end, Datum_t *data) const;
+	AccessCode batchGet(const Coord &begin, const Coord &end, std::vector<Entry> &v) const;
 
     /**
      * Puts an entry in the array.
@@ -172,9 +179,20 @@ public:
     const char* getFileName() const { return fileName.c_str(); }
     int getNDim() const { return nDim; }
 	Coord getDims() const { return dim; }
+    double sparsity() const { return storage->sparsity(); }
 
 	// math methods
 	MDArray<nDim> & operator+=(const MDArray<nDim> &other);
+
+	void printSparse(cholmod_sparse *a, const char *name = 0)
+	{
+		cholmod_print_sparse(a, name, chmCommon);
+	}
+
+	void freeSparse(cholmod_sparse **a)
+	{
+		cholmod_free_sparse(a, chmCommon);
+	}
 
 protected:
     MDCoord<nDim> dim;
@@ -185,9 +203,10 @@ protected:
     Linearization<nDim> *linearization;
     std::string fileName;
 
+    bool allocatedSp;
     Btree::LeafSplitter *leafsp;
     Btree::InternalSplitter *intsp;
-    bool allocatedSp;
+	cholmod_common *chmCommon;
 };
 
 class Matrix : public MDArray<2>
@@ -207,6 +226,12 @@ public:
 	{
 	}
 
+	Matrix(const Matrix &other) : MDArray<2>(other)
+	{
+	}
+
 	Matrix operator*(const Matrix &other);
+
+	int batchGet(const Coord &begin, const Coord &end, cholmod_sparse **array) const;
 };
 #endif

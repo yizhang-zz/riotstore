@@ -23,6 +23,39 @@ public:
     
     LinearizationType getType() { return ROW; }
 
+	std::vector<Segment> *getOverlap(const MDCoord<nDim> &begin,
+			const MDCoord<nDim> &end)
+	{
+		using namespace std;
+		vector<Segment> *v = new vector<Segment>;
+		getOverlapWithBlock(MDCoord<nDim>(), this->arrayDims, this->microOrders,
+				begin, end.min(this->arrayDims), v);
+		return v;
+		/*
+		int i = nDim-1; // starting from most significant dim
+		for (; i>=0 && begin[i]==0 && end[i]>=arrayDims[i]-1; --i) ;
+		if (i<=0) {
+			// a single contiguous segment
+			v->push_back(Segment(linearize(begin),linearize(end)));
+			return v;
+		}
+		--i;
+		MDCoord<nDim> b(begin), e(end);
+		for (int j=i; j>=0; --j)
+			e[j] = begin[j];
+		while (e[0] <= end[0]) { // most significant dim out of range means we are done
+			v->push_back(Segment(b,e));
+			b[i] = ++e[i]; // inc both b[i] and e[i]
+			for (int j=i; j>0; --j) {
+				if (e[j] > end[j]) { // carry
+					b[j] = e[j] = begin[j];
+					b[j-1] = ++e[j-1];
+				}
+			}
+		}
+		return v;
+		*/
+	}
 };
 
 

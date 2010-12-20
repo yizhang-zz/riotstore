@@ -4,92 +4,77 @@
 #include <string.h>
 #include <stdlib.h>
 #include "../DirectlyMappedArray.h"
-#include "../DenseArrayBlock.h"
+#include "../DMABlock.h"
 #include "../DABIterator.h"
 #include "../DMADenseIterator.h"
 #include "../DMASparseIterator.h"
 #include "../../lower/PageRec.h"
 using namespace std;
 
-/*
-TEST(DenseArrayBlock, DISABLED_Init)
+
+TEST(DirectlyMappedArray, BatchGet)
 {
-    PageRec rec;
-    rec.pid = 123;
-    rec.image = new char[PAGE_SIZE];
-    PageHandle ph = &rec;
-
-   DenseArrayBlock dab (ph, PAGE_SIZE, PAGE_SIZE+PAGE_SIZE/8);
-
-   for (int k=0; k<PAGE_SIZE; k+=8) {
-      image[k] = k;
-   }
-
-   ASSERT_EQ(dab.getLowerBound() , PAGE_SIZE);
-   ASSERT_EQ(dab.getUpperBound() , PAGE_SIZE+PAGE_SIZE/8);
-   ASSERT_EQ(dab.getPID() , 123);
-
-   dab.setRange(20, 34);
-   ASSERT_EQ(dab.getLowerBound() , 20);
-   ASSERT_EQ(dab.getUpperBound() , 34);
-
-   dab.setUpperBound(10);
-   ASSERT_EQ(dab.getUpperBound() , 10);
-   dab.setLowerBound(12345);
-   ASSERT_EQ(dab.getLowerBound() , 12345);
+    const size_t cap = DMABlock::CAPACITY;
+	const Key_t upper = 3 * cap;
+    DirectlyMappedArray *dma = new DirectlyMappedArray("test.bin", upper);
+	// randomly generate 100 nz records
+	const int num = 100;
+	Key_t x[num];
+	Datum_t val = 1.0;
+	kPermute(x, (Key_t)0, (Key_t)upper, num);
+	for (int i=0; i<num; i++)
+		dma->put(x[i], val);
+	std::sort(x, x+num);
+	std::vector<Entry> v;
+	dma->batchGet(0, upper, v);
+	ASSERT_EQ(num, v.size());
+	for (int i=0; i<num; i++) {
+		ASSERT_EQ(x[i], v[i].key);
+		ASSERT_DOUBLE_EQ(val, v[i].datum);
+	}
+	delete dma;
 }
 
-TEST(DenseArrayBlock, DISABLED_PutGet)
-{   
-   PageImage image;
-   PageHandle ph;
-   ph.image = &image;
-   ph.pid = 123;
-   DenseArrayBlock dab (&ph, PAGE_SIZE, PAGE_SIZE+PAGE_SIZE/8);
-    dab.setRange(PAGE_SIZE, PAGE_SIZE+PAGE_SIZE/8);
-    for (int k =PAGE_SIZE; k<PAGE_SIZE+PAGE_SIZE/8; k++)
-       dab.put(k, -123.456+k);
-    for (int k =PAGE_SIZE; k<PAGE_SIZE+PAGE_SIZE/8; k++)
-       ASSERT_EQ(dab.get(k) , -123.456+k);
-}
+TEST(DirectlyMappedArray, BatchPut)
+{
+	const size_t cap = DMABlock::CAPACITY;
+	const Key_t upper = 3 * cap;
+	DirectlyMappedArray *dma = new DirectlyMappedArray("test.bin", upper);
+	// randomly generate 100 nz records
+	const int num = 100;
+	Key_t x[num];
+	Entry z[num];
+	kPermute(x, (Key_t)0, (Key_t)upper, num);
+	std::sort(x, x+num);
+	for (int i=0; i<num; i++) {
+		z[i].key = x[i];
+		z[i].datum = x[i];
+	}
+	dma->batchPut(num, z);
 
-TEST(DenseArrayBlock, DISABLED_Iterator)
-{   // test iterator
-    PageRec rec;
-    rec.pid = 123;
-    rec.image = new char[PAGE_SIZE];
-    PageHandle ph = &rec;
-
-   DenseArrayBlock dab (&ph, PAGE_SIZE, PAGE_SIZE+PAGE_SIZE/8);
-    dab.setRange(PAGE_SIZE, PAGE_SIZE+PAGE_SIZE/8);
-    ArrayInternalIterator *it= dab.getIterator();
-
-    int k = 0;
-    while (it->moveNext())
-    {
-       it->put(-123.456+k);
-       k++;
+    // get one by one
+    Datum_t temp;
+    for (int i=0; i<num; i++) {
+        dma->get(x[i], temp);
+        ASSERT_DOUBLE_EQ(x[i], temp);
     }
 
-    it->reset();
-
-    k = 0;
-    Key_t key; Datum_t d;
-    while (it->moveNext())
-    {
-      it->get(key, d);
-      ASSERT_EQ(key, PAGE_SIZE+k);
-      ASSERT_EQ(d, -123.456+k);
-      k++;
+    // get in a batch
+	Datum_t y[num];
+	for (int i=0; i<num; i++) {
+        z[i].pdatum = y+i;
     }
-    delete it;
+	dma->batchGet(num, z);
+	for (int i=0; i<num; i++)
+		ASSERT_DOUBLE_EQ(z[i].key, y[i]);
+
+	delete dma;
 }
-*/
+
 // test retrieval
 TEST(DirectlyMappedArray, PutGet)
 {
-    int cap = DenseArrayBlock::CAPACITY;
-    ASSERT_EQ(cap , 512);
+    int cap = DMABlock::CAPACITY;
     DirectlyMappedArray *dma = new DirectlyMappedArray("test.bin", 3*cap);
     // test put/get
     Key_t k; Datum_t d;
@@ -101,13 +86,17 @@ TEST(DirectlyMappedArray, PutGet)
     dma->put(k ,d);
     k = 3;
     dma->get(k,d);
-    ASSERT_EQ(d, 10.2);
+    ASSERT_DOUBLE_EQ(d, 10.2);
     k = cap+10;
     dma->get(k,d);
-    ASSERT_EQ(d, 123);
+    ASSERT_DOUBLE_EQ(d, 123);
     k = 2*cap;
     dma->get(k,d);
-    ASSERT_EQ(d, -123.456);
+    ASSERT_DOUBLE_EQ(d, -123.456);
+	dma->get(5, d);
+	ASSERT_DOUBLE_EQ(d, 0);
+
+	// out of range gets should return na
     k = -1;
     dma->get(k, d);
     ASSERT_TRUE(isNA(d));
@@ -116,32 +105,25 @@ TEST(DirectlyMappedArray, PutGet)
     ASSERT_TRUE(isNA(d));
     delete dma;
 
-dma = new DirectlyMappedArray("test.bin", 0);
+	dma = new DirectlyMappedArray("test.bin", 0);
     k = 3;
     dma->get(k, d);
-    ASSERT_EQ(d,10.2);
+    ASSERT_DOUBLE_EQ(d,10.2);
     k = cap+10;
     dma->get(k,d);
-    ASSERT_EQ(d,123);
+    ASSERT_DOUBLE_EQ(d,123);
     k=2*cap;
     dma->get(k,d);
-    ASSERT_EQ(d,-123.456);
+    ASSERT_DOUBLE_EQ(d,-123.456);
     delete dma;
-    /*for (int k = 0; k<3*cap; k++) {
-        if (k != 3 && k!= cap+10 && k != 2*cap) {
-            ASSERT_EQ(dma.get(k) , 0);
-        }
-    }*/
-
     remove("test.bin");
-
 }
 
 TEST(DirectlyMappedArray, DenseIterator)
 {
-   int cap = DenseArrayBlock::CAPACITY;
+   int cap = DMABlock::CAPACITY;
    DirectlyMappedArray dma("test-di.bin", 3*cap);
-   Key_t k; Datum_t d;
+   //Key_t k; Datum_t d;
    Key_t lower = 0, upper = 3*cap;
    ArrayInternalIterator *it = dma.createIterator(Dense, lower, upper);
 /* unsigned count = 0;
@@ -168,7 +150,7 @@ TEST(DirectlyMappedArray, DenseIterator)
 // Incomplete
 TEST(DirectlyMappedArray, SparseIterator)
 {    // test iterator
-   int cap = DenseArrayBlock::CAPACITY;
+   int cap = DMABlock::CAPACITY;
     DirectlyMappedArray dma("test2.bin", 3*cap);
     Key_t k; Datum_t d;
     k = 3; d = 10.2;
@@ -257,7 +239,7 @@ void testDirectlyMappedArray() {
 }
 
 int main() {
-    testDenseArrayBlock();
+    testDMABlock();
     testDirectlyMappedArray();
     remove("test.bin");
     return 0;

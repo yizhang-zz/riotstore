@@ -3,11 +3,7 @@
 
 #include "../common/common.h"
 #include "PagedStorageContainer.h"
-
-#define NUM_HEADER_PAGES 8
-#define NUM_BITS_PER_PAGE PAGE_SIZE*8
-#define NUM_BITS_HEADER NUM_BITS_PER_PAGE*NUM_HEADER_PAGES
-#define HEADER_SIZE PAGE_SIZE*NUM_HEADER_PAGES
+#include "PageRec.h"
 
 //////////////////////////////////////////////////////////////////////
 // A basic paged file implemented using a file header page containing
@@ -22,13 +18,11 @@
 // Assuming a pagesize of 4KB, a single header page can support a
 // maximum of 4K*8*4KB=128MB data. This seems too small for practical use
 class BitmapPagedFile : public PagedStorageContainer {
-
 public:
-  u32 *header;
-  int fd;	// file descriptor
-  u32 numContentPages;
-
-public:
+	const static size_t NUM_HEADER_PAGES = 8;
+	const static size_t NUM_BITS_PER_PAGE = PAGE_SIZE * sizeof(char);
+	const static size_t HEADER_SIZE = PAGE_SIZE * NUM_HEADER_PAGES;
+	const static size_t NUM_BITS_HEADER = HEADER_SIZE * sizeof(char);
 
   BitmapPagedFile(const char *pathname, int flag);
 
@@ -48,11 +42,14 @@ public:
 
   virtual RC_t disposePage(PID_t pid);
 
-  virtual RC_t readPage(PageHandle ph);
+  virtual RC_t readPage(PageRec *);
 
-  virtual RC_t writePage(PageHandle ph);
+  virtual RC_t writePage(PageRec *);
 
 private:
+  u32 *header;
+  int fd;	// file descriptor
+  u32 numContentPages;
 
 	// sets bit in header that maps to pid
 	void setBit(u32 &word, int pos)

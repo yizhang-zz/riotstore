@@ -6,16 +6,27 @@
 #define _in
 #define _out
 
-#ifdef _LP64
+/*
+#if defined(_LP64) || defined(__LP64__)
 #define D64 "ld"
 #else
 #define D64 "lld"
 #endif
+*/
 
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+#include <assert.h>
+#include <map>
 #include <iostream>
+#include <typeinfo>
+#include <iterator>
+#include <boost/shared_ptr.hpp>
+
 
 /* Direct I/O, no caching by the OS */
 #if defined(linux)
@@ -53,12 +64,6 @@ int open_direct(const char *pathname, int flags);
 #error "Platform not supported"
 #endif
 
-#include <stdint.h>
-#include <typeinfo>
-#include <assert.h>
-#include <map>
-#include <iterator>
-
 /* Utilities for the NA value. Taken from arithmetic.c from R src. */
 typedef union
 {
@@ -93,9 +98,9 @@ extern int		NA_INT;
 bool isNA(double x);
 
 /// Size of a disk block/page in bytes.
-const int BLOCK_SIZE = 4096;
+const size_t BLOCK_SIZE = 4096;
 /// Size of a disk block/page in bytes.
-const int PAGE_SIZE = BLOCK_SIZE;
+const size_t PAGE_SIZE = BLOCK_SIZE;
 
 //enum blockformat { dense, sparse };
 //enum blocktype { leaf, internal};
@@ -132,8 +137,11 @@ typedef uint32_t PID_t;
 
 struct Entry
 {
-	Key_t  	key;
-	Datum_t 	datum;
+	Key_t key;
+	union {
+		Datum_t datum;
+		Datum_t *pdatum;
+	};
 
 	Entry()
 	{}
@@ -152,6 +160,8 @@ inline std::ostream & operator<<(std::ostream &out, const Entry &e)
 	return out<<e.key;
 }
 
+// Use Entry instead of KVPair_t. KVPair_t requires setting the datum pointer; might as well use Entry and copy the actual datum to Entry.
+/*
 typedef struct
 {
     Key_t key;
@@ -159,6 +169,7 @@ typedef struct
 } KVPair_t;
 
 int compareKVPair(const void *a, const void *b);
+*/
 
 /*
 typedef struct 
@@ -208,7 +219,9 @@ void freePageImage(PageImage p);
 //////////////////////////////////////////////////////////////////////
 // A handle for a page buffered in memory.
 
-typedef void *PageHandle;
+//typedef void *PageHandle;
+struct Page;
+typedef boost::shared_ptr<Page> PageHandle;
 
 /* Coding style: inline small functions (<= 10 lines of code) */
 
@@ -246,45 +259,6 @@ inline void SetEntry(Entry& entry, Key_t k, Datum_t d)
    entry.datum = d;
 }
 */
-enum DataType { DT_INT, DT_DOUBLE, DT_COMPLEX };
-
-/**
- * Tests if a value is of given type.
- * @param x a value.
- * @param t an enum value specifying the type.
- * @return true if x is of type t.
- */
-template<class T>
-inline bool IsSameDataType(T x, DataType t) {
-	switch(t) {
-case DT_INT:
-	return typeid(x)==typeid(int);
-case DT_DOUBLE:
-	return typeid(x)==typeid(double);
-case DT_COMPLEX:
-	// to be implemented
-	break;
-default:
-	return false;
-	}
-	return false;
-}
-
-/**
- * Gets the data type of a given value.
- * @param x a value of type T.
- * @return an enum specifying the type of x.
- */
-template<class T>
-inline DataType GetDataType(T x) {
-	if (typeid(x) == typeid(int))
-		return DT_INT;
-	if (typeid(x) == typeid(double))
-		return DT_DOUBLE;
-	// to add complex type
-	
-	assert(false);
-}
 
 /**
  * Code returned from methods that access elements of an array.
@@ -358,10 +332,10 @@ void kPermute(T *array, T begin, T end, int k)
 	}
 }
 
-#define Error(format, ...) fprintf(stderr, "[ERROR] " __FILE__ ":%d " format "\n", __LINE__, __VA_ARGS__)
+#define Error(format, ...) fprintf(stderr, "[ERROR] " __FILE__ ":%d " format "\n", __LINE__, ##__VA_ARGS__)
 
 #ifdef DEBUG
-#define Debug(format, ...) fprintf(stderr, "[DEBUG] " __FILE__ ":%d " format "\n", __LINE__, __VA_ARGS__)
+#define Debug(format, ...) fprintf(stderr, "[DEBUG] " __FILE__ ":%d " format "\n", __LINE__, ##__VA_ARGS__)
 #else
 #define Debug(...)
 #endif

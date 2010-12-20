@@ -31,7 +31,7 @@ public:
     ~Cursor()
 	{
 		for (int i=current; i>=0; i--) {
-			buffer->unpinPage(levels[i].block->pageHandle);
+			//buffer->unpinPage(levels[i].block->pageHandle);
 			delete levels[i].block;
 		}
 	}

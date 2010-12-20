@@ -29,10 +29,11 @@ public:
      * @return 0 if orig's format is not changed, nonzero otherwise.
      */
     virtual int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
-					   PageHandle newPh, char *newImage) = 0;
+					   PageHandle newPh) = 0;
+    virtual Splitter<Value> *clone() = 0;
 protected:
 	int splitHelper(BlockT<Value> **orig, BlockT<Value> **newBlock,
-					PageHandle newPh, char *newImage,
+					PageHandle newPh,
 					int sp,	Key_t spKey, Key_t *keys, Value *values);
 };
 
@@ -47,7 +48,11 @@ class MSplitter : public Splitter<Value>
 {
 public:
     int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
-			   PageHandle newPh, char *newImage);
+			   PageHandle newPh);
+    Splitter<Value> *clone()
+    {
+        return new MSplitter<Value>;
+    }
 };
 
 /**
@@ -59,15 +64,19 @@ class BSplitter : public Splitter<Value>
 {
 public:
     int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
-			  PageHandle newPh, char *newImage);
+			  PageHandle newPh);
 
     /**
      * Constructs a splitter with fixed boundary. Each future split must occur
      * on multiples of the given boundary.
      * @param boundary The splitting boundary.
      */
-    BSplitter(int b):boundary(b)
-	{ }
+    BSplitter(int b):boundary(b) { }
+
+    Splitter<Value> *clone()
+    {
+        return new BSplitter<Value>(boundary);
+    }
 
 private:
     int boundary;
@@ -79,7 +88,11 @@ class RSplitter : public Splitter<Value>
 {
 public:
 	int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
-			  PageHandle newPh, char *newImage);
+			  PageHandle newPh);
+    Splitter<Value> *clone()
+    {
+        return new RSplitter<Value>;
+    }
 };
 
 template<class Value>
@@ -91,8 +104,13 @@ public:
 		gsl_set_error_handler(&riot_handler);
 	}
 
+    Splitter<Value> *clone()
+    {
+        return new SSplitter<Value>;
+    }
+
 	int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
-			  PageHandle newPh, char *newImage);
+			  PageHandle newPh);
 private:
     double sValue(int b1, int b2, int d1, int d2);
 };
@@ -107,9 +125,14 @@ public:
    * density; otherwise fallback to the M scheme.
    */
 	int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
-			  PageHandle newPh, char *newImage);
-	TSplitter(double th) : threshold(th)
-	{}
+			  PageHandle newPh);
+
+	TSplitter(double th) : threshold(th) { }
+
+    Splitter<Value> *clone()
+    {
+        return new TSplitter<Value>(threshold);
+    }
 private:
 	double threshold;
 };

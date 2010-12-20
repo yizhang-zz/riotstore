@@ -1,28 +1,27 @@
-CXXFLAGS += -I/usr/local/include -I../..
-LDFLAGS += $(shell pkg-config --libs gsl) -pthread
-LDFLAGS += -L../.. -lriot_store -L/usr/local/lib -lgtest
+CXXFLAGS += -I../..
+CXXFLAGS += -I../../lib/SuiteSparse/CHOLMOD/Include
+CXXFLAGS += -I../../lib/SuiteSparse/UFconfig
+LDFLAGS += $(shell pkg-config --libs-only-L gsl) -lgsl
+LDFLAGS += -framework vecLib
+LDFLAGS += -pthread
+LDFLAGS += -L../.. -lriot_store -L/usr/local/lib -lgtest 
 LD_RUN_PATH = ../..
 
-include ../../flags.mk
-
-.PHONY: all clean lower
-
 SRC = main.cpp TestBlockBased.cpp TestRowMajor.cpp 
-SRC += TestBatchPut.cpp
+SRC += TestBatch.cpp
 SRC += TestArith.cpp
 OBJ := $(patsubst %.cpp, %.o, $(SRC))
 DEPS := $(OBJ:.o=.dd)
-#par_objects := $(patsubst %.cpp, %.o, $(wildcard ../*.cpp))
-#lower_objects := $(wildcard ../../lower/*.o)
-
 
 all: test
 
--include $(DEPS)
+.PHONY: all clean
+
+include ../../flags.mk
+include $(DEPS)
 
 test: $(OBJ)
 	$(CXX) -o $@ $^ $(LDFLAGS)
-
 
 clean : 
 	rm -f $(OBJ)

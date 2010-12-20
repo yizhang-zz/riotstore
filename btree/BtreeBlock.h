@@ -2,6 +2,7 @@
 #define BTREE_BLOCK_H
 
 #include <string.h>
+#include <vector>
 #include "../common/common.h"
 #include "../common/Iterator.h"
 #include "../lower/BufferManager.h"
@@ -129,11 +130,11 @@ public:
 	 * and is omitted. */
 	static const Datum_t kDefaultValue = 0.0;
 	static inline bool IsDefaultValue(Datum_t x) { return x == kDefaultValue; }
-	static Block *create(Type t, PageHandle ph, char *image, Key_t beingsAt, Key_t endsBy);
-	static Block *create(PageHandle ph, char *image, Key_t beingsAt, Key_t endsBy);
+	static Block *create(Type t, PageHandle ph, Key_t beingsAt, Key_t endsBy);
+	static Block *create(PageHandle ph, Key_t beingsAt, Key_t endsBy);
 
-	Block(PageHandle ph, char *image, Key_t _lower, Key_t _upper)
-		:pageHandle(ph),header(image),lower(_lower),upper(_upper),isOverflowed(false)
+	Block(PageHandle ph, Key_t _lower, Key_t _upper)
+		:pageHandle(ph),header(ph->getImage()),lower(_lower),upper(_upper),isOverflowed(false)
 	{
 	}
 
@@ -142,33 +143,26 @@ public:
 	}
 	
 	virtual int search(Key_t key, int &index) const = 0;
-	// int   put(int index, Key_t key, const Value &val) = 0;
-	//virtual int del(Key_t key);
 	/**
 	 * The specified entry and all after it are truncated.
 	 *
 	 * @param cutoff Truncate from which entry on
 	 */
 	virtual void truncate(int pos, Key_t end) = 0;
-	//Block *split(PageHandle newPh, int sp, Key_t spKey){return NULL;}
+	virtual size_t valueTypeSize() const { return sizeof(Datum_t); }
+	virtual void print() const = 0;
 
-	//u16 getCapacity() { return capacity; }
 	Key_t getLowerBound() const { return lower; }
 	Key_t getUpperBound() const { return upper; }
+	void setNextLeaf(PID_t pid) { *nextLeaf = pid; }
+	PID_t getNextLeaf() { return *nextLeaf; }
 	bool inRange(Key_t key) const { return key >= lower && key < upper; }
-	//PageHandle getPageHandle() { return ph; }
 	Type type() const { return (Type)(int)*header; }
 	bool isDense() { return *((u8*)header) & 2; }
 	bool isLeaf() { return *((u8*)header) & 1; }
 	u16 size() const { return *nEntries; }
 	u16 sizeWithOverflow() const { return (*nEntries)+isOverflowed; }
-	virtual size_t valueTypeSize() const { return sizeof(Datum_t); }
-
 	void splitTypes(int sp, Key_t spKey, Type *left, Type *right);
-
-	virtual void print() const = 0;
-
-	void setNextLeaf(PID_t pid) { *nextLeaf = pid; }
 
 	/*
 	Iterator* getSparseIterator(int beingsAt,
@@ -228,7 +222,7 @@ template<class T>
 class BlockT : public Block
 {
 public:
-	BlockT(PageHandle ph, char *image, Key_t lower, Key_t upper):Block(ph,image,lower,upper)
+	BlockT(PageHandle ph, Key_t lower, Key_t upper):Block(ph,lower,upper)
 	{
 	}
 
@@ -244,9 +238,10 @@ public:
 	// records (in sparse format).
 	virtual int getRange(int beginsAt, int endsBy, Key_t *keys, T *values) const = 0;
 	virtual int getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, T *values) const = 0;
+	virtual int batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &v) const = 0;
 
-	//virtual int put(Key_t key, const T &v, int *index) = 0;
 	virtual int put(int index, Key_t key, const T &v) = 0;
+	virtual int del(int index) = 0;
 	virtual int putRangeSorted(Key_t *keys, T *values, int num, int *numPut) = 0;
 
 #ifndef DISABLE_DENSE_LEAF

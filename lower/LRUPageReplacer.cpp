@@ -17,10 +17,7 @@ RC_t LRUPageReplacer::selectToReplace(PageRec *&bh)
 	if (head == NULL)
 		return RC_OutOfSpace;
 	bh = head;
-	head = head->next;
-	if (head != NULL)
-		head->prev = NULL;
-	bh->prev = bh->next = NULL;
+	remove(bh);
 	return RC_OK;
 }
 

@@ -34,10 +34,6 @@ public:
 	//uint32_t getEntryCount() const {}
 	//_D getDefaultValue() const {}
 
-	// Tests whether this block is full such that a new key/value pair
-	// (where the value is non-default) cannot be accomodated.
-	//virtual bool isFull() const = 0;
-	
 	void setRange(_K lower, _K upper) {
         lowerBound = lower;
         upperBound = upper;

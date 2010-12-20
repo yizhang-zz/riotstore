@@ -5,6 +5,7 @@
 #include "../common/ArrayInternalIterator.h"
 #include "PagedStorageContainer.h"
 #include "BufferManager.h"
+#include <vector>
 
 enum StorageType {
     DMA,
@@ -58,7 +59,16 @@ public:
      */
     virtual int get(const Key_t &key, Datum_t &datum) = 0;
 
-    virtual int batchGet(i64 getCount, KVPair_t *gets) = 0;
+    /**
+     * For each entry.key, get the value and put it in the place pointed to by
+     * entry.pdatum.
+     */
+    virtual int batchGet(i64 getCount, Entry *gets) = 0;
+
+    /**
+     * Gets nonzero entries in range [beginsAt, endsBy).
+     */
+    virtual int batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &) = 0;
 
     /**
      * Sets the datum for the specified key.
@@ -69,7 +79,10 @@ public:
      */
     virtual int put(const Key_t &key, const Datum_t &datum) = 0;
 
-    virtual int batchPut(i64 putCount, const KVPair_t *puts) = 0;
+    /**
+     * For each entry.key, put the value entry.datum.
+     */
+    virtual int batchPut(i64 putCount, const Entry *puts) = 0;
 
     /**
      * Creates an internal iterator.
@@ -79,15 +92,20 @@ public:
      */
     virtual ArrayInternalIterator* createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy) = 0;    
 
-	Key_t getUpperBound() const
-	{
-		return upper;
-	}
+    virtual void flush() = 0;
 
-	BufferManager *getBufferManager() const
-	{
-		return buffer;
-	}
+    virtual StorageType type() const = 0;
+
+    virtual Key_t upperBound() const = 0;
+
+    /**
+     * Returns the number of nonzero entries.
+     */
+    virtual u32 nnz() const = 0;
+
+    double sparsity() const { return double(nnz())/upperBound(); }
+
+    BufferManager *getBufferManager() const { return buffer; }
 };
 
 #endif

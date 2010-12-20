@@ -2,7 +2,7 @@
 #define DMA_DENSE_ITERATOR_H
 
 #include "../common/ArrayInternalIterator.h"
-#include "DenseArrayBlock.h"
+#include "DMABlock.h"
 
 class DirectlyMappedArray;
 
@@ -11,7 +11,7 @@ class DMADenseIterator : public ArrayInternalIterator
 
 private:
     DirectlyMappedArray *array;
-    DenseArrayBlock *block;
+    DMABlock *block;
     ArrayInternalIterator *iter;
     bool atLastBlock;
     bool dirty;
