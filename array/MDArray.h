@@ -1,13 +1,13 @@
 #ifndef MDARRAY_H
 #define MDARRAY_H
 
-#include "common/common.h"
-#include "lower/LinearStorage.h"
-#include "common/ArrayInternalIterator.h"
-#include "Linearization.h"
-#include "btree/Splitter.h"
 #include <string>
-#include "cholmod.h"
+#include "common/common.h"
+#include "common/ArrayInternalIterator.h"
+#include "lower/LinearStorage.h"
+#include "btree/Splitter.h"
+#include "Linearization.h"
+#include "SparseMatrix.h"
 
 /**
  * A class for multi-dimensional arrays.  A MDArray presents a logical
@@ -125,8 +125,8 @@ public:
      * \param [out] datum Datum at coord.
      * \return OK if successful, OutOfRange if coord is out of range.
      */
-    AccessCode get(const Coord &coord, Datum_t &datum) const;
-    AccessCode get(const Key_t &key, Datum_t &datum) const;
+    int get(const Coord &coord, Datum_t &datum) const;
+    int get(const Key_t &key, Datum_t &datum) const;
 
     /**
       * Gets sub-array of entries
@@ -141,8 +141,7 @@ public:
       * \result OK if successful, OutOfRange is any coord within start and end
       * is out of range.
       */
-	AccessCode batchGet(const Coord &begin, const Coord &end, Datum_t *data) const;
-	AccessCode batchGet(const Coord &begin, const Coord &end, std::vector<Entry> &v) const;
+	int batchGet(const Coord &begin, const Coord &end, Datum_t *data) const;
 
     /**
      * Puts an entry in the array.
@@ -151,8 +150,8 @@ public:
      * \param [in] datum Datum at coord.
      * \result OK if successful, OutOfRange if coord is out of range.
      */
-    AccessCode put(const Coord &coord, const Datum_t &datum);
-    AccessCode put(const Key_t &key, const Datum_t &datum);
+    int put(const Coord &coord, const Datum_t &datum);
+    int put(const Key_t &key, const Datum_t &datum);
 
     /**
       * Puts sub-array of entries into the array.
@@ -166,7 +165,7 @@ public:
       * \result OK if successful, OutOfRange is any coord within start and end
       * is out of range.
       */
-    AccessCode batchPut(const Coord &start, const Coord &end, Datum_t *data);
+    int batchPut(const Coord &start, const Coord &end, Datum_t *data);
 
     /**
      * Creates an internal iterator over the 1-D storage device.
@@ -184,16 +183,6 @@ public:
 	// math methods
 	MDArray<nDim> & operator+=(const MDArray<nDim> &other);
 
-	void printSparse(cholmod_sparse *a, const char *name = 0)
-	{
-		cholmod_print_sparse(a, name, chmCommon);
-	}
-
-	void freeSparse(cholmod_sparse **a)
-	{
-		cholmod_free_sparse(a, chmCommon);
-	}
-
 protected:
     MDCoord<nDim> dim;
     u32 size; // number of elements
@@ -206,7 +195,18 @@ protected:
     bool allocatedSp;
     Btree::LeafSplitter *leafsp;
     Btree::InternalSplitter *intsp;
-	cholmod_common *chmCommon;
+
+    /**
+     * Get all nonzero entries within the rectangle as defined by begin and
+     * end, and linearize their coordinates using this->linearization. Entries
+     * are sorted in increasing key order. v contains the result set upon return.
+     */
+	int batchGet(const Coord &begin, const Coord &end, std::vector<Entry> &v) const;
+    /**
+     * Put all (nonzero) entries in v into the array. Keys are calculated using
+     * this->linearization and entries are in increasing key order.
+     */
+    int batchPut(MDArrayElement<nDim> *elements, int num);
 };
 
 class Matrix : public MDArray<2>
@@ -232,6 +232,10 @@ public:
 
 	Matrix operator*(const Matrix &other);
 
-	int batchGet(const Coord &begin, const Coord &end, cholmod_sparse **array) const;
+    using MDArray<2>::batchPut;
+    using MDArray<2>::batchGet;
+	SparseMatrix batchGet(const Coord &begin, const Coord &end) const;
+    int batchPut(const Coord &begin, const SparseMatrix &);
+
 };
 #endif

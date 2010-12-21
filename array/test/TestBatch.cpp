@@ -1,8 +1,11 @@
 #include <gtest/gtest.h>
+#include <iostream>
 #include "array/MDArray.h"
 #include "array/RowMajor.h"
 #include "array/ColMajor.h"
 #include "array/BlockBased.h"
+
+using namespace std;
 
 void checkRect(const MDArray<2> &array, const MDCoord<2> &begin, const MDCoord<2> &end, const Datum_t *data)
 {
@@ -83,7 +86,6 @@ TEST(MDArray, BatchPutBtree)
 
 TEST(MDArray, BatchGetSparse)
 {
-
 	const int rows = 20;
 	const int cols = 20;
 	const int size = rows * cols;
@@ -106,9 +108,46 @@ TEST(MDArray, BatchGetSparse)
 	
 	{
 		Matrix array("array.bin");
-		cholmod_sparse *sparse;
-		array.batchGet(MDCoord<2>(0,0), MDCoord<2>(rows-1,cols-1), &sparse);
-		array.freeSparse(&sparse);
+		SparseMatrix sp = array.batchGet(MDCoord<2>(0,0), MDCoord<2>(rows-1,cols-1));
+        SparseMatrix::Iterator it = sp.begin();
+        int i = 0;
+        for (; it != sp.end(); ++it)
+            ASSERT_DOUBLE_EQ(data[i++], it->datum);
 	}
 }
 
+TEST(MDArray, BatchPutSparse)
+{
+	const int rows = 100;
+	const int cols = 100;
+	const int size = rows * cols;
+	MDCoord<2> dim(rows,cols);
+
+	const int nz = 100;
+    Key_t keys[nz];
+    for (int i=0; i<nz; ++i) {
+        keys[i] = i;
+    }
+    SparseMatrix::Element elements[nz];
+    permute(keys, nz);
+    for (int i=0; i<nz; ++i) 
+        elements[i].coord[0] = keys[i];
+    permute(keys, nz);
+    for (int i=0; i<nz; ++i) {
+        elements[i].coord[1] = keys[i];
+        elements[i].datum = keys[i]+1;
+    }
+    
+    MDCoord<2> begin(0,0), end(rows-1,cols-1);
+    SparseMatrix sp(elements, nz, begin, end, false);
+
+	RowMajor<2> rowMajor(&dim[0]);
+    Matrix a(dim, BTREE, &rowMajor, "array.bin");
+    a.batchPut(begin, sp);
+
+    for (int i=0; i<nz; ++i) {
+        Datum_t x;
+        a.get(elements[i].coord, x);
+        ASSERT_DOUBLE_EQ(elements[i].datum, x);
+    }
+}

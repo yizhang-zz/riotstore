@@ -46,6 +46,8 @@ public:
     /// assume key is within range
     int put(Key_t key, Datum_t datum);
     int batchPut(i64 putCount, const Entry *puts);
+    int batchPut(std::vector<Entry>::const_iterator &begin,
+            std::vector<Entry>::const_iterator end);
 
     /// assume beginsAt and endsBy are within upperBound and lowerBound
     ArrayInternalIterator* getIterator(Key_t beginsAt, Key_t endsBy);

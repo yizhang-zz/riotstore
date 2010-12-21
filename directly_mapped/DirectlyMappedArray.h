@@ -27,6 +27,7 @@ public:
     virtual int batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &);
     virtual int put(const Key_t &key, const Datum_t &datum);
     virtual int batchPut(i64 putCount, const Entry *puts);
+    virtual int batchPut(std::vector<Entry> &);
     virtual void flush();
     virtual StorageType type() const { return DMA; }
     virtual ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);

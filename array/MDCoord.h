@@ -216,6 +216,14 @@ public:
 		return ret;
 	}
 
+    MDCoord<nDim> transpose() const
+    {
+        MDCoord<nDim> ret;
+        for (int i=0; i<nDim/2; ++i)
+            ret[i] = coords[nDim-1-i];
+        return ret;
+    }
+
 	/*
 	i64* operator&() const
 	{
@@ -247,4 +255,26 @@ std::ostream & operator<<(std::ostream &out, const MDCoord<N> &coord)
 {
 	return out<<coord.toString();
 }
+
+template<int nDim>
+struct MDArrayElement
+{
+    MDCoord<nDim> coord;
+    Datum_t datum;
+
+    /**
+     * Compares in column major order.
+     */
+    bool operator< (const MDArrayElement<nDim> &other) const
+    {
+        for (int i=nDim-1; i>=0; --i) {
+            if (coord[i] < other.coord[i])
+                return true;
+            else if (coord[i] > other.coord[i])
+                return false;
+        }
+        return false;
+    }
+};
+
 #endif

@@ -96,6 +96,7 @@ public:
 
     int put(const Key_t &key, const Datum_t &datum);
     int batchPut(i64 putCount, const Entry *puts); 
+    int batchPut(std::vector<Entry> &);
     int get(const Key_t &key, Datum_t &datum);
     int batchGet(i64 getCount, Entry *gets); 
     int batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &);

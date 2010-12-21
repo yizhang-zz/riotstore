@@ -10,7 +10,9 @@
 .*.swp
 *.log
 *.er
+*.mshark
 core
 tags
 */test/test
+array/test/mda*
 lib/

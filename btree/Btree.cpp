@@ -414,6 +414,18 @@ int BTree::batchPut(i64 putCount, const Entry *puts)
 	return AC_OK;
 }
 
+int BTree::batchPut(std::vector<Entry> &v)
+{
+	Cursor cursor(buffer);
+    int size = v.size();
+	for (int i=0; i<size; ++i) {
+		if (v[i].key >= header->endsBy)
+			continue;
+		putHelper(v[i].key, v[i].datum, cursor);
+	}
+	return AC_OK;
+}
+
 int BTree::batchGet(i64 getCount, Entry *gets)
 {
 	Cursor cursor(buffer);

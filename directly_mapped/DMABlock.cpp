@@ -80,6 +80,26 @@ int DMABlock::batchPut(i64 putCount, const Entry *puts)
     return ret;
 }
 
+int DMABlock::batchPut(std::vector<Entry>::const_iterator &begin, 
+        std::vector<Entry>::const_iterator end)
+{
+    int nPut = 0;
+    int index;
+    for (; begin != end && begin->key < upperBound; ++begin) {
+        index = begin->key - lowerBound;
+        if (begin->datum == data[index])
+            continue;
+        if (begin->datum == DefaultValue && data[index] != DefaultValue)
+            nPut--;
+        else if (begin->datum != DefaultValue && data[index] == DefaultValue)
+            nPut++;
+        data[index] = begin->datum;
+    }
+    header->nnz += nPut;
+    ph->markDirty();
+    return nPut;
+}
+
 /// assume beginsAt and endsBy are within upperBound and lowerBound
 ArrayInternalIterator *DMABlock::getIterator(Key_t beginsAt, Key_t endsBy) 
 {

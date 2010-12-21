@@ -46,8 +46,6 @@ template<int nDim>
 MDArray<nDim>::MDArray(const MDCoord<nDim> &dim, Linearization<nDim> *lnrztn, LeafSplitter *leaf, InternalSplitter *internal, const char *fileName)
     : leafsp(leaf), intsp(internal)
 {
-    chmCommon = new cholmod_common;
-    cholmod_start(chmCommon);
     this->allocatedSp = false;
     this->dim = dim;
     // The linearized space can be larger than what dim indicates;
@@ -59,7 +57,7 @@ MDArray<nDim>::MDArray(const MDCoord<nDim> &dim, Linearization<nDim> *lnrztn, Le
     for (int i=0; i<nDim; ++i)
         size *= (u32) coord[i];
    
-    linearization = lnrztn;
+    linearization = lnrztn->clone();
 
     char path[40]; // should be long enough
     if (fileName == 0)
@@ -102,16 +100,13 @@ template<int nDim>
 MDArray<nDim>::MDArray(const MDCoord<nDim> &d, StorageType type, Linearization<nDim> *lnrztn, const char *fileName)
     : dim(d), allocatedSp(false), leafsp(NULL), intsp(NULL)
 {
-    chmCommon = new cholmod_common;
-    cholmod_start(chmCommon);
     Coord coord = lnrztn->getActualDims();
 
     size = 1;
     for (int i=0; i<nDim; ++i)
         size *= (u32) coord[i];
    
-    //linearization = lnrztn->clone();
-    linearization = lnrztn;
+    linearization = lnrztn->clone();
 
     char path[40] = "mdaXXXXXX"; // should be long enough..
     if (!fileName)
@@ -160,8 +155,6 @@ MDArray<nDim>::MDArray(const MDCoord<nDim> &d, StorageType type, Linearization<n
 template<int nDim>
 MDArray<nDim>::MDArray(const char *fileName):fileName(fileName), allocatedSp(false), leafsp(NULL), intsp(NULL)
 {
-    chmCommon = new cholmod_common;
-    cholmod_start(chmCommon);
 
     if (access(fileName, F_OK) != 0)
         throw ("File for array does not exist.");
@@ -222,9 +215,6 @@ MDArray<nDim>::MDArray(const char *fileName):fileName(fileName), allocatedSp(fal
 template<int nDim>
 MDArray<nDim>::MDArray(const MDArray<nDim> &other)
 {
-    chmCommon = new cholmod_common;
-    cholmod_start(chmCommon);
-
     dim = other.dim;
     size = other.size;
 
@@ -261,8 +251,6 @@ MDArray<nDim>::MDArray(const MDArray<nDim> &other)
 template<int nDim>
 MDArray<nDim>::~MDArray()
 {
-    cholmod_finish(chmCommon);
-	delete chmCommon;
     if (allocatedSp)
     {
         delete intsp;
@@ -270,6 +258,7 @@ MDArray<nDim>::~MDArray()
     }
     if (storage)
         delete storage;
+    delete linearization;
 }
 
 template<int nDim>
@@ -281,7 +270,8 @@ Linearization<nDim>* MDArray<nDim>::getLinearization()
 template<int nDim>
 void MDArray<nDim>::setLinearization(Linearization<nDim>* nl)
 {
-    linearization = nl;
+    delete linearization;
+    linearization = nl->clone();
 }
 
 template<int nDim>
@@ -313,7 +303,7 @@ typename MDArray<nDim>::MDIterator *MDArray<nDim>::createNaturalIterator(Iterato
 }
 
 template<int nDim>
-AccessCode MDArray<nDim>::get(const MDCoord<nDim> &coord, Datum_t &datum) const
+int MDArray<nDim>::get(const MDCoord<nDim> &coord, Datum_t &datum) const
 {
    Key_t key = linearization->linearize(coord);
    if (storage->get(key, datum) == AC_OK)
@@ -322,7 +312,7 @@ AccessCode MDArray<nDim>::get(const MDCoord<nDim> &coord, Datum_t &datum) const
 }
 
 template<int nDim>
-AccessCode MDArray<nDim>::get(const Key_t &key, Datum_t &datum) const
+int MDArray<nDim>::get(const Key_t &key, Datum_t &datum) const
 {
    if (storage->get(key, datum) == AC_OK)
       return AC_OK;
@@ -330,7 +320,7 @@ AccessCode MDArray<nDim>::get(const Key_t &key, Datum_t &datum) const
 }
 
 template<int nDim>
-AccessCode MDArray<nDim>::put(const MDCoord<nDim> &coord, const Datum_t &datum)
+int MDArray<nDim>::put(const MDCoord<nDim> &coord, const Datum_t &datum)
 {
    Key_t key = linearization->linearize(coord);
    if (storage->put(key, datum) == AC_OK)
@@ -339,7 +329,7 @@ AccessCode MDArray<nDim>::put(const MDCoord<nDim> &coord, const Datum_t &datum)
 }
 
 template<int nDim>
-AccessCode MDArray<nDim>::put(const Key_t &key, const Datum_t &datum)
+int MDArray<nDim>::put(const Key_t &key, const Datum_t &datum)
 {
    if (storage->put(key, datum) == AC_OK)
       return AC_OK;
@@ -347,7 +337,7 @@ AccessCode MDArray<nDim>::put(const Key_t &key, const Datum_t &datum)
 }
 
 template<int nDim>
-AccessCode MDArray<nDim>::batchPut(const Coord &start, const Coord &end, Datum_t *data)
+int MDArray<nDim>::batchPut(const Coord &start, const Coord &end, Datum_t *data)
 {
     // start should be within the array's bound,
     // but end could be out, either beyond the right bound or lower bound.
@@ -391,7 +381,21 @@ AccessCode MDArray<nDim>::batchPut(const Coord &start, const Coord &end, Datum_t
 }
 
 template<int nDim>
-AccessCode MDArray<nDim>::batchGet(const Coord &start, const Coord &end, Datum_t *data) const
+int MDArray<nDim>::batchPut(MDArrayElement<nDim> *elements, int num)
+{
+    Entry *entries = new Entry[num];
+    for (int i=0; i<num; ++i) {
+        entries[i].key = linearization->linearize(elements[i].coord);
+        entries[i].datum = elements[i].datum;
+    }
+    std::sort(entries, entries+num);
+    int ac = storage->batchPut(num, entries);
+    delete[] entries;
+    return ac;
+}
+
+template<int nDim>
+int MDArray<nDim>::batchGet(const Coord &start, const Coord &end, Datum_t *data) const
 {
     // start should be within the array's bound,
     // but end could be out, either beyond the right bound or lower bound.
@@ -432,6 +436,20 @@ AccessCode MDArray<nDim>::batchGet(const Coord &start, const Coord &end, Datum_t
     if (ac == AC_OK)
         return AC_OK;
     return AC_OutOfRange;
+}
+
+template<int nDim>
+int MDArray<nDim>::batchGet(const Coord &begin, const Coord &end, std::vector<Entry> &v) const
+{
+    using namespace std;
+    vector<Segment> *segments = linearization->getOverlap(begin, end);
+    for (vector<Segment>::iterator it = segments->begin();
+            it != segments->end();
+            ++it) {
+        storage->batchGet(it->begin, it->end, v);
+    }
+    delete segments;
+    return AC_OK;
 }
 
 template<int nDim>
@@ -498,79 +516,62 @@ MDArray<nDim> & MDArray<nDim>::operator+=(const MDArray<nDim> &other)
     return *this;
 }
 
-template<int nDim>
-AccessCode MDArray<nDim>::batchGet(const Coord &begin, const Coord &end, std::vector<Entry> &v) const
-{
-    using namespace std;
-    vector<Segment> *segments = linearization->getOverlap(begin, end);
-    for (vector<Segment>::iterator it = segments->begin();
-            it != segments->end();
-            ++it) {
-        storage->batchGet(it->begin, it->end, v);
-    }
-    delete segments;
-    return AC_OK;
-}
-
 
 template class MDArray<1>;
 template class MDArray<2>;
 template class MDArray<3>;
 
-struct MatrixElement
-{
-    Entry entry;
-    MDCoord<2> coord;
-
-    int operator< (const MatrixElement &other) const
-    {
-        if (coord[1] == other.coord[1])
-            return coord[0] < other.coord[0];
-        return coord[1] < other.coord[1];
-    }
-};
-
-int Matrix::batchGet(const Coord &begin, const Coord &end, cholmod_sparse **array) const
+SparseMatrix Matrix::batchGet(const Coord &begin, const Coord &end) const
 {
     std::vector<Entry> v;
     MDArray<2>::batchGet(begin, end, v);  // v contains all non-zero records
     size_t size = v.size();
     int i = 0;
-    MatrixElement *elements = new MatrixElement[size];
+    MDArrayElement<2> *elements = new MDArrayElement<2>[size];
     for (std::vector<Entry>::iterator it = v.begin();
             it != v.end();
             ++it) {
-        elements[i].entry = *it;
         elements[i].coord = linearization->unlinearize(it->key);
+        elements[i].datum = it->datum;
         i++;
     }
-    std::sort(elements, elements+size);
-
-    *array = cholmod_allocate_sparse(
-            end[0] - begin[0] + 1,
-            end[1] - begin[1] + 1,
-            size, // nzmax
-            1, // sorted
-            1, // packed
-            0, // stype, unsymmetric
-            CHOLMOD_REAL,
-            chmCommon);
-    int *pa = (int*) (*array)->p;
-    int *ia = (int*) (*array)->i;
-    double *xa = (double*) (*array)->x;
-
-    int ncols = end[1] - begin[1] + 1;
-    i = 0;
-    for (int col = 0; col <= ncols; ++col) {
-        pa[col] = i;
-        while (i < size && elements[i].coord[1] == col + begin[1]) {
-            ia[i] = elements[i].coord[0] - begin[0];
-            xa[i] = elements[i].entry.datum;
-            i++;
-        }
-    }
+    SparseMatrix ret(elements, size, begin, end, false);
     delete[] elements;
-    return AC_OK;
+    return ret;
+}
+
+int Matrix::batchPut(const Coord &begin, const SparseMatrix &sm)
+{
+    //int *ap = (int*) (array)->p;
+    //int *ai = (int*) (array)->i;
+    //double *ax = (double*) (array)->x;
+    //size_t ncol = array->ncol;
+    //int size = ap[ncol];
+    //Entry *puts = new Entry[size];
+    //int k = 0;
+    //for (int i=0; i<ncol; ++i) {
+    //    for (int j=ap[i]; j<ap[i+1]; ++j) {
+    //        puts[k].key =linearization->linearize(Coord(ai[j]+begin[0], i+begin[1]));
+    //        puts[k].datum = ax[j];
+    //        k++;
+    //    }
+    //}
+    size_t size = sm.size();
+    Entry *puts = new Entry[size];
+    size_t k = 0;
+    SparseMatrix::Iterator it = sm.begin();
+    for (; it != sm.end(); ++it) {
+        SparseMatrix::Element e = *it;
+        puts[k].key = linearization->linearize(e.coord+begin);
+        puts[k].datum = e.datum;
+        k++;
+    }
+    assert(k == size);
+    if (linearization->getType() != COL)
+        std::sort(puts, puts+size);
+    int ret = storage->batchPut(size, puts);
+    delete[] puts;
+    return ret;
 }
 
 Matrix Matrix::operator*(const Matrix &other)
@@ -580,71 +581,118 @@ Matrix Matrix::operator*(const Matrix &other)
 
     // Safe even if other==this
     // Use this' linearization
-    //LinearizationType type = this->linearization->getType();
-    // square block
-    Coord blockDims(1000,1000);
-    i64 blockSize = 1000*1000;
+
+    // Param 0: blocking factor of left and right operator
+    Coord blockl(1000,1000);
+    Coord blockr(1000,1000);
+    assert(blockl[1]==blockr[0]);
+    Coord block(blockl[0], blockr[1]);
+ 
+    // (int+double)x < double*x => x<.667
+    bool sparseA = sparsity() < .667;
+    bool sparseB = other.sparsity() < .667;
+
+    Datum_t *leftop ;
+    Datum_t *rightop ;
+    Datum_t *result ;
+    if (!sparseA && !sparseB) {
+        leftop = new Datum_t[blockl[0]*blockl[1]];
+        rightop = new Datum_t[blockr[0]*blockr[1]];
+        result = new Datum_t[blockl[0]*blockr[1]];
+    }
 
     i64 retDims[] = {dim[0], other.dim[1]};
-    u8 orders[]   = {1, 0};
-    static BlockBased<2> retLin(retDims, &blockDims[0], orders, orders); 
-    static MSplitter<PID_t> msp;// = new MSplitter<PID_t>;
-    static BSplitter<Datum_t> bsp(config->denseLeafCapacity);// = new BSplitter<Datum_t>
+    u8 orders[]   = {1, 0}; // result should be column major?
+    BlockBased<2> retLin(retDims, &block[0], orders, orders); 
+    MSplitter<PID_t> msp;
+    // Param 1: what is the boundary value? dense leaf cap or sparse leaf cap?
+    BSplitter<Datum_t> bsp(config->denseLeafCapacity);
+    // Param 2: what storage type to use? dma or btree?
     //Matrix ret(Coord(retDims), &retLin, &bsp, &msp);
     Matrix ret(Coord(retDims), DMA, &retLin);
 
-    i64 temp[2] = {0};
-    Coord begin = Coord(temp);
-    temp[0] = temp[1] = 1;
-    Coord box = blockDims - Coord(temp); // bounds are inclusive
-    Coord end = begin + box;
-    Datum_t *leftop = new Datum_t[blockSize];
-    Datum_t *rightop = new Datum_t[blockSize];
-    Datum_t *result = new Datum_t[blockSize];
-    int nbr = 1+(dim[0]-1)/blockDims[0];
-    int nbc = 1+(other.dim[1]-1)/blockDims[1];
-    int nbx = 1+(dim[1]-1)/blockDims[1];
+    Coord begin, end;
+    int nbr = 1+(dim[0]-1)/blockl[0];
+    int nbc = 1+(other.dim[1]-1)/blockr[1];
+    int nbx = 1+(dim[1]-1)/blockl[1];
     for (int i=0; i<nbr; ++i) {
         for (int j=0; j<nbc; ++j) {
-            double beta = 0.0;
-            for (int k=0; k<nbx; ++k) {
-                // read block[i,k] from this and block[k,j] from other
-                begin[0] = i*blockDims[0];
-                begin[1] = k*blockDims[1];
-                end[0]   = begin[0] + blockDims[0] - 1;
-                end[1]   = begin[1] + blockDims[1] - 1;
-                MDArray<2>::batchGet(begin, end, leftop);
-                begin[0] = k*blockDims[0];
-                begin[1] = j*blockDims[1];
-                end[0]   = begin[0] + blockDims[0] - 1;
-                end[1]   = begin[1] + blockDims[1] - 1;
-                other.MDArray<2>::batchGet(begin, end, rightop);
-                cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans,
-                        blockDims[0], // #rows of leftop
-                        blockDims[1], // #cols of rightop
-                        blockDims[1], // #cols of leftop or #rows of rightop
-                        1, // alpha, scaling factor of the product
-                        leftop,
-                        blockDims[0], // first dimension (row) of leftop
-                        rightop,
-                        blockDims[0], // first dimension (row) of rightop
-                        beta, // beta, scaling factor of the constant
-                        result, // the constant input, will be written as output
-                        blockDims[0] //first dimension (row) of result
-                        );
-                beta = 1.0; // result will be accmulated
+            switch(sparseA*2+sparseB) {
+            case 0: // both dense
+                {
+                    double beta = 0.0;
+                    for (int k=0; k<nbx; ++k) {
+                        // read block[i,k] from this and block[k,j] from other
+                        begin[0] = i*blockl[0];
+                        begin[1] = k*blockl[1];
+                        end = begin + blockl - Coord(1, 1);
+                        MDArray<2>::batchGet(begin, end, leftop);
+                        begin[0] = k*blockr[0];
+                        begin[1] = j*blockr[1];
+                        end = begin + blockr - Coord(1, 1);
+                        other.MDArray<2>::batchGet(begin, end, rightop);
+                        cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans,
+                                blockl[0], // #rows of leftop
+                                blockr[1], // #cols of rightop
+                                blockl[1], // #cols of leftop or #rows of rightop
+                                1, // alpha, scaling factor of the product
+                                leftop,
+                                blockl[0], // first dimension (row) of leftop
+                                rightop,
+                                blockr[0], // first dimension (row) of rightop
+                                beta, // beta, scaling factor of the constant
+                                result, // the constant input, will be written as output
+                                blockl[0] //first dimension (row) of result
+                                );
+                        beta = 1.0; // result will be accmulated
+                    }
+                    begin[0] = i*block[0];
+                    begin[1] = j*block[1];
+                    end = begin + block - Coord(1, 1);
+                    ret.MDArray<2>::batchPut(begin, end, result);
+                }
+                break;
+            case 1: // this dense, other sparse
+                break;
+            case 2: // this sparse, other dense
+                break;
+            case 3: // both sparse
+                {
+                    SparseMatrix resultSp(block[0], block[1]);
+                    for (int k=0; k<nbx; ++k) {
+                        // read block[i,k] from this and block[k,j] from other
+                        begin[0] = i*blockl[0];
+                        begin[1] = k*blockl[1];
+                        end = begin + blockl - Coord(1, 1);
+                        SparseMatrix lop = batchGet(begin, end);
+                        begin[0] = k*blockr[0];
+                        begin[1] = j*blockr[1];
+                        end = begin + blockr - Coord(1, 1);
+                        SparseMatrix rop = other.batchGet(begin, end);
+                        SparseMatrix temp(lop*rop);
+                        for (SparseMatrix::Iterator it = temp.begin();
+                                it != temp.end(); ++it)
+                            assert(!isnan(it->datum));
+                        resultSp += temp;
+                        for (SparseMatrix::Iterator it = resultSp.begin();
+                                it != resultSp.end(); ++it)
+                            assert(!isnan(it->datum));
+                        //resultSp += lop * rop;
+                    }
+                    begin[0] = i*block[0];
+                    begin[1] = j*block[1];
+                    ret.batchPut(begin, resultSp);
+                }
+                break;
             }
-            begin[0] = i*blockDims[0];
-            begin[1] = j*blockDims[1];
-            end[0]   = begin[0] + blockDims[0] - 1;
-            end[1]   = begin[1] + blockDims[1] - 1;
-            ret.batchPut(begin, end, result);
-        }
-    }
+        } // for j
+    } // for i
 
-    delete[] leftop;
-    delete[] rightop;
-    delete[] result;
+    if (!sparseA && !sparseB) {
+        delete[] leftop;
+        delete[] rightop;
+        delete[] result;
+    }
     return ret;
 }
 

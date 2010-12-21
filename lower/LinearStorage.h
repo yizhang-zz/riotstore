@@ -66,7 +66,7 @@ public:
     virtual int batchGet(i64 getCount, Entry *gets) = 0;
 
     /**
-     * Gets nonzero entries in range [beginsAt, endsBy).
+     * Gets nonzero key-value pairs in range [beginsAt, endsBy).
      */
     virtual int batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &) = 0;
 
@@ -83,6 +83,11 @@ public:
      * For each entry.key, put the value entry.datum.
      */
     virtual int batchPut(i64 putCount, const Entry *puts) = 0;
+
+    /**
+     * Puts nonzero key-value pairs in range [beginsAt, endsBy).
+     */
+    virtual int batchPut(std::vector<Entry> &) = 0;
 
     /**
      * Creates an internal iterator.

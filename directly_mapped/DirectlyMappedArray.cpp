@@ -158,6 +158,20 @@ int DirectlyMappedArray::batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entr
 	return AC_OK;
 }
 
+int DirectlyMappedArray::batchPut(std::vector<Entry> &v)
+{
+    DMABlock *block = NULL;
+    std::vector<Entry>::const_iterator begin = v.begin(),
+        end = v.end();
+    while (begin != end) {
+        PID_t pid = findPage(begin->key);
+        readOrAllocBlock(pid, &block);
+        header->nnz += block->batchPut(begin, end); // begin is updated
+        delete block;
+    }
+    return AC_OK;
+}
+
 int DirectlyMappedArray::put(const Key_t &key, const Datum_t &datum) 
 {
 #ifdef PROFILING
