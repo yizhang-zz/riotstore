@@ -8,7 +8,7 @@ bool DMASparseIterator::nextBlockIterator()
       return false;
 
    PageHandle ph = block->getPageHandle();
-   array->releaseBlock(block);
+   //array->releaseBlock(block);
    delete block;
    int ret = array->readNextBlock(ph, &block);
    if (ret != RC_OK) 
@@ -40,14 +40,13 @@ bool DMASparseIterator::isZero()
 DMASparseIterator::DMASparseIterator(Key_t _beginsAt, Key_t _endsBy, DirectlyMappedArray* array) 
 {
    this->array = array;
-   if (0 > beginsAt || array->getUpperBound() < endsBy)
+   if (0 > beginsAt || array->upperBound() < endsBy)
       throw std::string("Iterator range out of array range.");
    this->beginsAt = _beginsAt;
    this->endsBy = _endsBy;
 
    Key_t upper = endsBy;
-   PID_t pid;
-   array->findPage(beginsAt, &pid);
+   PID_t pid = array->findPage(beginsAt);
    array->readBlock(pid, &block);
 
    atLastBlock = true;
@@ -61,7 +60,7 @@ DMASparseIterator::DMASparseIterator(Key_t _beginsAt, Key_t _endsBy, DirectlyMap
 
 DMASparseIterator::~DMASparseIterator() 
 {
-   array->releaseBlock(block);
+   //array->releaseBlock(block);
    delete block;
    delete iter;
 }
@@ -102,13 +101,12 @@ void DMASparseIterator::put(const Datum_t &d)
 
 void DMASparseIterator::reset()
 {
-   array->releaseBlock(block);
+   //array->releaseBlock(block);
    delete block;
    delete iter;
 
    Key_t upper = endsBy;
-   PID_t pid;
-   array->findPage(beginsAt, &pid);
+   PID_t pid = array->findPage(beginsAt);
    array->readBlock(pid, &block);
 
    atLastBlock = true;

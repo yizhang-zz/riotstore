@@ -1,15 +1,13 @@
 #ifndef BUFFER_MANAGER_H
 #define BUFFER_MANAGER_H
 
-//#include <apr_pools.h>
-//#include <map>
 #include <boost/unordered_map.hpp>
 #include "../common/common.h"
 #include "PagedStorageContainer.h"
-#include "PageRec.h"
 
 // forward declaration
 class PageReplacer;
+class PageRec;
 
 /*
 class PagePacker
@@ -47,6 +45,7 @@ public:
 #endif
 
 private:
+	friend class Page;
 
     //typedef std::map<PID_t, PageRec*> PageHashMap;
 	typedef boost::unordered_map<PID_t, PageRec*> PageHashMap;
@@ -110,37 +109,39 @@ public:
 
     // Disposes a buffered page.  It will be removed from both the
     // buffer and the disk storage.  Dirty bit is ignored.
-    RC_t disposePage(PageHandle ph);
+    RC_t disposePage(PageRec *p);
 
     // Reads a page into buffer (if it is not already in), pins it, and
     // returns the handle.
     RC_t readPage(PID_t pid, PageHandle &ph);
 
+	// Reads a page if it exists on disk, otherwise allocates it.
     RC_t readOrAllocatePage(PID_t pid, PageHandle &ph);
-
-    // Marks a pinned page as dirty (i.e., modified).
-    RC_t markPageDirty(const PageHandle ph);
-
-    // Pins a page.  As long as a page has at least one pin, it cannot
-    // be discarded from the buffer.
-    RC_t pinPage(const PageHandle ph);
-
-    // Unpins a page.  If a page has no pin left, it can be discarded
-    // from the buffer, in which case the handle will become invalid.
-    RC_t unpinPage(const PageHandle ph) ;
 
     // Flushes a pinned page to disk, if it is dirty.  A page's dirty
     // bit is unset after flushing.
-    RC_t flushPage(const PageHandle ph) ;
+    RC_t flushPage(PageRec *p) ;
 
     // Flushes all dirty pages in the buffer to disk.  Pages' dirty bits
     // are unset after flushing.
     RC_t flushAllPages() ;
     
+	// Print the status of the buffer manager
     void print() ;
 
-    //void setPagePacker(PagePacker *packer) { this->packer = packer; }
+private:
+    // Marks a pinned page as dirty (i.e., modified).
+    RC_t markPageDirty(PageRec *p);
 
+    // Pins a page.  As long as a page has at least one pin, it cannot
+    // be discarded from the buffer.
+    RC_t pinPage(PageRec *p);
+
+    // Unpins a page.  If a page has no pin left, it can be discarded
+    // from the buffer, in which case the handle will become invalid.
+    RC_t unpinPage(PageRec *p) ;
+
+	/*
     PID_t getPID(PageHandle ph)
 	{
 		PageRec *rec = (PageRec*) ph;
@@ -152,7 +153,7 @@ public:
 		PageRec *rec = (PageRec*) ph;
 		return rec->image;
 	}
-    //void *getUnpackedPageImage(PageHandle ph);
+	*/
 
 private:
 	RC_t replacePage(PageRec *&bh);

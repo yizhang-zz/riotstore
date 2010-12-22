@@ -1,13 +1,14 @@
 #ifndef MDARRAY_H
 #define MDARRAY_H
 
-#include "common/common.h"
-#include "lower/LinearStorage.h"
-#include "common/ArrayInternalIterator.h"
-#include "Linearization.h"
-#include "btree/Splitter.h"
 #include <string>
+#include "common/common.h"
+#include "common/ArrayInternalIterator.h"
+#include "lower/LinearStorage.h"
+#include "btree/Splitter.h"
 #include "Parser.h"
+#include "Linearization.h"
+#include "SparseMatrix.h"
 
 /**
  * A class for multi-dimensional arrays.  A MDArray presents a logical
@@ -74,6 +75,11 @@ public:
      */
     MDArray(const char *fileName);
 
+	/**
+	 * Copy constructor
+	 */
+	MDArray(const MDArray<nDim> &other);
+
     /**
      * Constructor used for batch loading a file
      */
@@ -125,8 +131,8 @@ public:
      * \param [out] datum Datum at coord.
      * \return OK if successful, OutOfRange if coord is out of range.
      */
-    AccessCode get(const Coord &coord, Datum_t &datum) const;
-    AccessCode get(const Key_t &key, Datum_t &datum) const;
+    int get(const Coord &coord, Datum_t &datum) const;
+    int get(const Key_t &key, Datum_t &datum) const;
 
     /**
       * Gets sub-array of entries
@@ -141,7 +147,7 @@ public:
       * \result OK if successful, OutOfRange is any coord within start and end
       * is out of range.
       */
-	AccessCode batchGet(const Coord &start, const Coord &end, Datum_t *data) const;
+	int batchGet(const Coord &begin, const Coord &end, Datum_t *data) const;
 
     /**
      * Puts an entry in the array.
@@ -150,8 +156,8 @@ public:
      * \param [in] datum Datum at coord.
      * \result OK if successful, OutOfRange if coord is out of range.
      */
-    AccessCode put(const Coord &coord, const Datum_t &datum);
-    AccessCode put(const Key_t &key, const Datum_t &datum);
+    int put(const Coord &coord, const Datum_t &datum);
+    int put(const Key_t &key, const Datum_t &datum);
 
     /**
       * Puts sub-array of entries into the array.
@@ -165,7 +171,7 @@ public:
       * \result OK if successful, OutOfRange is any coord within start and end
       * is out of range.
       */
-    AccessCode batchPut(const Coord &start, const Coord &end, Datum_t *data);
+    int batchPut(const Coord &start, const Coord &end, Datum_t *data);
 
     /**
      * Creates an internal iterator over the 1-D storage device.
@@ -178,6 +184,7 @@ public:
     const char* getFileName() const { return fileName.c_str(); }
     int getNDim() const { return nDim; }
 	Coord getDims() const { return dim; }
+    double sparsity() const { return storage->sparsity(); }
 
 	// math methods
 	MDArray<nDim> & operator+=(const MDArray<nDim> &other);
@@ -191,9 +198,21 @@ protected:
     Linearization<nDim> *linearization;
     std::string fileName;
 
+    bool allocatedSp;
     Btree::LeafSplitter *leafsp;
     Btree::InternalSplitter *intsp;
-    bool allocatedSp;
+
+    /**
+     * Get all nonzero entries within the rectangle as defined by begin and
+     * end, and linearize their coordinates using this->linearization. Entries
+     * are sorted in increasing key order. v contains the result set upon return.
+     */
+	int batchGet(const Coord &begin, const Coord &end, std::vector<Entry> &v) const;
+    /**
+     * Put all (nonzero) entries in v into the array. Keys are calculated using
+     * this->linearization and entries are in increasing key order.
+     */
+    int batchPut(MDArrayElement<nDim> *elements, int num);
 };
 
 class Matrix : public MDArray<2>
@@ -213,6 +232,16 @@ public:
 	{
 	}
 
+	Matrix(const Matrix &other) : MDArray<2>(other)
+	{
+	}
+
 	Matrix operator*(const Matrix &other);
+
+    using MDArray<2>::batchPut;
+    using MDArray<2>::batchGet;
+	SparseMatrix batchGet(const Coord &begin, const Coord &end) const;
+    int batchPut(const Coord &begin, const SparseMatrix &);
+
 };
 #endif

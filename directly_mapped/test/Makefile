@@ -1,36 +1,22 @@
-CXX = g++ 
-CXXFLAGS = -g `pkg-config --cflags-only-I apr-1`
-LDFLAGS = -lgtest `pkg-config --libs apr-1`
+LDFLAGS += -lgtest -L../.. -lriot_store
+LD_RUN_PATH = ../..
 
-.PHONY: all clean lower
+.PHONY: all clean 
 
-#objects := $(patsubst %.cpp, %.o, $(wildcard *.cpp))
 objects := TestDMA.o main.o
-par_objects := $(patsubst %.cpp, %.o, $(wildcard ../*.cpp))
 
-.c.o:
-	$(CXX) $(CXXFLAGS) -c $<
-
-.cpp.o:
-	$(CXX) $(CXXFLAGS) -c $<
-
-all: lower test
+all: test
 	./test
 
-%.d: %.cpp
-	$(SHELL) -ec '$(CXX) -M $(CXXFLAGS) $< | sed "s/$*.o/& $@/g" > $@'
+include ../../flags.mk
+include $(objects:.o=.dd)
 
-include $(objects:.o=.d)
 
-lower:
-	cd .. ; $(MAKE)
-
-test: $(objects) $(par_objects) ../../common/common.o ../../lower/BitmapPagedFile.o ../../lower/LRUPageReplacer.o ../../lower/BufferManager.o
-	echo $(par_objects)
-	$(CXX) $(LDFLAGS) -o test $^ 
-
+test: $(objects) 
+	$(CXX) -o $@ $^ $(LDFLAGS) 
 
 clean : 
 	rm -f *.o
 	rm -f *.out
-	rm -f *.d
+	rm -f *.dd
+	rm -f test

@@ -3,6 +3,7 @@
 
 #include "../common/common.h"
 #include "MDCoord.h"
+#include <vector>
 
 enum LinearizationType 
 {
@@ -10,6 +11,14 @@ enum LinearizationType
    ROW = 0x11,
    COL = 0x12,
    BLOCK = 0x10
+};
+
+struct Segment
+{
+	Key_t begin;// inclusive
+	Key_t end;	// inclusive
+	Segment(Key_t b, Key_t e): begin(b), end(e)
+	{}
 };
 
 /**
@@ -99,7 +108,7 @@ public:
      *
      * \return A pointer to a clone of subclass type.
      */
-    //virtual Linearization* clone() = 0;
+    virtual Linearization* clone() const = 0;
 
     virtual bool equals(Linearization<nDim> *) const = 0;
 
@@ -108,18 +117,15 @@ public:
     virtual Linearization<nDim>* transpose() const { return NULL; }
     
     virtual MDCoord<nDim> getActualDims() const = 0;
-protected:
-    /*
-     * \name States
-     * States of last (un)linearize operation, maintained for
-     * incremental computation.
+
+    /**
+     * Draw a curve through the elements in the MD space, the given
+     * rectangle overlaps with the line and cuts it into segments.  This
+     * function returns the list containing these segments, sorted according
+     * to the linearized key order.
      */
-    //@{
-    //MDCoord<N> linIn;
-    //MDCoord<N> unlinOut;
-    //Key_t linOut;
-    //Key_t unlinIn;
-    //@}
+    virtual std::vector<Segment> *getOverlap(const MDCoord<nDim> &begin,
+					     const MDCoord<nDim> &end) = 0;
 
 private:
     /**

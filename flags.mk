@@ -1,13 +1,15 @@
 CXXFLAGS += -DPROFILING
 CXXFLAGS += -DPROFILE_BUFMAN
-CXXFLAGS += -DDISABLE_DENSE_LEAF
+#CXXFLAGS += -DDISABLE_DENSE_LEAF
 CXXFLAGS += -DUSE_BATCH_BUFFER
+
+vpath %.h lib/SuiteSparse/CHOLMOD/Include
 
 OS = $(shell uname -s)
 
 ifeq ($(OS), SunOS)
 	CXX = g++
-	CXXFLAGS += -g -DDEBUG -Wall -fPIC 
+	CXXFLAGS += -g -DDEBUG -fPIC -Wall
 	DEPFLAGS = -MM -MG
 	#CXX = CXX
 	#CXXFLAGS += -g -xO2 -xarch=native -KPIC -library=stlport4
@@ -15,11 +17,10 @@ ifeq ($(OS), SunOS)
 	RPATH_FLAG := -R
 else
 	CXX = g++
-	CXXFLAGS += -g -O2 -Wall -fPIC
+	CXXFLAGS += -g -DDEBUG -fPIC -Wall
 	DEPFLAGS = -MM -MG
 	RPATH_FLAG := -Wl,-rpath,
 endif
-
 
 LDFLAGS += $(addprefix $(RPATH_FLAG), $(LD_RUN_PATH))
 

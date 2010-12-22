@@ -3,16 +3,18 @@
 
 #include "../common/common.h"
 
-struct PageRec
+class BufferManager;
+
+class PageRec
 {
-    PID_t pid;
+public:
+	friend class BufferManager;
     char *image;
-    //void *unpacked;
-	uint32_t pinCount;
-    bool dirty;
     PageRec *prev;
     PageRec *next;
-
+    PID_t pid;
+	u32 pinCount;
+    bool dirty;
     PageRec()
     {
         reset();
@@ -23,8 +25,22 @@ struct PageRec
         pid = INVALID_PID;
         dirty = false;
         pinCount = 0;
-        //unpacked = NULL;
         prev = next = NULL;
     }
 };
+
+class Page
+{
+private:
+	PageRec *prec;
+	BufferManager *buffer;
+public:
+	Page(PageRec *p, BufferManager *b);
+	~Page();
+	void markDirty();
+	void flush();
+	PID_t getPid() const;
+	char* getImage() const;
+};
+
 #endif

@@ -39,8 +39,8 @@ public:
 	}
 	
 	// ctor is specialized
-	SparseBlock(PageHandle ph, char *image, Key_t beginsAt, Key_t endsBy, bool create)
-		:BlockT<T>(ph, image, beginsAt, endsBy)
+	SparseBlock(PageHandle ph, Key_t beginsAt, Key_t endsBy, bool create)
+		:BlockT<T>(ph, beginsAt, endsBy)
 	{}
 	~SparseBlock()
 	{}
@@ -79,16 +79,14 @@ public:
 	int getRange(Key_t beginsAt, Key_t endsBy, T *values) const;
 	int getRange(int beginsAt, int endsBy, Key_t *keys, T *values) const;
 	int getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, T *values) const;
-	int put(Key_t key, const T &v, int *index);
-	int putRangeSorted(Key_t *keys, T *values, int num, int *numPut);
-	void truncate(int sp, Key_t spKey);
-
+	int batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &v) const
+	{ return kOK; }
 	// Actual implementations in specializations
 	int put(int index, Key_t key, const T &v) { return kOK; }
+	int del(int index);
+	int putRangeSorted(Key_t *keys, T *values, int num, int *numPut);
+	void truncate(int sp, Key_t spKey);
 	BlockT<T> *switchFormat() { return NULL; }
-
-	//u16 getCapacity() const { return 0; }
-	//int getThis->HeaderSize() const { return 0; }
 	size_t valueTypeSize() const { return sizeof(T); }
 	void print() const;
 
@@ -187,15 +185,17 @@ private:
 	{
 		return *(T*)(this->pData+i*kCellSize+sizeof(Key_t));
 	}
+
+	int put(Key_t key, const T &v);
 };
 
 // template specialization declarations
 
 template<>
-SparseBlock<PID_t>::SparseBlock(PageHandle ph, char *image, Key_t beginsAt, Key_t endsBy, bool create);
+SparseBlock<PID_t>::SparseBlock(PageHandle ph,  Key_t beginsAt, Key_t endsBy, bool create);
 
 template<>
-SparseBlock<Datum_t>::SparseBlock(PageHandle ph, char *image, Key_t beginsAt, Key_t endsBy, bool create);
+SparseBlock<Datum_t>::SparseBlock(PageHandle ph, Key_t beginsAt, Key_t endsBy, bool create);
 
 template<>
 BlockT<Datum_t> * SparseBlock<Datum_t>::switchFormat();
@@ -205,6 +205,10 @@ int SparseBlock<PID_t>::put(int index, Key_t key, const PID_t &val);
 
 template<>
 int SparseBlock<Datum_t>::put(int index, Key_t key, const Datum_t &val);
+
+template<>
+int SparseBlock<Datum_t>::batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &v) const;
+
 /*
 template<>
 inline u16 SparseBlock<PID_t>::getCapacity() const

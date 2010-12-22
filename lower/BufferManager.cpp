@@ -1,6 +1,7 @@
 #include "BufferManager.h"
 #include <sys/time.h>
 #include "PageReplacer.h"
+#include "PageRec.h"
 #include "LRUPageReplacer.h"
 #include <iostream>
 using namespace std;
@@ -24,7 +25,7 @@ BufferManager::BufferManager(PagedStorageContainer *s, uint32_t n,
     // aligned allocation
     pool = allocPageImage(numSlots);
     if (pool == NULL) {
-        fprintf(stderr, "Cannot allocate contiguous memory for buffer pool\n");
+        Error("Cannot allocate contiguous memory for buffer pool");
         exit(1);
     }
         
@@ -44,6 +45,10 @@ BufferManager::BufferManager(PagedStorageContainer *s, uint32_t n,
 // Destructs the BufferManager.  All dirty pages will be flushed.
 BufferManager::~BufferManager() {
     flushAllPages();
+#ifdef DEBUG
+	for (u32 i=0; i<numSlots; i++)
+		assert(headers[i].pinCount == 0);
+#endif
     //for (int i=0; i<numSlots; i++) {
     //    if (headers[i].unpacked && packer)
     //        packer->destroyUnpacked(headers[i].unpacked);
@@ -64,27 +69,27 @@ RC_t BufferManager::allocatePage(PageHandle &ph) {
     RC_t ret;
     PID_t pid;
     PageRec *rec;
-    if ((ret=storage->allocatePage(pid)) != RC_OK) {
-        Debug("Physical storage cannot allocate page; error %d", ret);
+	if ((ret=storage->allocatePage(pid)) != RC_OK) {
+		Error("Physical storage cannot allocate page; error %d", ret);
 #ifdef PROFILE_BUFMAN
-	TIMESTAMP(t2);
+		TIMESTAMP(t2);
 		accessTime += t2-t1;
 #endif
-        return ret;
-    }
+		return ret;
+	}
 
 	if ((ret=replacePage(rec)) != RC_OK) {
 #ifdef PROFILE_BUFMAN
-	TIMESTAMP(t2);
+		TIMESTAMP(t2);
 		accessTime += t2-t1;
 #endif
-	  return ret;
+		return ret;
 	}
 
 	rec->pid = pid;
-    rec->pinCount = 1;
+    //rec->pinCount = 1;
     rec->dirty = true;
-    ph = rec;
+    ph = PageHandle(new Page(rec, this));
     pageHash->insert(PageHashMap::value_type(pid, rec));
 #ifdef PROFILE_BUFMAN
 	TIMESTAMP(t2);
@@ -104,7 +109,7 @@ RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
     RC_t ret = storage->allocatePageWithPID(pid);
     PageRec *rec;
     if (ret != RC_OK) {
-        Debug("Physical storage cannot allocate pid %d, error %d",pid,ret);
+        Error("Physical storage cannot allocate pid %d, error %d",pid,ret);
 #ifdef PROFILE_BUFMAN
 	TIMESTAMP(t2);
 	accessTime += t2-t1;
@@ -120,10 +125,11 @@ RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
         return ret;
     }
     
-    ph = rec;
+    //ph = rec;
     rec->pid = pid;
-    rec->pinCount = 1;
+    //rec->pinCount = 1;
     rec->dirty = true;
+	ph = PageHandle(new Page(rec, this));
     pageHash->insert(PageHashMap::value_type(pid, rec));
 #ifdef PROFILE_BUFMAN
 	TIMESTAMP(t2);
@@ -135,14 +141,14 @@ RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
 // Disposes a buffered page. It should be unpinned already. It will be
 // removed from both the buffer and the disk storage.  Dirty bit is
 // ignored.
-RC_t BufferManager::disposePage(PageHandle ph) {
+RC_t BufferManager::disposePage(PageRec *rec) {
 #ifdef PROFILE_BUFMAN
 	TIMESTAMP(t1);
 #endif
     RC_t ret;
-    PageRec *rec = (PageRec*) ph;
+    //PageRec *rec = (PageRec*) ph;
     if ((ret=storage->disposePage(rec->pid)) != RC_OK) {
-        fprintf(stderr, "Physical storage cannot dispose pid %d, error %d.\n", rec->pid, ret);
+        Error("Physical storage cannot dispose pid %d, error %d.\n", rec->pid, ret);
 #ifdef PROFILE_BUFMAN
 	TIMESTAMP(t2);
 	accessTime += t2-t1;
@@ -174,8 +180,9 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
         rec = it->second;
         if (rec->pinCount == 0)
             pageReplacer->remove(rec);
-        rec->pinCount++;
-        ph = rec;
+        //rec->pinCount++;
+        //ph = rec;
+		ph = PageHandle(new Page(rec, this));
     }
     else {
         if ((ret=replacePage(rec)) != RC_OK) {
@@ -184,14 +191,15 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
         
         rec->pid = pid;
         if ((ret=storage->readPage(rec)) != RC_OK) {
-            //Debug("Physical storage cannot read pid %d, error %d.\n", rec->pid, ret);
+            //Debug("Physical storage cannot read pid %d, error %d", rec->pid, ret);
             rec->pid = INVALID_PID;
             pageReplacer->add(rec);  //recycle
             return ret;
         }
         rec->dirty = false;
-        rec->pinCount = 1;
-        ph = rec;
+        //rec->pinCount = 1;
+        //ph = rec;
+		ph = PageHandle(new Page(rec, this));
         pageHash->insert(PageHashMap::value_type(pid, rec));
     }
     return RC_OK;
@@ -206,8 +214,9 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
         rec = it->second;
         if (rec->pinCount == 0)
             pageReplacer->remove(rec);
-        rec->pinCount++;
-        ph = rec;
+        //rec->pinCount++;
+        //ph = rec;
+		ph = PageHandle(new Page(rec, this));
     }
     else {
         if ((ret=replacePage(rec)) != RC_OK) {
@@ -221,46 +230,47 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
             if (ret != RC_OK) {
                 rec->pid = INVALID_PID;
                 pageReplacer->add(rec);
-                Debug("Read/Alloc: Physical storage cannot allocate page %u"
+                Error("Read/Alloc: Physical storage cannot allocate page %u"
                       , pid);
                 return ret;
             }
             rec->dirty = true;
         }
-        rec->pinCount = 1;
+        //rec->pinCount = 1;
+        //ph = rec;
+		ph = PageHandle(new Page(rec, this));
         pageHash->insert(PageHashMap::value_type(pid, rec));
-        ph = rec;
     }
     return RC_OK;
 }
 
 // Marks a pinned page as dirty (i.e., modified).
-RC_t BufferManager::markPageDirty(const PageHandle ph) {
-    PageRec *rec = (PageRec*) ph;
-    PageHashMap::iterator it = pageHash->find(rec->pid);
-    assert(it != pageHash->end());
+RC_t BufferManager::markPageDirty(PageRec *rec) {
+    //PageRec *rec = (PageRec*) ph;
+    //PageHashMap::iterator it = pageHash->find(rec->pid);
+    //assert(it != pageHash->end());
     rec->dirty = true;
     return RC_OK;
 }
 
 // Pins a page.  As long as a page has at least one pin, it cannot
 // be discarded from the buffer.
-RC_t BufferManager::pinPage(const PageHandle ph) {
+RC_t BufferManager::pinPage(PageRec *rec) {
     // the page must have already been pinned (when it was
     // created)
-    PageRec *rec = (PageRec*) ph;
-    PageHashMap::iterator it = pageHash->find(rec->pid);
-    assert(it != pageHash->end());
+    //PageRec *rec = (PageRec*) ph;
+    //PageHashMap::iterator it = pageHash->find(rec->pid);
+    //assert(it != pageHash->end());
     rec->pinCount++;
     return RC_OK;
 }
 
 // Unpins a page.  If a page has no pin left, it can be discarded
 // from the buffer, in which case the handle will become invalid.
-RC_t BufferManager::unpinPage(const PageHandle ph) {
-    PageRec *rec = (PageRec*) ph;
-    PageHashMap::iterator it = pageHash->find(rec->pid);
-    assert(it != pageHash->end());
+RC_t BufferManager::unpinPage(PageRec *rec) {
+    //PageRec *rec = (PageRec*) ph;
+    //PageHashMap::iterator it = pageHash->find(rec->pid);
+    //assert(it != pageHash->end());
     rec->pinCount--;
     if (rec->pinCount == 0) {
         // Access to this page has all terminated;
@@ -272,17 +282,17 @@ RC_t BufferManager::unpinPage(const PageHandle ph) {
 
 // Flushes a pinned page to disk, if it is dirty.  A page's dirty
 // bit is unset after flushing.
-RC_t BufferManager::flushPage(const PageHandle ph) {
+RC_t BufferManager::flushPage(PageRec *rec) {
     RC_t ret;
-    PageRec *rec = (PageRec*) ph;
+    //PageRec *rec = (PageRec*) ph;
     PageHashMap::iterator it = pageHash->find(rec->pid);
     assert(it != pageHash->end());
     if (rec->dirty) {
         //if (packer && rec->unpacked) {
         //    packer->pack(rec->unpacked, rec->image);
         //}
-        if ((ret=storage->writePage(ph)) != RC_OK) {
-            fprintf(stderr, "Physical storage cannot write pid %d, error %d.\n", rec->pid, ret);
+        if ((ret=storage->writePage(rec)) != RC_OK) {
+            Error("Physical storage cannot write pid %d, error %d", rec->pid, ret);
             return ret;
         }
         rec->dirty = false;
@@ -303,8 +313,8 @@ RC_t BufferManager::flushAllPages() {
             //if (packer && rec->unpacked) {
             //    packer->pack(rec->unpacked, rec->image);
             //}
-            if ((ret=storage->writePage((PageHandle)rec)) != RC_OK) {
-                fprintf(stderr, "Physical storage cannot write pid %d, error %d.\n",rec->pid,ret);
+            if ((ret=storage->writePage(rec)) != RC_OK) {
+                Error("Physical storage cannot write pid %d, error %d",rec->pid,ret);
                 good = false;
             }
             rec->dirty = false;
@@ -327,14 +337,14 @@ RC_t BufferManager::replacePage(PageRec *&bh)
 {
     RC_t ret;
     if ((ret=pageReplacer->selectToReplace(bh)) != RC_OK) {
-        fprintf(stderr, "Out of memory: cannot allocate page in buffer, error %d.\n", ret);
+        Error("Out of memory: cannot allocate page in buffer, error %d", ret);
         return ret;
     }
     if (bh->dirty) {
         //if (packer && bh->unpacked)
         //    packer->pack(bh->unpacked, bh->image);
-        if ((ret=storage->writePage((PageHandle)bh)) != RC_OK) {
-            fprintf(stderr, "Physical storage cannot write pid %d, error %d.\n",bh->pid,ret);
+        if ((ret=storage->writePage(bh)) != RC_OK) {
+            Error("Physical storage cannot write pid %d, error %d",bh->pid,ret);
             return ret;
         }
         bh->dirty = false;

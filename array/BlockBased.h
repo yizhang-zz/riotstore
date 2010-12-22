@@ -251,6 +251,77 @@ public:
 
 	MDCoord<nDim> getActualDims() const { return actualDims; }
 
+	void getOverlapWithBlock(const MDCoord<nDim> &b, const MDCoord<nDim> &e,
+			u8 *orders, const MDCoord<nDim> &begin,
+			const MDCoord<nDim> &end, std::vector<Segment> *v)
+	{
+		int i = nDim-1; // starting from least significant dim
+		for (; i>=0 && begin[orders[i]]==b[orders[i]] 
+				&& end[orders[i]]==e[orders[i]]; --i)
+			;
+		if (i<=0) {
+			// a single contiguous segment
+			v->push_back(Segment(linearize(begin),linearize(end)));
+			return;
+		}
+		--i;
+		MDCoord<nDim> b_(begin), e_(end);
+		for (int j=i; j>=0; --j)
+			e_[orders[j]] = begin[orders[j]];
+		// most significant dim overflow means we are done
+		while (e_[orders[0]] <= end[orders[0]]) { 
+			v->push_back(Segment(linearize(b_), linearize(e_)));
+			b_[orders[i]] = ++e_[orders[i]]; // inc both
+			for (int j=i; j>0; --j) {
+				u8 k = orders[j];
+				if (e_[k] > end[k]) { // carry
+					b_[k] = e_[k] = begin[k];
+					b_[orders[j-1]] = ++e_[orders[j-1]];
+				}
+				else
+					break;
+			}
+		}
+	}
+
+	std::vector<Segment> *getOverlap(const MDCoord<nDim> &begin,
+			const MDCoord<nDim> &end)
+	{
+		std::vector<Segment> *v = new std::vector<Segment>;
+		// coords in begin and end are inclusive
+		MDCoord<nDim> begin_, end_;
+		for (int i=0; i<nDim; ++i) {
+			u8 k = blockOrders[i];
+			begin_[k] = begin[k] / blockDims[k] * blockDims[k];
+			end_[k] = (end[k] / blockDims[k] + 1) * blockDims[k] - 1; // inclusive
+		}
+		// iterate through the blocks and find their intersections with
+		// the given rectangle
+		MDCoord<nDim> b(begin_), e(begin_+blockDims-MDCoord<nDim>(1));
+		// b and e define the first block
+		while (e[blockOrders[0]] <= end_[blockOrders[0]]) {
+			// find intersection
+			getOverlapWithBlock(b,e,microOrders,begin.max(b),end.min(e),v);
+			u8 k = blockOrders[nDim-1];
+			u8 l;
+			b[k] += blockDims[k];
+			e[k] += blockDims[k];
+			for (int i=nDim-1; i>0; --i) {
+				k = blockOrders[i];
+				if (e[k] > end_[k]) { // carry
+					l = blockOrders[i-1];
+					b[l] += blockDims[l];
+					e[l] += blockDims[l];
+					b[k] = begin_[k];
+					e[k] = b[k] + blockDims[k] - 1;
+				}
+				else
+					break;
+			}
+		}
+		return v;
+	}
+
 	/*
     void getBlock(Key_t key, Key_t &begin, Key_t &end)
 	{

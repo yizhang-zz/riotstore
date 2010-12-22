@@ -13,34 +13,34 @@ using namespace boost;
 //pool<> globalInternalBlockPool(sizeof(InternalBlock));
 //pool<> globalSparseLeafPool(sizeof(SparseLeafBlock));
 
-Block * Block::create(Type t, PageHandle ph, char *image, Key_t beginsAt, Key_t endsBy)
+Block * Block::create(Type t, PageHandle ph, Key_t beginsAt, Key_t endsBy)
 {
 	switch (t) {
 	case kInternal:
-		return new InternalBlock(ph, image, beginsAt, endsBy, true);
+		return new InternalBlock(ph, beginsAt, endsBy, true);
 #ifndef DISABLE_DENSE_LEAF
 	case kDenseLeaf:
-		return new DenseLeafBlock(ph, image, beginsAt, endsBy, true);
+		return new DenseLeafBlock(ph, beginsAt, endsBy, true);
 #endif
 	case kSparseLeaf:
-		return new SparseLeafBlock(ph, image, beginsAt, endsBy, true);
+		return new SparseLeafBlock(ph, beginsAt, endsBy, true);
 	default:
 		return NULL;
 	}
 }
 
-Block * Block::create(PageHandle ph, char *image, Key_t beginsAt, Key_t endsBy)
+Block * Block::create(PageHandle ph, Key_t beginsAt, Key_t endsBy)
 {
 	// first byte of the block image contains the type
-	switch (*image) {
+	switch (*ph->getImage()) {
 	case kInternal:
-		return new InternalBlock(ph, image, beginsAt, endsBy, false);
+		return new InternalBlock(ph, beginsAt, endsBy, false);
 #ifndef DISABLE_DENSE_LEAF
 	case kDenseLeaf:
-		return new DenseLeafBlock(ph, image, beginsAt, endsBy, false);
+		return new DenseLeafBlock(ph, beginsAt, endsBy, false);
 #endif
 	case kSparseLeaf:
-		return new SparseLeafBlock(ph, image, beginsAt, endsBy, false);
+		return new SparseLeafBlock(ph, beginsAt, endsBy, false);
 	default:
 		return NULL;
 	}

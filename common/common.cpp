@@ -72,7 +72,9 @@ void freePageImage(PageImage p)
     free(p);
 }
 
+/*
 int compareKVPair(const void *a, const void *b)
 {
     return (int)(((KVPair_t*)a)->key - ((KVPair_t*)b)->key);
 }
+*/

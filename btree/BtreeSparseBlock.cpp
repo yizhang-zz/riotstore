@@ -26,8 +26,8 @@ const u16 SparseBlock<Datum_t>::capacity = 0;
 */
 
 template<>
-SparseBlock<PID_t>::SparseBlock(PageHandle ph, char *image, Key_t beginsAt, Key_t endsBy, bool create)
-	:BlockT<PID_t>(ph, image, beginsAt, endsBy)
+SparseBlock<PID_t>::SparseBlock(PageHandle ph, Key_t beginsAt, Key_t endsBy, bool create)
+	:BlockT<PID_t>(ph, beginsAt, endsBy)
 {
 	capacity	= config->internalCapacity;
 	// data grows towards low-address direction and cannot pass this boundary
@@ -47,8 +47,8 @@ SparseBlock<PID_t>::SparseBlock(PageHandle ph, char *image, Key_t beginsAt, Key_
 }
 
 template<>
-SparseBlock<Datum_t>::SparseBlock(PageHandle ph, char *image, Key_t beginsAt, Key_t endsBy, bool create)
-	:BlockT<Datum_t>(ph, image, beginsAt, endsBy)
+SparseBlock<Datum_t>::SparseBlock(PageHandle ph, Key_t beginsAt, Key_t endsBy, bool create)
+	:BlockT<Datum_t>(ph, beginsAt, endsBy)
 {
 	capacity	= config->sparseLeafCapacity;
 	// data grows towards low-address direction and cannot pass this boundary
@@ -156,62 +156,59 @@ int SparseBlock<T>::getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, 
 		return getRange(beginsAt, endsBy, keys, vals);
 }
 
-template<class T>
-int SparseBlock<T>::put(Key_t key, const T &v, int *index)
+template<>
+int SparseBlock<Datum_t>::batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &v) const
 {
-	assert(key >= this->lower && key < this->upper);
-
-	// check if overwriting a record
-	if (search(key, *index) == kOK) {
-		//TODO: putting a zero -> deletion
-		value_(*index) = v;
-		return kOK;
+	int index, index_end;
+	search(beginsAt, index);
+	search(endsBy, index_end);
+	while (index < index_end) {
+		v.push_back(Entry(key_(index), value_(index)));
+		index++;
 	}
+	return kOK;	
+}
 
-	if (*(this->nEntries) >= this->capacity) { // block full
-		this->isOverflowed = true;
-		this->overflow.key = key;
-		this->overflow.value = v;
-		this->overflow.index = *index;
-		// sparse internal block
-		if (!this->isLeaf()) 
-			return kOverflow;
-		// sparse leaf block
-#ifndef DISABLE_DENSE_LEAF
-		return canSwitchFormat()? kSwitchFormat : kOverflow;
-#else
-		return kOverflow;
-#endif
-	}
-
-	// new key and enough space
-	//char *p = allocFreeCell();
-	//setCell(p, key, v);
-	//shift(offsets+*index, *this->nEntries-*index);
-	//offsets[*index] = p-this->header;
-	memmove(pData+(*index+1)*kCellSize, pData+(*index)*kCellSize, kCellSize*(*this->nEntries-*index));
-	setCell(pData+kCellSize*(*index), key, v);
-	*this->nEntries += 1;
+template<class T>
+int SparseBlock<T>::del(int index)
+{
+	if (index < 0 || index >= *this->nEntries)
+		return kOutOfBound;
+	if (index < *this->nEntries - 1)
+		memmove(pData+index*kCellSize, pData+(index+1)*kCellSize, kCellSize*(*this->nEntries-index-1));
+	--*this->nEntries;
+	this->pageHandle->markDirty();
 	return kOK;
+}
+
+template<class T>
+int SparseBlock<T>::put(Key_t key, const T &v)
+{
+	int index;
+	search(key, index);
+	return put(index, key, v);
 }
 
 template<>
 int SparseBlock<Datum_t>::put(int index, Key_t key, const Datum_t &v)
 {
 	assert(key >= this->lower && key < this->upper);
+	assert(index >= 0 && index <= *nEntries);
 
 	// check if overwriting a record
-	if (index < *this->nEntries && key_(index) == key) {
-		if (v == Block::kDefaultValue) { // delete existent
-			memmove(pData+index*kCellSize, pData+(index+1)*kCellSize, kCellSize*(*this->nEntries-index-1));
-			--*this->nEntries;
-		}
-		else  // overwrite existent
+	if (index < *nEntries && key_(index) == key) {
+		if (v == Block::kDefaultValue) // delete existent
+			return del(index);
+		else  { // overwrite existent
 			value_(index) = v;
-		return kOK;
+			pageHandle->markDirty();
+			return kOK;
+		}
 	}
 	else if (v == Block::kDefaultValue) // delete non-existent
 		return kOK;
+
+	pageHandle->markDirty();
 
 	if (*this->nEntries >= this->capacity) { // block full
 		this->isOverflowed = true;
@@ -235,6 +232,9 @@ template<>
 int SparseBlock<PID_t>::put(int index, Key_t key, const PID_t &v)
 {
 	assert(key >= this->lower && key < this->upper);
+	assert(index >= 0 && index <= *nEntries);
+
+	pageHandle->markDirty();
 
 	// check if overwriting a record
 	if (index < *nEntries && key_(index) == key) {
@@ -307,9 +307,9 @@ int SparseBlock<T>::putRangeSorted(Key_t *keys, T *vals, int num, int *numPut)
 	if (q<num) {
 		assert (*this->nEntries==this->capacity);
 		++q;
-		int indexTemp;
-		return put(keys[q-1], vals[q-1], &indexTemp);
+		return put(keys[q-1], vals[q-1]);
 	}
+	this->pageHandle->markDirty();
 	return kOK;
 }
 
@@ -325,30 +325,26 @@ void SparseBlock<T>::truncate(int sp, Key_t spKey)
 	else {
 		//freeCells(sp-1, *this->nEntries);
 		*this->nEntries = sp-1;
-		int index;
-		put(this->overflow.key, this->overflow.value, &index);
+		put(this->overflow.key, this->overflow.value);
 		this->isOverflowed = false;
 	}
+	this->pageHandle->markDirty();
 }
 
 #ifndef DISABLE_DENSE_LEAF
 template<>
 BlockT<Datum_t> * SparseBlock<Datum_t>::switchFormat()
 {
-	//if (type==Block::kDenseLeaf) {
-		// isOverflowed can be true!
-		int num = this->sizeWithOverflow();
-		Key_t keys[num];
-		Datum_t vals[num];
-		getRangeWithOverflow(0,num,keys,vals);
-		DenseLeafBlock *block = new DenseLeafBlock(this->pageHandle, this->header,
-												   this->lower, this->upper, true);
-		int numPut;
-		block->putRangeSorted(keys,vals,num,&numPut);
-		assert(num==numPut);
-		return block;
-		//}
-		//return NULL;
+	int num = this->sizeWithOverflow();
+	Key_t keys[num];
+	Datum_t vals[num];
+	getRangeWithOverflow(0,num,keys,vals);
+	DenseLeafBlock *block = new DenseLeafBlock(this->pageHandle, 
+			this->lower, this->upper, true);
+	int numPut;
+	block->putRangeSorted(keys,vals,num,&numPut);
+	assert(num==numPut);
+	return block;
 }
 #endif
 

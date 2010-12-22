@@ -46,13 +46,8 @@ BitmapPagedFile::BitmapPagedFile(const char *pathname, int flag) {
 		assert(fd >= 0);
         numContentPages = 0;
         memset(header, 0, HEADER_SIZE);
-		// delay the write of header (to destructor)
-        //int c = write(fd, header, HEADER_SIZE);
-        //if (c <= 0) {
-        //    fprintf(stderr, "written %d\n, %p\n", c, header);
-        //}
     }
-	// file exists
+	// open existing file
     else { // at least header here
 		fd = open_direct(pathname, O_RDWR);
         if (fd < 0) {
@@ -94,10 +89,10 @@ RC_t BitmapPagedFile::allocatePage(PID_t &pid) {
     }
 
     // check for empty slot in allocated header space
-	u32 numWords = numContentPages / 32;
+	u32 numWords = NUM_BITS_HEADER / 32;
     for(u32 k = 0; k < numWords; ++k) {
 		// check one word (4 bytes) at a time
-        if(header[k] != ~0) {
+        if(header[k] != ~(u32)0) {
 			setBit(header[k], findFirstZeroBit(header[k]));
 			return RC_OK;
         }
@@ -149,13 +144,12 @@ RC_t BitmapPagedFile::disposePage(PID_t pid) {
     return RC_NotAllocated;
 }
 
-RC_t BitmapPagedFile::readPage(PageHandle ph) {
+RC_t BitmapPagedFile::readPage(PageRec *rec) {
 #ifdef PROFILING
     static timeval time1, time2;
     gettimeofday(&time1, NULL);
 #endif
     // pid is not in usable region yet or is unallocated
-    PageRec *rec = (PageRec*)ph;
     PID_t pid = rec->pid;
     if(pid >= numContentPages)
         return RC_OutOfRange;
@@ -173,12 +167,12 @@ RC_t BitmapPagedFile::readPage(PageHandle ph) {
 }
 
 // writes ph to file if pid has been allocated
-RC_t BitmapPagedFile::writePage(PageHandle ph) {
+RC_t BitmapPagedFile::writePage(PageRec *rec) {
 #ifdef PROFILING
     static timeval time1, time2;
     gettimeofday(&time1, NULL);
 #endif
-    PageRec *rec = (PageRec*) ph;
+    //PageRec *rec = (PageRec*) ph;
     PID_t pid = rec->pid;
     // pid is not in usable region yet or is unallocated
     if(pid >= numContentPages)

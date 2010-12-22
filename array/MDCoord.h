@@ -41,6 +41,8 @@ public:
      */
     MDCoord()
     {
+		for (int i=0; i<nDim; ++i)
+			coords[i] = 0;
     }
 
     /**
@@ -54,7 +56,8 @@ public:
     
 	MDCoord(Coord x1)
 	{
-		coords[0] = x1;
+		for (int i=0; i<nDim; ++i)
+			coords[i] = x1;
 	}
 
     MDCoord(Coord x1, Coord x2)
@@ -195,6 +198,34 @@ public:
 		return coords[i];
 	}
 
+	MDCoord<nDim> max(const MDCoord<nDim> &other) const
+	{
+		MDCoord<nDim> ret(*this);
+		for (int i=0; i<nDim; ++i)
+			if (ret[i] < other[i])
+				ret[i] = other[i];
+		return ret;
+	}
+
+	MDCoord<nDim> min(const MDCoord<nDim> &other) const
+	{
+		MDCoord<nDim> ret(*this);
+		for (int i=0; i<nDim; ++i)
+			if (ret[i] > other[i])
+				ret[i] = other[i];
+		return ret;
+	}
+
+    MDCoord<nDim> transpose() const
+    {
+        MDCoord<nDim> ret;
+        for (int i=0; i<nDim/2; ++i) {
+            ret[i] = coords[nDim-1-i];
+            ret[nDim-1-i] = coords[i];
+        }
+        return ret;
+    }
+
 	/*
 	i64* operator&() const
 	{
@@ -206,11 +237,11 @@ public:
 		char buf[256] = "[";
 		char num[20];
 		if (nDim > 0) {
-			sprintf(num, "%"D64"", coords[0]);
+			sprintf(num, "%" PRId64, coords[0]);
 			strcat(buf, num);
 		}
 		for (int i=1; i<nDim; i++) {
-			sprintf(num, " %"D64"", coords[i]); 
+			sprintf(num, " %" PRId64, coords[i]); 
 			strcat(buf, num);
 		}
 		strcat(buf, "]");
@@ -226,4 +257,26 @@ std::ostream & operator<<(std::ostream &out, const MDCoord<N> &coord)
 {
 	return out<<coord.toString();
 }
+
+template<int nDim>
+struct MDArrayElement
+{
+    MDCoord<nDim> coord;
+    Datum_t datum;
+
+    /**
+     * Compares in column major order.
+     */
+    bool operator< (const MDArrayElement<nDim> &other) const
+    {
+        for (int i=nDim-1; i>=0; --i) {
+            if (coord[i] < other.coord[i])
+                return true;
+            else if (coord[i] > other.coord[i])
+                return false;
+        }
+        return false;
+    }
+};
+
 #endif
