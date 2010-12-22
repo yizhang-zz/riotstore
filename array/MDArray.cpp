@@ -446,7 +446,9 @@ int MDArray<nDim>::batchGet(const Coord &begin, const Coord &end, std::vector<En
     for (vector<Segment>::iterator it = segments->begin();
             it != segments->end();
             ++it) {
-        storage->batchGet(it->begin, it->end, v);
+	// segment is inclusive: [it->begin, it->end]
+	// but storage->batchGet is exclusive
+        storage->batchGet(it->begin, it->end+1, v);
     }
     delete segments;
     return AC_OK;
@@ -585,6 +587,8 @@ Matrix Matrix::operator*(const Matrix &other)
     // Param 0: blocking factor of left and right operator
     Coord blockl(1000,1000);
     Coord blockr(1000,1000);
+    //Coord blockl(3,3);
+    //Coord blockr(3,3);
     assert(blockl[1]==blockr[0]);
     Coord block(blockl[0], blockr[1]);
  
@@ -592,14 +596,15 @@ Matrix Matrix::operator*(const Matrix &other)
     bool sparseA = sparsity() < .667;
     bool sparseB = other.sparsity() < .667;
 
-    Datum_t *leftop ;
-    Datum_t *rightop ;
-    Datum_t *result ;
-    if (!sparseA && !sparseB) {
+    Datum_t *leftop = NULL;
+    Datum_t *rightop = NULL;
+    Datum_t *result = NULL;
+    if (!sparseA)
         leftop = new Datum_t[blockl[0]*blockl[1]];
+    if (!sparseB)
         rightop = new Datum_t[blockr[0]*blockr[1]];
+    if (!sparseA || !sparseB)
         result = new Datum_t[blockl[0]*blockr[1]];
-    }
 
     i64 retDims[] = {dim[0], other.dim[1]};
     u8 orders[]   = {1, 0}; // result should be column major?
@@ -654,9 +659,56 @@ Matrix Matrix::operator*(const Matrix &other)
                 break;
             case 1: // this dense, other sparse
                 break;
-            case 2: // this sparse, other dense
+            case 2: // this sparse, other dense, use chomod_sdmult, result dense
+                {
+                    cholmod_dense resultd, rightd;
+                    resultd.nrow = blockl[0];
+                    resultd.ncol = blockr[1];
+                    resultd.nzmax = resultd.nrow * resultd.ncol;
+                    resultd.d = resultd.nrow;
+                    resultd.x = result;
+                    resultd.xtype = CHOLMOD_REAL;
+                    resultd.dtype = CHOLMOD_DOUBLE;
+                    rightd.nrow = blockr[0];
+                    rightd.ncol = blockr[1];
+                    rightd.nzmax = blockr[0] * blockr[1];
+                    rightd.d = rightd.nrow;
+                    rightd.x = rightop;
+                    rightd.xtype = CHOLMOD_REAL;
+                    rightd.dtype = CHOLMOD_DOUBLE;
+                    double alpha[] = {1, 0};
+                    double beta[]  = {0, 0};
+                    for (int k=0; k<nbx; ++k) {
+                        begin[0] = i*blockl[0];
+                        begin[1] = k*blockl[1];
+                        end = begin + blockl - Coord(1, 1);
+                        SparseMatrix lop = batchGet(begin, end);
+                        // check lop begin
+                        // check lop end
+                        begin[0] = k*blockr[0];
+                        begin[1] = j*blockr[1];
+                        end = begin + blockr - Coord(1, 1);
+                        other.batchGet(begin, end, rightop);
+                        // check rightop begin
+                        // check rightop end
+                        // result = alpha ( sparse * dense) + beta result
+                        cholmod_sdmult(
+                                lop.storage(), // cholmod_sparse
+                                0, // no transpose
+                                alpha, // scaling factor for sparse matrix
+                                beta, // scaling factor for result
+                                &rightd,
+                                &resultd,
+                                SparseMatrix::chmCommon);
+                        beta[0] = 1; // result will be accumulated
+                    }
+                    begin[0] = i*block[0];
+                    begin[1] = j*block[1];
+                    end = begin + block - Coord(1, 1);
+                    ret.batchPut(begin, end, result);
+                }
                 break;
-            case 3: // both sparse
+            case 3: // both sparse, use cholmod_ssmult, result sparse
                 {
                     SparseMatrix resultSp(block[0], block[1]);
                     for (int k=0; k<nbx; ++k) {
@@ -669,15 +721,7 @@ Matrix Matrix::operator*(const Matrix &other)
                         begin[1] = j*blockr[1];
                         end = begin + blockr - Coord(1, 1);
                         SparseMatrix rop = other.batchGet(begin, end);
-                        SparseMatrix temp(lop*rop);
-                        for (SparseMatrix::Iterator it = temp.begin();
-                                it != temp.end(); ++it)
-                            assert(!isnan(it->datum));
-                        resultSp += temp;
-                        for (SparseMatrix::Iterator it = resultSp.begin();
-                                it != resultSp.end(); ++it)
-                            assert(!isnan(it->datum));
-                        //resultSp += lop * rop;
+                        resultSp += lop * rop;
                     }
                     begin[0] = i*block[0];
                     begin[1] = j*block[1];
@@ -688,11 +732,12 @@ Matrix Matrix::operator*(const Matrix &other)
         } // for j
     } // for i
 
-    if (!sparseA && !sparseB) {
+    if (!sparseA)
         delete[] leftop;
+    if (!sparseB)
         delete[] rightop;
+    if (!sparseA || !sparseB)
         delete[] result;
-    }
     return ret;
 }
 

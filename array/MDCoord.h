@@ -219,8 +219,10 @@ public:
     MDCoord<nDim> transpose() const
     {
         MDCoord<nDim> ret;
-        for (int i=0; i<nDim/2; ++i)
+        for (int i=0; i<nDim/2; ++i) {
             ret[i] = coords[nDim-1-i];
+            ret[nDim-1-i] = coords[i];
+        }
         return ret;
     }
 

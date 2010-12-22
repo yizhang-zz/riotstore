@@ -111,22 +111,34 @@ TEST(Arith, SparseSparseMult)
 {
     i64 arrayDims[] = {2200L, 2100L};
     i64 blockDims[] = {1200L, 1100L};
+    //i64 arrayDims[] = {8L, 7L};
+    //i64 blockDims[] = {3L, 2L};
     u8  orders[] = {0,1};
     i64 rows = arrayDims[0];
     i64 cols = arrayDims[1];
 
-	i64 total = rows*cols/100; // sparsity=1/100
+    i64 total = rows*cols/100; // sparsity=1/100
     SparseMatrix::Element *elements = new SparseMatrix::Element[total];
     for (int i=0; i<total; ++i) {
         elements[i].coord = Matrix::Coord(rand() % rows, rand() % cols);
         elements[i].datum = i+1;
+	//cout<<elements[i].coord<<'\t'<<elements[i].datum<<endl;
     }
 
+    double *temp = new double[rows*cols];
+
     BlockBased<2> *block = new BlockBased<2>(arrayDims, blockDims, orders, orders);
-	Matrix a(MDCoord<2>(arrayDims), BTREE, block, "a.bin");
-    MDCoord<2> begin(0, 0), end(rows-1, cols-1);
-	SparseMatrix asp(elements, total, begin, end, false);
+    Matrix a(MDCoord<2>(arrayDims), BTREE, block, "a.bin");
+    MDCoord<2> begin(0, 0);
+    SparseMatrix asp(elements, total, begin, MDCoord<2>(rows-1, cols-1), false);
     a.batchPut(begin, asp);
+
+    a.batchGet(begin, MDCoord<2>(rows-1, cols-1), temp);
+    for (SparseMatrix::Iterator it = asp.begin();
+            it != asp.end();
+            ++it) {
+        ASSERT_DOUBLE_EQ(it->datum, temp[it->coord[0]+it->coord[1]*rows]);
+    }
 
     Linearization<2> *block1 = block->transpose();
     Matrix b(MDCoord<2>(cols, rows), BTREE, block1, "b.bin");
@@ -135,38 +147,155 @@ TEST(Arith, SparseSparseMult)
         elements[i].coord[0] = elements[i].coord[1];
         elements[i].coord[1] = temp;
     }
-    end = end.transpose();
-    SparseMatrix bsp(elements, total, begin, end, false);
+    SparseMatrix bsp(elements, total, begin, MDCoord<2>(cols-1, rows-1), false);
     b.batchPut(begin, bsp);
 
-    // get row 1003 of a and col 0 of b to calculate c[1003,0]
-    /*
-    double row[2100];
-    double col[2100];
-    double res = 0;
-    for (int i=0; i<cols; i++) {
-        a.get(MDCoord<2>(1003,i), row[i]);
-        b.get(MDCoord<2>(i,0), col[i]);
-        res += row[i]*col[i];
+    b.batchGet(begin, MDCoord<2>(cols-1, rows-1), temp);
+    for (SparseMatrix::Iterator it = bsp.begin();
+            it != bsp.end();
+            ++it) {
+        ASSERT_DOUBLE_EQ(it->datum, temp[it->coord[0]+it->coord[1]*cols])
+            <<it->coord;
     }
-    cout<<"c[1003,0]="<<res<<endl;
-    */
-
+    delete[] temp;
+    
     Matrix c = a*b;
 
     // check correctness against in-memory cholmod_ssmult
     SparseMatrix csp = asp * bsp;
-    Datum_t t;
-    c.get(MDCoord<2>(1003,0), t);
-    cout<<t<<endl;
     for (SparseMatrix::Iterator it = csp.begin();
             it != csp.end();
             ++it) {
-            Datum_t d;
-            c.get(it->coord, d);
-            ASSERT_DOUBLE_EQ(it->datum, d)<<it->coord;
+        Datum_t d;
+        c.get(it->coord, d);
+        ASSERT_DOUBLE_EQ(it->datum, d)<<it->coord;
     }
     delete[] elements;
     delete block;
     delete block1;
 }
+
+TEST(Arith, SparseDenseMult)
+{
+    i64 arrayDims[] = {2200L, 2100L};
+    i64 blockDims[] = {1200L, 1100L};
+    u8  orders[] = {0,1};
+    i64 rows = arrayDims[0];
+    i64 cols = arrayDims[1];
+
+    i64 total = rows*cols/100; // sparsity=1/100
+    SparseMatrix::Element *elements = new SparseMatrix::Element[total];
+    for (int i=0; i<total; ++i) {
+        elements[i].coord = Matrix::Coord(rand() % rows, rand() % cols);
+        elements[i].datum = i+1;
+    }
+
+    BlockBased<2> *block = new BlockBased<2>(arrayDims, blockDims, orders, orders);
+    Matrix a(MDCoord<2>(arrayDims), BTREE, block, "a.bin");
+    MDCoord<2> begin(0, 0), end(rows-1, cols-1);
+    SparseMatrix asp(elements, total, begin, end, false);
+    a.batchPut(begin, asp);
+
+    // // check a block in a
+    // for (int ii=0; ii<3;++ii)
+    //     for (int jj=0; jj<3;++jj)
+    // 	    {
+    // 		SparseMatrix sm = a.batchGet(MDCoord<2>(ii*1000,jj*1000),
+    // 					     MDCoord<2>((ii+1)*1000-1,(jj+1)*1000-1));
+    // 		cholmod_sparse *sp = sm.storage();
+    // 		int *p = (int*) sp->p;
+    // 		int *r = (int*) sp->i;
+    // 		int *p1 = (int*) asp.storage()->p;
+    // 		int *r1 = (int*) asp.storage()->i;
+    // 		double *x1 = (double*) asp.storage()->x;
+    // 		double *x = (double*) sp->x;
+    // 		for (int j=0; j<sp->ncol; ++j) {
+    // 		    int l = p1[j+jj*1000];
+    // 		    int colend = std::min(int(asp.storage()->ncol), j+1+jj*1000);
+    // 		    for (int i=p[j]; i<p[j+1]; i++) {
+    // 			// find element [k,j] in asp and check data
+    // 			for (; l<p1[colend]; l++)
+    // 			    if (r1[l] == r[i]+ii*1000) {
+    // 				ASSERT_DOUBLE_EQ(x1[l], x[i]);
+    // 				break;
+    // 			    }
+    // 			if (l==p1[colend])
+    // 			    ASSERT_TRUE(false);
+    // 		    }
+    // 		}
+    // 	    }
+    Linearization<2> *block1 = block->transpose();
+    Matrix b(MDCoord<2>(cols, rows), BTREE, block1, "b.bin");
+    total = rows * cols;
+    Datum_t *data = new Datum_t[total];
+    for (int i=0; i<total; ++i) {
+        data[i] = i;
+    }
+    b.batchPut(begin, MDCoord<2>(cols-1, rows-1), data);
+
+    // // check block in b
+    // for (int ii=0; ii<3; ++ii)
+    //     for (int jj=0; jj<3; ++jj)
+    // 	    {
+    // 		Datum_t *x = new Datum_t[1000*1000];
+    // 		b.batchGet(MDCoord<2>(ii*1000,jj*1000), MDCoord<2>(ii*1000+999,jj*1000+999), x);
+    // 		int rowend = std::min(1000, int(cols-ii*1000));
+    // 		int colend = std::min(1000, int(rows-jj*1000));
+    // 		for (int i=0; i<rowend; ++i)
+    // 		    for (int j=0; j<colend; ++j) {
+    // 			ASSERT_DOUBLE_EQ(data[i+ii*1000+(j+jj*1000)*cols], x[i+j*1000]);
+    // 		    }
+    // 		delete[] x;
+    // 	    }
+
+    Matrix c = a*b;
+
+    // // compute c[2,0] manually
+    // double c20 = 0;
+    // int *p = (int*) asp.storage()->p;
+    // int *i = (int*) asp.storage()->i;
+    // double *x = (double*) asp.storage()->x;
+    // for (int j=0; j<cols; j++) {
+    //     for (int k=p[j]; k<p[j+1]; k++) {
+    //         if (i[k] == 2)
+    //             c20 += x[k] * data[j+rows*0]; // a[2,j] * b[j,0]
+    //     }
+    // }
+    // cout<<"c[2,0]="<<c20<<endl;
+
+    // check correctness against in-memory cholmod_sdmult
+    cholmod_dense *resultd = cholmod_allocate_dense(rows, rows, rows, CHOLMOD_REAL,
+						    SparseMatrix::chmCommon);
+    cholmod_dense rightd;
+    rightd.nrow = cols;
+    rightd.ncol = rows;
+    rightd.nzmax = total;
+    rightd.d = rightd.nrow;
+    rightd.x = data;
+    rightd.xtype = CHOLMOD_REAL;
+    rightd.dtype = CHOLMOD_DOUBLE;
+    double alpha[] = {1, 0};
+    double beta[]  = {0, 0};
+    cholmod_sdmult(
+		   asp.storage(), // cholmod_sparse
+		   0, // no transpose
+		   alpha, // scaling factor for sparse matrix
+		   beta, // scaling factor for result
+		   &rightd,
+		   resultd,
+		   SparseMatrix::chmCommon);
+    double * result = (double*) resultd->x;
+    for (int i=0; i<rows; ++i) // col
+        for (int j=0; j<rows; ++j) { // row
+            Datum_t d;
+            c.get(MDCoord<2>(j,i), d);
+            ASSERT_DOUBLE_EQ(result[j+i*rows],
+			     d)<<j<<"\t"<<i<<"\t"<<result[j*rows+i];
+        }
+    cholmod_free_dense(&resultd, SparseMatrix::chmCommon);
+    delete[] elements;
+    delete[] data;
+    delete block;
+    delete block1;
+}
+

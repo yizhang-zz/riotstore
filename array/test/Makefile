@@ -5,6 +5,7 @@ LDFLAGS += $(shell pkg-config --libs-only-L gsl) -lgsl
 LDFLAGS += -framework vecLib
 LDFLAGS += -pthread
 LDFLAGS += -L../.. -lriot_store -L/usr/local/lib -lgtest 
+LDFLAGS += -L../../lib/SuiteSparse/CHOLMOD/Lib -lcholmod
 LD_RUN_PATH = ../..
 
 SRC = main.cpp TestBlockBased.cpp TestRowMajor.cpp 

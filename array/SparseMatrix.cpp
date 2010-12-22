@@ -1,5 +1,9 @@
 #include "SparseMatrix.h"
 #include <algorithm>
+#include <sstream>
+#include <iomanip>
+
+using namespace std;
 
 cholmod_common *SparseMatrix::chmCommon = SparseMatrix::initCholmodCommon();
 
@@ -35,13 +39,13 @@ SparseMatrix::SparseMatrix(Element *elements, int size, const Coord &begin,
     for (int col = 0; col <= ncols; ++col) {
         pa[col] = i;
         int lastRow = -1;
-        while (j < size && elements[j].coord[1] == col + begin[1]) {
+        while (j < size && elements[j].coord[1] - begin[1] == col) {
             if (lastRow == elements[j].coord[0] - begin[0]) {
                 xa[i-1] += elements[j].datum;
             }
             else {
                 ia[i] = lastRow = elements[j].coord[0] - begin[0];
-                xa[i] = elements[i].datum;
+                xa[i] = elements[j].datum;
                 i++;
             }
             j++;
@@ -138,4 +142,40 @@ void SparseMatrix::swap(SparseMatrix &other)
     cholmod_sparse *temp = sp;
     sp = other.sp;
     other.sp = temp;
+}
+
+ostream & operator<< (ostream &out, const SparseMatrix &sm)
+{
+    int ncol = (int) sm.sp->ncol;
+    int nrow = (int) sm.sp->nrow;
+    int *p = (int*) sm.sp->p;
+    int *r = (int*) sm.sp->i;
+    double *x = (double*) sm.sp->x;
+    // have a buffer for each row
+    stringstream *ss = new stringstream[nrow];
+    for (int i=0; i<nrow; ++i) {
+	ss[i].setf(ios::right, ios::adjustfield);
+    }
+    for (int j=0; j<ncol; ++j) {
+	int lastRow = -1;
+	for (int i=p[j]; i<p[j+1]; ++i) {
+	    // column j, row r[i], value x[i]
+	    // fill rows [lastRow+1, r[i]-1] with 0
+	    for (int k=lastRow+1; k<r[i]; ++k)
+		ss[k]<<setw(6)<<0<<" ";
+	    lastRow = r[i];
+	    ss[r[i]]<<setw(6)<<x[i]<<" ";
+	}
+	for (int k=lastRow+1; k<nrow; ++k)
+	    ss[k]<<setw(6)<<0<<" ";
+    }
+    for(int i=0; i<nrow; ++i)
+	out<<ss[i].str()<<endl;
+    delete[] ss;
+    return out;
+}
+
+void SparseMatrix::print() const
+{
+    cout<<*this<<endl;
 }
