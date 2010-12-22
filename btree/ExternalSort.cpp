@@ -1,3 +1,4 @@
+/* -*- mode: c++; c-basic-offset:2; -*- */
 #include "ExternalSort.h"
 
 class Compare{
@@ -8,7 +9,7 @@ public:
 };
 
 ExternalSort::ExternalSort(const char* fileName, const uint64_t bufferSize)
-  :m_fileName(fileName),m_bufferSize(bufferSize),done(false){
+  :done(false),m_fileName(fileName),m_bufferSize(bufferSize){
   m_recordCount = 0;
   m_sortedCount = 0;
   m_chunkCount = 0;
@@ -16,7 +17,7 @@ ExternalSort::ExternalSort(const char* fileName, const uint64_t bufferSize)
 }
 
 ExternalSort::ExternalSort(const uint64_t bufferSize)
-  :m_bufferSize(bufferSize),done(false){
+  :done(false),m_bufferSize(bufferSize){
   m_recordCount = 0;
   m_sortedCount = 0;
   m_chunkCount = 0;
@@ -26,19 +27,20 @@ ExternalSort::ExternalSort(const uint64_t bufferSize)
 
 // this creates chunk-wise sorted files
 void ExternalSort::streamToChunk(Key_t *key, Datum_t *datum, const int length){
-  KVPair_t *chunk;
+  Entry *chunk;
 
   try{
-    chunk = new KVPair_t[length];
+    chunk = new Entry[length];
   }  catch (bad_alloc &e){
     cerr << e.what() << endl;
   }
   for (int i = 0; i<length; i++){
     chunk[i].key = key[i];
-    chunk[i].datum = &(datum[i]);
+    chunk[i].pdatum = datum+i;
   }
-      
-  qsort(chunk, length, sizeof(KVPair_t), compareKVPair);
+  
+  std::sort(chunk, chunk+length);
+  //qsort(chunk, length, sizeof(KVPair_t), compareKVPair);
 
   char name[32];
   sprintf(name,"temp/temp%d.out", m_chunkCount);
@@ -49,7 +51,7 @@ void ExternalSort::streamToChunk(Key_t *key, Datum_t *datum, const int length){
   for (int i=0; i<length; i++){
     sprintf(buf,"%d",(int) chunk[i].key);
     chunkSortedFile.write(buf,keySize);
-    sprintf(buf,"%f",*(chunk[i].datum));
+    sprintf(buf,"%f",*(chunk[i].pdatum));
     chunkSortedFile.write(buf,keySize);
     count++;
     //    cout << i << ". writing (key, datum) = " << (int) chunk[i].key << ", " << *(chunk[i].datum) << endl;
@@ -80,9 +82,9 @@ void ExternalSort::fileToChunk(){
     char name[32];
     sprintf(name,"temp/temp%d.out", m_chunkCount);
     ofstream chunkSortedFile(name, ofstream::binary);
-    KVPair_t *chunk;
+    Entry *chunk;
     try{
-      chunk = new KVPair_t[m_bufferSize];
+      chunk = new Entry[m_bufferSize];
     }
     catch (bad_alloc &e){
       cerr << e.what() << endl;
@@ -94,18 +96,19 @@ void ExternalSort::fileToChunk(){
       m_recordCount++;
       in_file >> chunk[index].key;
       in_file.ignore(1);
-      in_file >> *(chunk[index].datum);
+      in_file >> chunk[index].datum;
       in_file.ignore(INT_MAX, '\n');
       index++;
-    }      
-    qsort(chunk, index, sizeof(KVPair_t), compareKVPair);
+    } 
+    std::sort(chunk, chunk+index);     
+    //qsort(chunk, index, sizeof(KVPair_t), compareKVPair);
     print("Finished sorting chunk#", m_chunkCount);
     
     for (unsigned int j=0; j<index; j++){
       sprintf(buf,"%d",(int) chunk[j].key);
       chunkSortedFile.write(buf,keySize);
 
-      sprintf(buf,"%f",*(chunk[j].datum));
+      sprintf(buf,"%f",chunk[j].datum);
       chunkSortedFile.write(buf,keySize);
       //      sprintf(buf,"%c", '\n');
       //      chunkSortedFile.write(buf,1);
@@ -131,7 +134,7 @@ void printV(vector<IndexKeyPair> &v){
 /*
  * N-way Merge Phase, and out to a record array to feed Btree.load
  */
-int ExternalSort::mergeSortToStream(KVPair_t *rec, uint64_t maxRecs){
+int ExternalSort::mergeSortToStream(Entry *rec, uint64_t maxRecs){
   int count = 0;
   uint64_t key;
   char * buf = new char[keySize];
@@ -202,8 +205,7 @@ int ExternalSort::mergeSortToStream(KVPair_t *rec, uint64_t maxRecs){
     }
 
     rec[j].key = smallestKey;
-    rec[j].datum = new Datum_t;
-    *(rec[j].datum) = value;
+    rec[j].datum = value;
     m_sortedCount++;
     count++;
   }

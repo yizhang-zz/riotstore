@@ -31,7 +31,7 @@ class ExternalSort{
   void mergeSortToFile();
   void streamToChunk(Key_t *, Datum_t *, const int length);
 
-  int mergeSortToStream(KVPair_t*, uint64_t);
+  int mergeSortToStream(Entry*, uint64_t);
   int getRecordCount(){return m_recordCount;}
   int getBufferSize(){return m_bufferSize;}
   int getSortedCount(){return m_sortedCount;}

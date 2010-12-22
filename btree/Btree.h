@@ -92,7 +92,6 @@ public:
     void locate(Key_t key, BoundPageId &pageId);
     void locate(Key_t key, HistPageId &pageId);
 #endif
-
     //void locate(Key_t key, PID_t &pid, Key_t &lower, Key_t &upper);
 
     int put(const Key_t &key, const Datum_t &datum);
@@ -123,7 +122,6 @@ public:
     void setLeafSplitter(LeafSplitter *sp) { leafSplitter = sp; }
 
     void print();
-
 #ifdef USE_BATCH_BUFFER
     void flushAndPrint()
     {

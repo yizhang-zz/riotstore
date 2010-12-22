@@ -1,5 +1,4 @@
 #include <string.h>
-
 #include <gsl/gsl_cblas.h>
 #include <fstream>
 #include "common/Config.h"
@@ -7,23 +6,10 @@
 #include "directly_mapped/DirectlyMappedArray.h"
 #include "btree/Btree.h"
 #include "btree/Splitter.h"
-//#include "MDDenseIterator.h"
-
-/*
-#include "../directly_mapped/DirectlyMappedArray.h"
-#include "../btree/Btree.h"
-#include "../btree/Splitter.h"
-#include "MDArray.h"
-#include "MDDenseIterator.h"
->>>>>>> Stashed changes
-*/
-//#include "MDAccelDenseIterator.h"
-//#include "MDSparseIterator.h"
-//#include "MDAccelSparseIterator.h"
 #include "BlockBased.h"
 #include "ColMajor.h"
 #include "RowMajor.h"
-#include "../btree/ExternalSort.h"
+#include "btree/ExternalSort.h"
 
 using namespace std;
 using namespace Btree;
@@ -300,7 +286,7 @@ MDArray<nDim>::MDArray(const char* fileName, Linearization<nDim> *lnrztn, Parser
     in.close();
 
     i64 maxRec = sorter.getBufferSize(); //not always equal
-    KVPair_t *rec = new KVPair_t[maxRec];
+    Entry *rec = new Entry[maxRec];
     i64 sortedCount = maxRec;
     cout << "[MDArray] Entering mergeSort phase..." << endl;
     while (sortedCount == maxRec){

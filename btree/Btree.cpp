@@ -31,7 +31,10 @@ void BTree::init(const char *fileName, int fileFlag)
 #ifdef USE_BATCH_BUFFER
 void BTree::initBatching()
 {
-	leafHist = new LeafHist(config->batchHistogramNum, header->endsBy);
+	if (config->batchUseHistogram)
+		leafHist = new LeafHist(config->batchHistogramNum, header->endsBy);
+	else
+		leafHist = NULL;
 	switch (config->batchMethod) {
 	case kFWF:
 		batbuf = new BatchBufferFWF(config->batchBufferSize, this);
@@ -79,18 +82,6 @@ BTree::BTree(const char *fileName, Key_t endsBy,
 	// The tree should have one leaf node after initialization.
 	// The leaf node also serves as the root node.
     init(fileName, BitmapPagedFile::CREATE);
-    /*
-<<<<<<< Updated upstream
-=======
-
-    header->endsBy = endsBy;
-    header->nLeaves = 0;
-    header->depth = 0;
-    header->root = INVALID_PID;
-    header->firstLeaf = 0;
-    buffer->markPageDirty(headerPage);
-
-    >>>>>>> Stashed changes*/
 #ifdef USE_BATCH_BUFFER
 	initBatching();
 #endif
@@ -191,26 +182,9 @@ void BTree::locate(Key_t key, HistPageId &pageId)
 
 void BTree::locate(Key_t key, BoundPageId &pageId)
 {
-  //<<<<<<< Updated upstream
 #ifdef DTRACE_SDT
 	RIOT_BTREE_LOCATE_BEGIN();
 #endif
-
-  /*=======
-	// If tree is empty, assume every key goes into page 1. Thus at
-	// initial stage, all requests in the buffer will have the same
-	// destination and will be flushed together. Returning 1 here
-	// won't affect future runs.
-	Key_t l,u;
-    if (header->depth == 0) {
-		//pid = 1;
-		l = 0;
-		u = header->endsBy;
-		pageId.lower = l;
-		pageId.upper = u;
-		return;
-    }
-    >>>>>>> Stashed changes*/
 
 	PID_t pid = header->root;
 	Key_t l=0, u=header->endsBy;
@@ -285,26 +259,6 @@ int BTree::put(const Key_t &key, const Datum_t &datum)
     Cursor cursor(buffer);
 	return putHelper(key, datum, cursor);
 }
-
-
-
-/*
- * chunkSize refers to the maximum buffer size available
- * maxRec refers to the max # of records to retrieve at each run
- */
-/*
-int BTree::batchPut(i64 putCount, const KVPair_t *puts)
-{
-   Cursor cursor(buffer);
-   int ret = -1;
-   for (int i=0; i<putCount; i++){
-       ret = search(puts[i].key, cursor);
-       putHelper(puts[i].key, *(puts[i].datum), cursor);
-   }
-   delete[] puts;
-   return ret;
-}
-*/
 
 // Caller should guarantee that datum is not kDefaultValue, i.e.,
 // this is not a remove operation.
