@@ -94,6 +94,8 @@ TEST(MDArray, BatchPutFromFileToBtree)
   
   // must specify the number of column pointers and 
   // row indexes per line in the original file
+  // ex) Maragal_2.rb -> 16 x 20
+  // ex) Maragal_4.rb -> 13 x 16
   int colPerLine = 13;
   int rowPerLine = 16;
 
