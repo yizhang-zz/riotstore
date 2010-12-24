@@ -5,17 +5,17 @@
 using namespace std;
 using namespace Btree;
 
-static LeafSplitter *lsp;
-static InternalSplitter *isp;
+//static LeafSplitter *lsp;
+//static InternalSplitter *isp;
 
 TEST(Btree, PutGet)
 {
-    lsp = new MSplitter<Datum_t>();
-    isp = new MSplitter<PID_t>();
+    //lsp = new MSplitter<Datum_t>();
+    //isp = new MSplitter<PID_t>();
 
     const int rows = 400;
     const int cols = 400;
-    BTree *tree = new BTree("batch.bin", rows*cols, lsp, isp);
+    BTree *tree = new BTree("batch.bin", rows*cols, 'M', 'M');
     Datum_t datum;
 
     tree->put(0, 0.0);
@@ -40,7 +40,7 @@ TEST(Btree, PutGet)
 
     // random insertions
 	
-    tree = new BTree("batch.bin", rows*cols, lsp, isp);
+    tree = new BTree("batch.bin", rows*cols, 'M', 'M');
     Key_t keys[rows*cols];
     for (int i=0; i<rows*cols; ++i)
 	keys[i] = i;
@@ -54,18 +54,16 @@ TEST(Btree, PutGet)
 	ASSERT_DOUBLE_EQ(keys[i], datum)<<" for key="<<keys[i]<<endl;
     }
     delete tree;
-    delete lsp;
-    delete isp;
 }
 
 TEST(Btree, BatchPut)
 {
-    lsp = new MSplitter<Datum_t>();
-    isp = new MSplitter<PID_t>();
+    //lsp = new MSplitter<Datum_t>();
+    //isp = new MSplitter<PID_t>();
 
     const int rows = 400;
     const int cols = 400;
-    BTree *tree = new BTree("batch.bin", rows*cols, lsp, isp);
+    BTree *tree = new BTree("batch.bin", rows*cols, 'M', 'M');
     Datum_t datum;
 
     const int num = 800;
@@ -101,6 +99,4 @@ TEST(Btree, BatchPut)
     }
 
     delete tree;
-    delete lsp;
-    delete isp;
 }

@@ -62,9 +62,9 @@ public:
      * stored. If omitted, a random name consisting 10 hex digits is
      * generated. Guaranteed no existing file will be overwritten.
      */
-    MDArray(const Coord &dim, StorageType type, Linearization<nDim> *lrnztn, const char *fileName=0);
+    MDArray(const char *fileName, const Coord &dim, Linearization<nDim> *lrnztn);
+    MDArray(const char *fileName, const Coord &dim, Linearization<nDim> *lrnztn, char leafSpType, char intSpType);
 
-    MDArray(const Coord &dim, Linearization<nDim> *lrnztn, Btree::LeafSplitter *leaf, Btree::InternalSplitter *internal, const char *fileName=0);
     /**
      * Constructs and initializes a MDArray from a file stored on
      * disk. ArrayStorage's factory method can analyze the file and
@@ -83,7 +83,9 @@ public:
     /**
      * Constructor used for batch loading a file
      */
-    MDArray(const char*fileName, Linearization<nDim> *lrnztn, Parser<nDim> *parser, const int bufferSize);
+    MDArray(const char*fileName, Linearization<nDim> *lrnztn,
+			char leafSpType, char intSpType,
+			const char *parserType, const char *inputFileName, int bufferSize);
 
     /**
      * Destructor.
@@ -198,9 +200,9 @@ protected:
     Linearization<nDim> *linearization;
     std::string fileName;
 
-    bool allocatedSp;
-    Btree::LeafSplitter *leafsp;
-    Btree::InternalSplitter *intsp;
+    //bool allocatedSp;
+    //Btree::LeafSplitter *leafsp;
+    //Btree::InternalSplitter *intsp;
 
     /**
      * Get all nonzero entries within the rectangle as defined by begin and
@@ -218,13 +220,14 @@ protected:
 class Matrix : public MDArray<2>
 {
 public:
-    Matrix(const Coord &dim, StorageType type, Linearization<2> *lrnztn, const char *fileName=0)
-		: MDArray<2>(dim, type, lrnztn, fileName)
+    Matrix(const char *fileName, const Coord &dim, Linearization<2> *lrnztn)
+		: MDArray<2>(fileName, dim, lrnztn)
 	{
 	}
 
-    Matrix(const Coord &dim, Linearization<2> *lrnztn, Btree::LeafSplitter *leaf, Btree::InternalSplitter *internal, const char *fileName=0)
-		: MDArray<2>(dim, lrnztn, leaf, internal, fileName)
+    Matrix(const char *fileName, const Coord &dim, Linearization<2> *lrnztn,
+		   char leafSpType, char intSpType)
+		: MDArray<2>(fileName, dim, lrnztn, leafSpType, intSpType)
 	{
 	}
 
@@ -233,6 +236,14 @@ public:
 	}
 
 	Matrix(const Matrix &other) : MDArray<2>(other)
+	{
+	}
+
+    Matrix(const char*fileName, Linearization<2> *lrnztn,
+			char leafSpType, char intSpType,
+			const char *parserType, const char *inputFileName, int bufferSize)
+		: MDArray<2>(fileName, lrnztn, leafSpType, intSpType, parserType,
+					 inputFileName, bufferSize)
 	{
 	}
 

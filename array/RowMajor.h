@@ -9,6 +9,14 @@ class RowMajor : public BlockBased<nDim>
 {
 public:
 
+	void serialize(char **p)
+	{
+		*((int*)(*p)) = ROW;
+		*p += sizeof(int);
+		memcpy(*p, this->arrayDims, sizeof(i64)*nDim);
+		*p += sizeof(i64)*nDim;
+	}
+
 	RowMajor(const i64 *arrayDims) : BlockBased<nDim>(arrayDims, true)
 	{
 	}

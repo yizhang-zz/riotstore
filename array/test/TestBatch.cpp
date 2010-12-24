@@ -33,7 +33,7 @@ TEST(MDArray, BatchPutDMA)
 
 	// put range [0,1]x[0,1]
 	RowMajor<2> rowMajor(&dim[0]);
-	MDArray<2> array(dim, DMA, &rowMajor, "array.bin");
+	MDArray<2> array("array.bin", dim, &rowMajor);
 	array.batchPut(begin, end, data);
 	checkRect(array, begin, end, data);
 
@@ -65,7 +65,7 @@ TEST(MDArray, BatchPutBtree)
 
 	// put range [0,1]x[0,1]
 	RowMajor<2> rowMajor(&dim[0]);
-	MDArray<2> array(dim, BTREE, &rowMajor, "array.bin");
+	MDArray<2> array("array.bin", dim, &rowMajor, 'B', 'M');
 	array.batchPut(begin, end, data);
 	checkRect(array, begin, end, data);
 
@@ -99,7 +99,7 @@ TEST(MDArray, BatchGetSparse)
 	RowMajor<2> rowMajor(&dim[0]);
 	
 	{
-		Matrix array(dim, BTREE, &rowMajor, "array.bin");
+		Matrix array("array.bin", dim, &rowMajor, 'B', 'M');
 
 		for (int i=0; i<nz; ++i)
 			array.put(coords[i], data[i]);
@@ -141,13 +141,25 @@ TEST(MDArray, BatchPutSparse)
     MDCoord<2> begin(0,0), end(rows-1,cols-1);
     SparseMatrix sp(elements, nz, begin, end, false);
 
+    char file[40];
 	RowMajor<2> rowMajor(&dim[0]);
-    Matrix a(dim, BTREE, &rowMajor, "array.bin");
-    a.batchPut(begin, sp);
+    {
+        Matrix a(NULL, dim, &rowMajor, 'B', 'M');
+        a.batchPut(begin, sp);
+        strcpy(file, a.getFileName());
+        for (int i=0; i<nz; ++i) {
+            Datum_t x;
+            a.get(elements[i].coord, x);
+            ASSERT_DOUBLE_EQ(elements[i].datum, x);
+        }
+    }
 
-    for (int i=0; i<nz; ++i) {
-        Datum_t x;
-        a.get(elements[i].coord, x);
-        ASSERT_DOUBLE_EQ(elements[i].datum, x);
+    {
+        Matrix b(file);
+        for (int i=0; i<nz; ++i) {
+            Datum_t x;
+            b.get(elements[i].coord, x);
+            ASSERT_DOUBLE_EQ(elements[i].datum, x);
+        }
     }
 }

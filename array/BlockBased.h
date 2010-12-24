@@ -8,20 +8,38 @@ class BlockBased : public Linearization<nDim>
 {
 public:
 
+	void serialize(char **p)
+	{
+		*((int*)(*p)) = BLOCK;
+		*p += sizeof(int);
+		memcpy(*p, this->arrayDims, sizeof(i64)*nDim);
+		*p += sizeof(i64)*nDim;
+		memcpy(*p, blockDims, sizeof(i64)*nDim);
+		*p += sizeof(i64)*nDim;
+		memcpy(*p, blockOrders, sizeof(u8)*nDim);
+		*p += sizeof(u8)*nDim;
+		memcpy(*p, microOrders, sizeof(u8)*nDim);
+		*p += sizeof(u8)*nDim;
+	}
+
+    void setDims(const MDCoord<nDim> &arrayDims)
+    {
+		memcpy(this->arrayDims, &arrayDims[0], nDim*sizeof(i64));
+		blockSize = 1;
+		for (int i = 0; i < nDim; i++) {
+			blockSize *= blockDims[i];
+			numBlocks[i] = (1+(arrayDims[i]-1)/blockDims[i]);
+			this->actualDims[i] = blockDims[i]*numBlocks[i];
+		}
+    }
+
 	BlockBased(const i64 *arrayDims, const i64 *blockDims, 
 			const u8 *blockOrders, const u8 *microOrders)
 	{
-		memcpy(this->arrayDims, arrayDims, nDim*sizeof(i64));
 		memcpy(this->blockDims, blockDims, nDim*sizeof(i64));
 		memcpy(this->blockOrders, blockOrders, nDim*sizeof(u8));
 		memcpy(this->microOrders, microOrders, nDim*sizeof(u8));
-		blockSize = 1;
-		for (int i = 0; i < nDim; i++)
-		{
-			blockSize *= blockDims[i];
-			numBlocks[i] = (1+(arrayDims[i]-1)/blockDims[i]);
-			actualDims[i] = blockDims[i]*numBlocks[i];
-		}
+		BlockBased<nDim>::setDims(MDCoord<nDim>(arrayDims));
 	}
 
 	/* Constructs a BlockBased linearization where the entire array
@@ -31,7 +49,6 @@ public:
 	 */
 	BlockBased(const i64 *arrayDims, bool mostSignificantFirst)
 	{
-		memcpy(this->arrayDims, arrayDims, nDim*sizeof(i64));
 		memcpy(this->blockDims, arrayDims, nDim*sizeof(i64));
 		if (mostSignificantFirst) {
 			for (int i=0; i<nDim; ++i) {
@@ -45,13 +62,7 @@ public:
 				this->microOrders[i] = i;
 			}
 		}
-		blockSize = 1;
-		for (int i = 0; i < nDim; i++)
-		{
-			blockSize *= blockDims[i];
-			numBlocks[i] = (1+(arrayDims[i]-1)/blockDims[i]);
-			actualDims[i] = blockDims[i]*numBlocks[i];
-		}
+		BlockBased<nDim>::setDims(MDCoord<nDim>(arrayDims));
 	}
 
     /**
@@ -71,7 +82,7 @@ public:
 			return (Key_t)coord[0];
 		}
 		for (int i=0; i<nDim; ++i)
-			if (coord[i] >= actualDims[i])
+			if (coord[i] >= this->actualDims[i])
 				return MAX_KEY; // makes it invalid
 
 		i64 blockCoords[nDim];
@@ -209,7 +220,7 @@ public:
      */
     Linearization<nDim>* clone() const
 	{
-		return new BlockBased<nDim>(arrayDims, blockDims, blockOrders, microOrders);
+		return new BlockBased<nDim>(this->arrayDims, blockDims, blockOrders, microOrders);
 	}
 
     bool equals(Linearization<nDim> *l) const 
@@ -217,7 +228,7 @@ public:
 		if (l->getType() != this->getType())
 			return false;
 		BlockBased<nDim> *ll = static_cast<BlockBased<nDim>*>(l);
-		return (equals(arrayDims,ll->arrayDims)
+		return (equals(this->arrayDims,ll->arrayDims)
 				&& equals(blockDims,ll->blockDims)
 				&& equals(blockOrders, ll->blockOrders)
 				&& this->equals(microOrders, ll->microOrders));
@@ -229,7 +240,7 @@ public:
 	{
 		i64 ad[nDim];
 		for (int i=0; i<nDim; i++)
-			ad[i] = arrayDims[nDim-1-i];
+			ad[i] = this->arrayDims[nDim-1-i];
 		i64 bd[nDim];
 		for (int i=0; i<nDim; i++)
 			bd[i] = blockDims[nDim-1-i];
@@ -249,7 +260,6 @@ public:
 
 	i64 getBlockSize() const { return blockSize; }
 
-	MDCoord<nDim> getActualDims() const { return actualDims; }
 
 	void getOverlapWithBlock(const MDCoord<nDim> &b, const MDCoord<nDim> &e,
 			u8 *orders, const MDCoord<nDim> &begin,
@@ -386,8 +396,6 @@ public:
 					blockCoords[1]*blockDims[1]));
 	}
     */
-	i64 arrayDims[nDim]; /// size of array in each dimension
-	i64 actualDims[nDim]; /// augmented array size (multiples of block dims)
 	i64 numBlocks[nDim];
 	i64 blockDims[nDim]; /// size of block in each dimension
 	u8 blockOrders[nDim]; /// ordering of dimensions between blocks, descending order of significance

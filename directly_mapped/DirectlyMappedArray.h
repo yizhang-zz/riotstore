@@ -19,7 +19,7 @@ class DirectlyMappedArray : public LinearStorage
 public:
     /// If numElements > 0, create a new array; otherwise read from disk.
     /// Whether file exists is ignored.
-    DirectlyMappedArray(const char* fileName, uint32_t numElements);
+    DirectlyMappedArray(const char* fileName, uint32_t numElements=0);
     virtual ~DirectlyMappedArray();
 
     virtual int get(const Key_t &key, Datum_t &datum);
@@ -52,6 +52,7 @@ private:
     PageHandle headerPage;
     struct Header 
     {
+        int storageType;
         Key_t endsBy;
         u32 nnz; // number of nonzeros
         //enum DataType dataType;

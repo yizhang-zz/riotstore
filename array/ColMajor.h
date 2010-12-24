@@ -8,6 +8,14 @@ class ColMajor : public BlockBased<nDim>
 {
 public:
 
+	void serialize(char **p)
+	{
+		*((int*)(*p)) = COL;
+		*p += sizeof(int);
+		memcpy(*p, this->arrayDims, sizeof(i64)*nDim);
+		*p += sizeof(i64)*nDim;
+	}
+
 	ColMajor(const i64 *arrayDims) : BlockBased<nDim>(arrayDims, false)
 	{
 	}

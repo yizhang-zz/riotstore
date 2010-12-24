@@ -39,12 +39,10 @@ MDArray<nDim>::Coord MDArray<nDim>::peekDim(const char *fileName)
     return dim;
 }
 */
+
 template<int nDim>
-MDArray<nDim>::MDArray(const MDCoord<nDim> &dim, Linearization<nDim> *lnrztn, LeafSplitter *leaf, InternalSplitter *internal, const char *fileName)
-    : leafsp(leaf), intsp(internal)
+MDArray<nDim>::MDArray(const char *fileName, const MDCoord<nDim> &d, Linearization<nDim> *lnrztn, char leafSpType, char intSpType): dim(d)
 {
-    this->allocatedSp = false;
-    this->dim = dim;
     // The linearized space can be larger than what dim indicates;
     // e.g., when 2x2 blocks are used for a 3x3 array, the linearized
     // space will be of size 4x4=16. Thus the linear storage should
@@ -56,46 +54,29 @@ MDArray<nDim>::MDArray(const MDCoord<nDim> &dim, Linearization<nDim> *lnrztn, Le
    
     linearization = lnrztn->clone();
 
-    char path[40]; // should be long enough
-    if (fileName == 0)
-    {
-        char temp[] = "MDArXXXXXX";
-        int fd = mkstemp(temp);
-        close(fd);
-        strcpy(path, temp);
-    }
+    char path[40] = "mdaXXXXXX"; // should be long enough
+    if (!fileName)
+		mktemp(path);
     else
-    {
         strcpy(path, fileName);
-    }
+	this->fileName = path;
 
-    storage = new BTree(path, size, leafsp, intsp); 
+    storage = new BTree(path, size, leafSpType, intSpType); 
 
     PageHandle ph;
     BufferManager *buffer = storage->getBufferManager();
     buffer->readPage(0, ph);
     char *image = ph->getImage();
-    int *header = (int*)(image + OFFSET);
-    *header = BTREE;
-    *(header+1) = nDim;
-    *(header+2) = linearization->getType();
-    i64* header_dims = (i64*)(header + 3);
-    memcpy(header_dims, &dim[0], nDim*sizeof(i64));
-    if (linearization->getType() == BLOCK)
-    {
-        BlockBased<nDim> *bl = static_cast<BlockBased<nDim>*>(linearization);
-        memcpy(header_dims+nDim, bl->blockDims, nDim*sizeof(i64));
-        u8 *header_order = (u8*)(header_dims+2*nDim);
-        memcpy(header_order, bl->blockOrders, nDim*sizeof(u8));
-        memcpy(header_order+nDim, bl->microOrders, nDim*sizeof(u8));
-    }
+    char *header = image + OFFSET;
+	dim.serialize(&header);
+	linearization->serialize(&header);
+
     ph->markDirty();
-    this->fileName = path;
 }
 
+// Create an MDArray backed by the DMA storage format
 template<int nDim>
-MDArray<nDim>::MDArray(const MDCoord<nDim> &d, StorageType type, Linearization<nDim> *lnrztn, const char *fileName)
-    : dim(d), allocatedSp(false), leafsp(NULL), intsp(NULL)
+MDArray<nDim>::MDArray(const char *fileName, const MDCoord<nDim> &d, Linearization<nDim> *lnrztn): dim(d)
 {
     Coord coord = lnrztn->getActualDims();
 
@@ -112,97 +93,35 @@ MDArray<nDim>::MDArray(const MDCoord<nDim> &d, StorageType type, Linearization<n
         strcpy(path, fileName);
     this->fileName = path;
 
-    switch (type)
-    {
-    case DMA:
-        storage = new DirectlyMappedArray(path, size);
-        break;
-    case BTREE:
-        leafsp = new MSplitter<Datum_t>();
-        intsp = new MSplitter<PID_t>();
-        allocatedSp = true;
-        storage = new BTree(path, size, leafsp, intsp); 
-        break;
-    default:
-        storage = NULL;
-        assert(false);
-        break;
-    }
+    storage = new DirectlyMappedArray(path, size);
+
     PageHandle ph;
     BufferManager *buffer = storage->getBufferManager();
     buffer->readPage(0, ph);
     char *image = ph->getImage();
-    int *header = (int*)(image + OFFSET);
-    *header = type;
-    *(header+1) = nDim;
-    *(header+2) = linearization->getType();
-    i64* header_dims = (i64*)(header + 3);
-    memcpy(header_dims, &dim[0], nDim*sizeof(i64));
-    if (linearization->getType() == BLOCK)
-    {
-        BlockBased<nDim> *bl = static_cast<BlockBased<nDim>*>(linearization);
-        memcpy(header_dims+nDim, bl->blockDims, nDim*sizeof(i64));
-        u8 *header_order = (u8*)(header_dims+2*nDim);
-        memcpy(header_order, bl->blockOrders, nDim*sizeof(u8));
-        memcpy(header_order+nDim, bl->microOrders, nDim*sizeof(u8));
-    }
+    char *header = image + OFFSET;
+	dim.serialize(&header);
+	linearization->serialize(&header);
     ph->markDirty();
 }
 
+// Create an MDArray from existing file by parsing file content
 template<int nDim>
-MDArray<nDim>::MDArray(const char *fileName):fileName(fileName), allocatedSp(false), leafsp(NULL), intsp(NULL)
+MDArray<nDim>::MDArray(const char *fileName): fileName(fileName)
 {
-
     if (access(fileName, F_OK) != 0)
         throw ("File for array does not exist.");
-    FILE *file = fopen(fileName, "rb");
-    // first n=8 page in file is used by PagedStorageContainer
-    // the header page of the LinearStorage is actually page n+1
-    // TODO: make this flexible and portable
-    fseek(file, 8*PAGE_SIZE+OFFSET, SEEK_SET);
-    int type, ndim, linType;
-    fread(&type, sizeof(int), 1, file);
-    fread(&ndim, sizeof(int), 1, file);
-    assert(ndim == nDim);
-    fread(&linType, sizeof(int), 1, file);
 
-    fread(&dim[0], sizeof(i64), nDim, file);
+	storage = LinearStorage::fromFile(fileName);
 
-    if (linType == BLOCK)
-    {
-        i64 *blockDims = new i64[nDim];
-        u8 *blockOrders = new u8[nDim];
-        u8 *microOrders = new u8[nDim];
-        fread(blockDims, sizeof(i64), nDim, file);
-        fread(blockOrders, sizeof(u8), nDim, file);
-        fread(microOrders, sizeof(u8), nDim, file);
-        linearization = new BlockBased<nDim>(&dim[0], blockDims,
-                blockOrders, microOrders);
-        delete[] blockDims;
-        delete[] blockOrders;
-        delete[] microOrders;
-    }
-    else if (linType == ROW)
-    {
-        linearization = new RowMajor<nDim>(&dim[0]);   
-    }
-    else if (linType == COL)
-    {
-        linearization = new ColMajor<nDim>(&dim[0]);
-    }
-    fclose(file);
-    if (type == DMA)
-    {
-        storage = new DirectlyMappedArray(fileName, 0);
-    }
-    else if (type == BTREE)
-    {
-        //TODO: should read from file
-        leafsp = new MSplitter<Datum_t>();
-        intsp = new MSplitter<PID_t>();
-        allocatedSp = true;
-        storage = new BTree(fileName, leafsp, intsp);
-    }
+    PageHandle ph;
+    BufferManager *buffer = storage->getBufferManager();
+    buffer->readPage(0, ph);
+    char *image = ph->getImage();
+    char *header = image + OFFSET;
+	dim = MDCoord<nDim>::parse(&header);
+	linearization = Linearization<nDim>::parse(&header);
+
     Coord coord = linearization->getActualDims();
     size = 1;
     for (int i=0; i<nDim; ++i)
@@ -214,6 +133,7 @@ MDArray<nDim>::MDArray(const MDArray<nDim> &other)
 {
     dim = other.dim;
     size = other.size;
+    linearization = other.linearization->clone();
 
     char path[40] = "mdaXXXXXX";
     mktemp(path);
@@ -231,78 +151,73 @@ MDArray<nDim>::MDArray(const MDArray<nDim> &other)
     in.close();
     out.close();
 
-    switch(other.storage->type()) {
-    case DMA:
-        storage = new DirectlyMappedArray(path, 0);
-        break;
-    case BTREE:
-        leafsp = other.leafsp->clone();
-        intsp  = other.intsp->clone();
-        allocatedSp = true;
-        storage = new BTree(path, leafsp, intsp);
-        break;
-    }
-    linearization = other.linearization->clone();
+	storage = LinearStorage::fromFile(path);
 }
 
 
 // for batch put
 template<int nDim>
-MDArray<nDim>::MDArray(const char* fileName, Linearization<nDim> *lnrztn, Parser<nDim> *parser, const int bufferSize)
+MDArray<nDim>::MDArray(
+					   const char *fileName, Linearization<nDim> *lnrztn,
+					   char leafSpType, char intSpType,
+					   const char *parserType,
+					   const char* inputFileName,
+					   int bufferSize)
 {
-  if (access(fileName, F_OK) != 0)
-    throw ("File for array does not exist.");
+    if (!inputFileName || access(inputFileName, F_OK) != 0)
+		throw ("File for array does not exist.");
 
-    linearization = lnrztn;
+    Parser<nDim> *parser = Parser<nDim>::createParser(parserType, inputFileName);
 
-    Key_t *key = new Key_t[bufferSize];
-    Datum_t *datum = new Datum_t[bufferSize];
-    char path[40];
+    dim = parser->dim();
+    linearization = lnrztn->clone();
+	// lnrztn may come with bogus dim info; replace it with the real dim
+    linearization->setDims(dim);
+
+    Coord actualDims = linearization->getActualDims();
     size = 1;
-    Coord coord = linearization->getActualDims();
-    for (int i = 0; i < nDim; i++)
-    {
-      // assert(dim.coords[i] > 0);
-      size *= (u32) coord[i];
-    }
-    strcpy(path, fileName);
+    for (int i=0; i<nDim; ++i)
+        size *= (u32) actualDims[i];
 
-    leafsp = new MSplitter<Datum_t>();
-    intsp = new MSplitter<PID_t>();
-    storage = new BTree(path, size, leafsp, intsp);
+	char path[40] = "mdaXXXXXX";
+	if (!fileName)
+		mktemp(path);
+	else
+		strcpy(path, fileName);
+	this->fileName = path;
+
+	// For now, storage must be btree
+	storage = new BTree(path, size, leafSpType, intSpType);
+
     ExternalSort sorter(bufferSize);
     Coord *inputCoord = new Coord[bufferSize];
+    Entry *entries = new Entry[bufferSize];
+    Datum_t *data = new Datum_t[bufferSize];
 
-    ifstream in(fileName);
     int parsedCount = bufferSize;
     while(parsedCount == bufferSize){
-      parsedCount = parser->parse(in, bufferSize, inputCoord, datum); 
-      if (parsedCount <= 0) break;
-      for (int i=0; i<parsedCount; i++){
-	key[i] = linearization->linearize(inputCoord[i]);
-      }
-      sorter.streamToChunk(key,datum,parsedCount);
+        parsedCount = parser->parse(bufferSize, inputCoord, data);
+        if (parsedCount == 0)
+            break;
+        for (int i=0; i<parsedCount; i++) {
+            entries[i].key = linearization->linearize(inputCoord[i]);
+            entries[i].datum = data[i];
+        }
+        sorter.streamToChunk(entries, parsedCount);
     }
-    in.close();
 
-    i64 maxRec = sorter.getBufferSize(); //not always equal
-    Entry *rec = new Entry[maxRec];
-    i64 sortedCount = maxRec;
-    cout << "[MDArray] Entering mergeSort phase..." << endl;
-    while (sortedCount == maxRec){
-      sortedCount = sorter.mergeSortToStream(rec, maxRec);
-      storage->batchPut(sortedCount, rec);
-      cout << "[MDArray] batchput sortedCount = " << sortedCount << endl;
-      for (int i=0; i<sortedCount; i++){
-	//cout << rec[i].key << ", " << *(rec[i].datum) << endl;
-      }
+    int batchSize = bufferSize; // could be different
+    int sortedCount = batchSize;
+    while (sortedCount == batchSize){
+      sortedCount = sorter.mergeSortToStream(entries, batchSize);
+      if (sortedCount == 0)
+          break;
+      storage->batchPut(sortedCount, entries);
     }
-    cout << "[MDArray] Closing batch-loading..." << endl;
-
-    delete[] rec;
-    delete[] key;
-    delete[] datum;
+    delete[] entries;
+    delete[] data;
     delete[] inputCoord;
+    delete parser;
 }
 
 
@@ -310,11 +225,6 @@ MDArray<nDim>::MDArray(const char* fileName, Linearization<nDim> *lnrztn, Parser
 template<int nDim>
 MDArray<nDim>::~MDArray()
 {
-    if (allocatedSp)
-    {
-        delete intsp;
-        delete leafsp;
-    }
     if (storage)
         delete storage;
     delete linearization;
@@ -578,9 +488,8 @@ MDArray<nDim> & MDArray<nDim>::operator+=(const MDArray<nDim> &other)
 }
 
 
-template class MDArray<1>;
+//template class MDArray<1>;
 template class MDArray<2>;
-template class MDArray<3>;
 
 SparseMatrix Matrix::batchGet(const Coord &begin, const Coord &end) const
 {
@@ -672,8 +581,8 @@ Matrix Matrix::operator*(const Matrix &other)
     // Param 1: what is the boundary value? dense leaf cap or sparse leaf cap?
     BSplitter<Datum_t> bsp(config->denseLeafCapacity);
     // Param 2: what storage type to use? dma or btree?
-    //Matrix ret(Coord(retDims), &retLin, &bsp, &msp);
-    Matrix ret(Coord(retDims), DMA, &retLin);
+    Matrix ret(NULL, Coord(retDims), &retLin, 'B', 'M');
+    //Matrix ret(NULL, Coord(retDims), &retLin);
 
     Coord begin, end;
     int nbr = 1+(dim[0]-1)/blockl[0];

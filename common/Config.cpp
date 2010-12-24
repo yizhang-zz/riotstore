@@ -10,9 +10,20 @@ Config::Config(const char *path)
 	denseLeafCapacity = (PAGE_SIZE-denseLeafHeaderSize)/(sizeof(Datum_t));
 	sparseLeafCapacity = (PAGE_SIZE-sparseLeafHeaderSize)/(sizeof(Datum_t)+sizeof(Key_t));
 	internalCapacity = (PAGE_SIZE-internalHeaderSize)/(sizeof(PID_t)+sizeof(Key_t));
+
+	// BSplitterBoundary is calculated, not read from conf file
+#ifdef DISABLE_DENSE_LEAF
+	BSplitterBoundary = sparseLeafCapacity;
+#else
+	BSplitterBoundary = denseLeafCapacity;
+#endif
+	TSplitterThreshold = 0.7;
+	internalSplitter = 'M';
+	leafSplitter = 'B';
+
 	btreeBufferSize = 10;
 	dmaBufferSize = 10;
-	TThreshold = 0.7;
+
 	batchBufferSize = 100;
 	batchMethod = Btree::kNone;
 	batchUseHistogram = 0;
@@ -38,8 +49,12 @@ Config::Config(const char *path)
 				btreeBufferSize = atoi(b);
 			} else if (strcmp(a, "dmaBufferSize") == 0) {
 				dmaBufferSize = atoi(b);
-			} else if (strcmp(a, "TThreshold") == 0) {
-				TThreshold = atof(b);
+			} else if (strcmp(a, "internalSplitter") == 0) {
+			    internalSplitter = *b;
+			} else if (strcmp(a, "leafSplitter") == 0) {
+			    leafSplitter = *b;
+			} else if (strcmp(a, "TSplitterThreshold") == 0) {
+				TSplitterThreshold = atof(b);
 			} else if (strcmp(a, "batchBufferSize") == 0) {
 				batchBufferSize = atoi(b);
 			} else if (strcmp(a, "batchKeepPidCount") == 0) {

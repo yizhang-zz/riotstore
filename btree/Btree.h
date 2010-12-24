@@ -30,12 +30,15 @@ class LeafHist;
 class BTree : public LinearStorage {
 private:
     struct Header {
+		int storageType;
         Key_t endsBy;	/// all keys >=0 and < endsBy
         u32 nLeaves;	/// number of leaf nodes
         int depth;		/// depth of tree; root is at depth 0
         PID_t root;		/// PID of root
         PID_t firstLeaf;	/// PID of first leaf node
         u32 nnz;    /// number of nonzero entries
+	char leafSpType;
+	char intSpType;
     } *header;
 
     LeafSplitter *leafSplitter;
@@ -63,7 +66,7 @@ public:
      * keys in the BTree should be >=0 and < endsby. The header page
      * (0-th page in the file) is written immediately.
      */
-    BTree(const char *fileName, Key_t endsBy, LeafSplitter *leafSp, InternalSplitter *intSp
+    BTree(const char *fileName, Key_t endsBy, char leafSpType, char intSpType
             //#ifdef USE_BATCH_BUFFER
             //, BatchMethod method
             //#endif
@@ -73,7 +76,7 @@ public:
      * Initializes a BTree from the given file. Metadata is read from the
      * header page.
      */
-    BTree(const char *fileName, LeafSplitter *leafSp, InternalSplitter *intSp
+    BTree(const char *fileName
             //#ifdef USE_BATCH_BUFFER
             //,BatchMethod method
             //#endif

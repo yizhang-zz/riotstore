@@ -3,6 +3,8 @@
 
 #include "Parser.h"
 #include <vector>
+#include <fstream>
+
 /* Author: Kevin Jang
  * 11/17/2010
  * RBParser.h
@@ -17,12 +19,13 @@ class RBParser: public Parser<nDim>
 {
  public:
 
-  RBParser(int, int);
+    RBParser(const char *fileName);
 
-  int parse(ifstream &in, int bufferSize, MDCoord<nDim> *coord, Datum_t *datum);
+    int parse(int bufferSize, MDCoord<nDim> *coord, Datum_t *datum);
 
  private:
-  bool headerRead;
+    std::ifstream in;
+    bool headerRead;
   int numRows;
   int numCols;
   int col;

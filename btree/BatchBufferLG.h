@@ -117,7 +117,7 @@ namespace Btree
 				groups[maxIndex].count = 0;
 				Group *secondLargest = max_element(groups, groups+nGroups);
 				int n = config->batchKeepPidCount;
-				if (n > secondLargest->pids.size())
+				if (n > (int)secondLargest->pids.size())
 				   n = secondLargest->pids.size(); 	
 				// group's pids are already sorted in the order of their lower bounds
 				pids.assign(secondLargest->pids.begin(), secondLargest->pids.begin()+n);

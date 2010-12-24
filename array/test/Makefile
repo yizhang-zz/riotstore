@@ -9,7 +9,7 @@ LDFLAGS += -L../../lib/SuiteSparse/CHOLMOD/Lib -lcholmod
 LD_RUN_PATH = ../..
 
 SRC = main.cpp TestBlockBased.cpp TestRowMajor.cpp 
-SRC += TestBatch.cpp
+SRC += TestBatch.cpp TestBatchLoad.cpp
 SRC += TestArith.cpp
 OBJ := $(patsubst %.cpp, %.o, $(SRC))
 DEPS := $(OBJ:.o=.dd)

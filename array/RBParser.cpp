@@ -5,7 +5,7 @@
  */
 
 template<int nDim>
-RBParser<nDim>::RBParser(int cpl, int rpl)
+RBParser<nDim>::RBParser(const char *fileName)
 {
   headerRead = false;
   numRows = 0;
@@ -21,7 +21,7 @@ RBParser<nDim>::RBParser(int cpl, int rpl)
 }
 
 template<int nDim>
-int RBParser<nDim>::parse(ifstream &in, int bufferSize, MDCoord<nDim> *coord, Datum_t *datum) {
+int RBParser<nDim>::parse(int bufferSize, MDCoord<nDim> *coord, Datum_t *datum) {
   
     if (in.eof() || in.peek() == -1) return 0;
     /*

@@ -28,6 +28,7 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numEleme
       header = (Header*) headerPage->getImage();
       header->nnz = 0;
       header->endsBy = numElements;
+      header->storageType = DMA;
       //Datum_t x;
       //header->dataType = GetDataType(x);
       //header->ch = 'z';
@@ -41,6 +42,7 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numEleme
       buffer = new BufferManager(file, config->dmaBufferSize); 
       buffer->readPage(0, headerPage);
       header = (Header*) headerPage->getImage();
+      assert(header->storageType == DMA);
       //Datum_t x;
       //assert(IsSameDataType(x, header->dataType));
    }

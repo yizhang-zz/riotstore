@@ -1,3 +1,4 @@
+/* -*- mode: c++; c-basic-offset:2 -*- */
 #ifndef EXTERNALSORT_H
 #define EXTERNALSORT_H
 
@@ -17,45 +18,38 @@
 #include <vector>
 #include <functional>
 
-using namespace std;
-
-typedef pair<uint64_t,uint64_t> IndexKeyPair;
+typedef std::pair<unsigned, Key_t> IndexKeyPair;
 
 class ExternalSort{
   
  public:
   ExternalSort(const char*, const uint64_t);
   ExternalSort(const uint64_t);
+  ~ExternalSort();
   bool done;
-  void fileToChunk();
+  //void fileToChunk();
   void mergeSortToFile();
-  void streamToChunk(Key_t *, Datum_t *, const int length);
+  void streamToChunk(Entry *entries, const int length);
 
   int mergeSortToStream(Entry*, uint64_t);
   int getRecordCount(){return m_recordCount;}
   int getBufferSize(){return m_bufferSize;}
   int getSortedCount(){return m_sortedCount;}
   double getTimeTaken(){return end_run - begin_run;}
-  static const int keySize = 32;
 
  private:
-  const char* m_fileName;
+  std::string m_fileName;
   const uint64_t m_bufferSize;
   unsigned int m_recordCount;
   unsigned int m_sortedCount;
   unsigned int m_chunkCount;
-  ifstream* ifile;
-  vector<IndexKeyPair> v;
+  std::ifstream* ifile;
+  std::vector<IndexKeyPair> v;
   double begin_run, end_run;
   timeval tim;
-
   bool streamsInitialized;
-  bool isDoneSorting(ifstream *ifile, unsigned int size);
 
-  void print(const string & str){cout << "[ExternalSort] " << str << endl;}
-  void print(const string & str, int i){
-    cout << "[ExternalSort] " << str << " = " << i << endl;
-  }
+  void genTempFileName(char *s, unsigned number);
 };
 
 #endif

@@ -248,6 +248,30 @@ public:
 		return std::string(buf);
 	}
 
+	static MDCoord<nDim> parse(char **p)
+	{
+		int *q = (int*) *p;
+		*p += sizeof(int);
+		assert(nDim==*q);
+		Coord *r = (Coord*) *p;
+		MDCoord<nDim> coord;
+		for (int i=0; i<*q; ++i)
+			coord[i] = r[i];
+		*p += sizeof(Coord) * (*q);
+		return coord;
+	}
+
+	void serialize(char **p)
+	{
+		int *q = (int*) *p;
+		*q = nDim;
+		*p += sizeof(int);
+		Coord *r = (Coord*) *p;
+		for (int i=0; i<nDim; ++i)
+			r[i] = coords[i];
+		*p += sizeof(Coord) * nDim;
+	}
+
 	template<int N>
 	friend std::ostream & operator<<(std::ostream &out, const MDCoord<N> &coord);
 };

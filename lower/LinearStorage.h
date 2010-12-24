@@ -111,6 +111,8 @@ public:
     double sparsity() const { return double(nnz())/upperBound(); }
 
     BufferManager *getBufferManager() const { return buffer; }
+
+	static LinearStorage *fromFile(const char *fileName);
 };
 
 #endif

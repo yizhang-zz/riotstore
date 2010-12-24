@@ -42,12 +42,12 @@ TEST(Arith, Add)
 	for (int i=0; i<total; ++i)
 		initial[i] = i;
 
-	Matrix a(MDCoord<2>(arrayDims), BTREE, block, "a.bin");
+	Matrix a("a.bin", MDCoord<2>(arrayDims), block, 'B', 'M');
 	a.batchPut(MDCoord<2>(0,0), MDCoord<2>(rows-1, cols-1), initial);
 	//cout<<"a="<<endl;
 	//printMDArray(a);
 
-	Matrix b(MDCoord<2>(arrayDims), BTREE, block, "b.bin");
+	Matrix b("b.bin", MDCoord<2>(arrayDims), block, 'B', 'M');
 	b.batchPut(MDCoord<2>(0,0), MDCoord<2>(rows-1, cols-1), initial);
 	//cout<<"b="<<endl;
 	//printMDArray(b);
@@ -83,9 +83,9 @@ TEST(Arith, DenseDenseMult)
 
     BlockBased<2> *block = new BlockBased<2>(arrayDims, blockDims, orders, orders);
     Linearization<2> *block1 = block->transpose();
-	Matrix a(MDCoord<2>(arrayDims), BTREE, block, "a.bin");
+	Matrix a("a.bin", MDCoord<2>(arrayDims), block, 'B', 'M');
 	a.batchPut(MDCoord<2>(0,0), MDCoord<2>(rows-1, cols-1), initial);
-    Matrix b(MDCoord<2>(cols, rows), BTREE, block1, "b.bin"); // b=a'
+    Matrix b("b.bin", MDCoord<2>(cols, rows), block1, 'B', 'M'); // b=a'
     b.batchPut(MDCoord<2>(0,0), MDCoord<2>(cols-1, rows-1), initial);
 
     Matrix c = a*b;
@@ -128,7 +128,7 @@ TEST(Arith, SparseSparseMult)
     double *temp = new double[rows*cols];
 
     BlockBased<2> *block = new BlockBased<2>(arrayDims, blockDims, orders, orders);
-    Matrix a(MDCoord<2>(arrayDims), BTREE, block, "a.bin");
+    Matrix a("a.bin", MDCoord<2>(arrayDims), block, 'B', 'M');
     MDCoord<2> begin(0, 0);
     SparseMatrix asp(elements, total, begin, MDCoord<2>(rows-1, cols-1), false);
     a.batchPut(begin, asp);
@@ -141,7 +141,7 @@ TEST(Arith, SparseSparseMult)
     }
 
     Linearization<2> *block1 = block->transpose();
-    Matrix b(MDCoord<2>(cols, rows), BTREE, block1, "b.bin");
+    Matrix b("b.bin", MDCoord<2>(cols, rows), block1, 'B', 'M');
     for (int i=0; i<total; ++i) {
         i64 temp = elements[i].coord[0];
         elements[i].coord[0] = elements[i].coord[1];
@@ -191,7 +191,7 @@ TEST(Arith, SparseDenseMult)
     }
 
     BlockBased<2> *block = new BlockBased<2>(arrayDims, blockDims, orders, orders);
-    Matrix a(MDCoord<2>(arrayDims), BTREE, block, "a.bin");
+    Matrix a("a.bin", MDCoord<2>(arrayDims), block, 'B', 'M');
     MDCoord<2> begin(0, 0), end(rows-1, cols-1);
     SparseMatrix asp(elements, total, begin, end, false);
     a.batchPut(begin, asp);
@@ -225,7 +225,7 @@ TEST(Arith, SparseDenseMult)
     // 		}
     // 	    }
     Linearization<2> *block1 = block->transpose();
-    Matrix b(MDCoord<2>(cols, rows), BTREE, block1, "b.bin");
+    Matrix b("b.bin", MDCoord<2>(cols, rows), block1, 'B', 'M');
     total = rows * cols;
     Datum_t *data = new Datum_t[total];
     for (int i=0; i<total; ++i) {

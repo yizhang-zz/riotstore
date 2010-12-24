@@ -7,9 +7,7 @@
 #include <iostream>
 #include <fstream>
 
-using namespace std;
-
-/* Author: Kevin Jang
+/* Author: Kevin Jang, Yi Zhang
  * 11/17/2010
  * Parser.h
  *
@@ -23,21 +21,21 @@ class Parser
 {
  public:
 
-  Parser() {}
-  virtual ~Parser() {}
+    static Parser<nDim> *createParser(const char *type, const char *fileName);
 
-  virtual int parse(ifstream &in, int bufferSize, MDCoord<nDim> *coord, Datum_t *datum) = 0;
+    Parser() {}
+    virtual ~Parser() {}
 
-  //  MDCoord<nDim> getDimension(){return dim;}
+    virtual int parse(int bufferSize, MDCoord<nDim> *coord, Datum_t *datum) = 0;
 
-  //virtual i64 getRecordCount() {return nElem;}
-
-  i64 nElem;
+    MDCoord<nDim> dim() { return dim_; }
+    size_t size() { return nElem; }
 
  protected:
-  
-  //  MDCoord<nDim> dim;
+    i64 nElem;
+    MDCoord<nDim> dim_;
 };
 
+template<> Parser<2> *Parser<2>::createParser(const char *, const char *);
 
 #endif
