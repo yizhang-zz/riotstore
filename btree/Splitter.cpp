@@ -322,10 +322,10 @@ int TSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 template class MSplitter<Datum_t>;
 template class MSplitter<PID_t>;
 template class RSplitter<Datum_t>;
-//template class RSplitter<PID_t>;
+template class RSplitter<PID_t>;
 template class BSplitter<Datum_t>;
-//template class BSplitter<PID_t>;
+template class BSplitter<PID_t>;
 template class TSplitter<Datum_t>;
-//template class TSplitter<PID_t>;
+template class TSplitter<PID_t>;
 template class SSplitter<Datum_t>;
-//template class SSplitter<PID_t>;
+template class SSplitter<PID_t>;
