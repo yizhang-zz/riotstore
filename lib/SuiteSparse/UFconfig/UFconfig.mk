@@ -89,8 +89,8 @@ MEX = mex -O -largeArrayDims -lmwlapack -lmwblas
 # BLAS = -lgoto -lgfortran -lgfortranbegin -lg2c
 
 # This is probably slow ... it might connect to the Standard Reference BLAS:
-BLAS = -lblas #-lgfortran -lgfortranbegin -lg2c
-LAPACK = -llapack
+# BLAS = -lblas -lgfortran -lgfortranbegin -lg2c
+# LAPACK = -llapack
 
 # Using non-optimized versions:
 # BLAS = -lblas_plain -lgfortran -lgfortranbegin -lg2c
@@ -214,13 +214,19 @@ TBB =
 # without timing
 RTLIB =
 
+OS = $(shell uname -s)
+
 #------------------------------------------------------------------------------
 # Linux
 #------------------------------------------------------------------------------
 
+ifeq ($(OS),Linux)
 # Using default compilers:
-# CC = gcc
-CFLAGS = -O3 -fexceptions
+CC = gcc
+CFLAGS = -O3 -fPIC -fexceptions
+BLAS = -lcblas
+LAPACK = -llapack
+endif
 
 # alternatives:
 # CFLAGS = -g -fexceptions \
@@ -270,6 +276,7 @@ CFLAGS = -O3 -fexceptions
 # Solaris
 #------------------------------------------------------------------------------
 
+ifeq ($(OS),SunOS)
 # 32-bit
 # CFLAGS = -KPIC -dalign -xc99=%none -Xc -xlibmieee -xO5 -xlibmil -m32
 
@@ -279,9 +286,12 @@ CFLAGS = -O3 -fexceptions
 # FFLAGS = -fast -KPIC -dalign -xlibmil -m64
 
 # The Sun Performance Library includes both LAPACK and the BLAS:
-# BLAS = -xlic_lib=sunperf
-# LAPACK =
-
+CC = suncc
+CPLUSPLUS = CC
+CFLAGS += -O3 -KPIC
+BLAS = -xlic_lib=sunperf
+LAPACK = -xlic_lib=sunperf
+endif
 
 #------------------------------------------------------------------------------
 # Compaq Alpha
@@ -296,11 +306,13 @@ CFLAGS = -O3 -fexceptions
 # Macintosh
 #------------------------------------------------------------------------------
 
-# CC = gcc
-# CFLAGS = -O3 -fno-common -no-cpp-precomp -fexceptions
+ifeq ($(OS),Darwin)
+CC = gcc
+CFLAGS = -O3 -fno-common -no-cpp-precomp -fexceptions
 # LIB = -lstdc++
-# BLAS = -framework Accelerate
-# LAPACK = -framework Accelerate
+BLAS = -framework Accelerate
+LAPACK = -framework Accelerate
+endif
 
 #------------------------------------------------------------------------------
 # IBM RS 6000

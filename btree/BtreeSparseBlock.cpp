@@ -267,7 +267,7 @@ int SparseBlock<T>::putRangeSorted(Key_t *keys, T *vals, int num, int *numPut)
 
 	search(keys[0], p);
 	int pp = p;
-	char tmp[(this->capacity-p)*kCellSize];
+	char *tmp = new char[(this->capacity-p)*kCellSize];
 	char *cur = tmp;
 
 	while (q<num && p<count && *this->nEntries<this->capacity) {
@@ -301,6 +301,7 @@ int SparseBlock<T>::putRangeSorted(Key_t *keys, T *vals, int num, int *numPut)
 	}
 
 	memcpy(this->pData+pp*kCellSize, tmp, (this->capacity-pp)*kCellSize); 
+    delete[] tmp;
 	// If we still have new records to be merged, then it must be that
 	// we ran out of space. We can actually put one more cause we have room
 	// for an overflow entry.
@@ -336,13 +337,15 @@ template<>
 BlockT<Datum_t> * SparseBlock<Datum_t>::switchFormat()
 {
 	int num = this->sizeWithOverflow();
-	Key_t keys[num];
-	Datum_t vals[num];
+	Key_t *keys = new Key_t[num];
+	Datum_t *vals = new Datum_t[num];
 	getRangeWithOverflow(0,num,keys,vals);
 	DenseLeafBlock *block = new DenseLeafBlock(this->pageHandle, 
 			this->lower, this->upper, true);
 	int numPut;
 	block->putRangeSorted(keys,vals,num,&numPut);
+    delete[] keys;
+    delete[] vals;
 	assert(num==numPut);
 	return block;
 }

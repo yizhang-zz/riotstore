@@ -1,4 +1,5 @@
-#pragma once
+#ifndef BTREE_H
+#define BTREE_H
 
 #include "lower/LinearStorage.h"
 #include "BtreeBlock.h"
@@ -177,3 +178,4 @@ private:
     }
 };
 }
+#endif

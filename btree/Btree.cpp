@@ -380,7 +380,7 @@ void BTree::split(Cursor &cursor)
 void BTree::print(PID_t pid, Key_t beginsAt, Key_t endsBy, int depth)
 {
     int indent = 2*depth;
-    char buf[indent+1];
+    char *buf =  new char[indent+1];
     memset(buf, ' ', indent);
     buf[indent] = '\0';
 	
@@ -388,6 +388,7 @@ void BTree::print(PID_t pid, Key_t beginsAt, Key_t endsBy, int depth)
     buffer->readPage(pid, ph);
     Block *block = Block::create(ph, beginsAt, endsBy);
     std::cout<<buf;
+	delete[] buf;
     block->print();
     if (depth < header->depth-1) {
 	InternalBlock *iblock = static_cast<InternalBlock*>(block);

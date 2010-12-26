@@ -26,9 +26,9 @@ public:
      *
      * \return A pointer to a clone of subclass type.
      */
-    Linearization<nDim>* clone() { return new ColMajor<nDim>(this->arrayDims); }
+    Linearization<nDim>* clone() const { return new ColMajor<nDim>(this->arrayDims); }
     
-    LinearizationType getType() { return COL; }
+    LinearizationType getType() const { return COL; }
 
 	std::vector<Segment> *getOverlap(const MDCoord<nDim> &begin,
 			const MDCoord<nDim> &end)

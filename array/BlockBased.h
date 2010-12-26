@@ -47,9 +47,9 @@ public:
 	   order within the block is row-major or column-major in the
 	   general sense.
 	 */
-	BlockBased(const i64 *arrayDims, bool mostSignificantFirst)
+	BlockBased(const i64 *arrayDims_, bool mostSignificantFirst)
 	{
-		memcpy(this->blockDims, arrayDims, nDim*sizeof(i64));
+		memcpy(this->blockDims, arrayDims_, nDim*sizeof(i64));
 		if (mostSignificantFirst) {
 			for (int i=0; i<nDim; ++i) {
 				this->blockOrders[i] = i;
@@ -62,7 +62,7 @@ public:
 				this->microOrders[i] = i;
 			}
 		}
-		BlockBased<nDim>::setDims(MDCoord<nDim>(arrayDims));
+		BlockBased<nDim>::setDims(MDCoord<nDim>(arrayDims_));
 	}
 
     /**
@@ -236,7 +236,7 @@ public:
 
     LinearizationType getType() const { return BLOCK; }
 
-    Linearization<nDim> *transpose()
+    Linearization<nDim> *transpose() const
 	{
 		i64 ad[nDim];
 		for (int i=0; i<nDim; i++)

@@ -1,7 +1,8 @@
-LDFLAGS += -lgtest -L../.. -lriot_store
+LDFLAGS += -L/usr/local/lib -lgtest -L../.. -lriot_store
+LDFLAGS += $(shell pkg-config --libs gsl)
 LD_RUN_PATH = ../..
 VPATH = ../..
-CXXFLAGS += -I../..
+CXXFLAGS += -I../.. -I/usr/local/include
 
 .PHONY: all clean 
 

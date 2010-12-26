@@ -6,7 +6,6 @@ CXXFLAGS += -I/usr/local/include
 CXXFLAGS += -Ilib/SuiteSparse/CHOLMOD/Include
 CXXFLAGS += -Ilib/SuiteSparse/UFconfig
 LDFLAGS += -Llib/SuiteSparse/CHOLMOD/Lib -lcholmod
-LDFLAGS += -lcblas -llapack
 LDFLAGS += $(shell pkg-config --libs-only-L gsl) -lgsl
 include $(patsubst %, %/module.mk,$(DIRS))
 OBJ := $(patsubst %.cpp,%.o,$(filter %.cpp,$(SRC))) 
@@ -38,12 +37,12 @@ riot.h: $(DTRACE_SRC)
 	$(DTRACE) -h -o $@ -s $^
 
 $(TARGET): $(SO_OBJ) 
-	$(CXX) $(CXXFLAGS) -shared -o $@ $^ $(LDFLAGS)
+	$(CXX) $(SOFLAG) -o $@ $^ $(LDFLAGS)
 
 $(DTRACE_OBJ): $(DTRACE_SRC) $(OBJ)
 	$(DTRACE) -G -32 -o $@ -s $^
 
-include $(DEPS)
+-include $(DEPS)
 
 clean:
 	rm -f $(OBJ) $(DTRACE_OBJ)

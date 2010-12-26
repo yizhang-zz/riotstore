@@ -65,12 +65,15 @@ int MSplitter<Value>::split(BlockT<Value> **orig, BlockT<Value> **newBlock,
     int sp = size / 2; // split before the sp-th record
 	int newSize = size-sp; // size of new block
 	// get the second half block
-	Key_t keys[newSize];
-	Value values[newSize];
+	Key_t *keys =  new Key_t[newSize];
+	Value *values =  new Value[newSize];
 	(*orig)->getRangeWithOverflow(sp, size, keys, values);
 
-	return this->splitHelper(orig, newBlock, newPh, sp, keys[0],
+	int ret = this->splitHelper(orig, newBlock, newPh, sp, keys[0],
 							 keys, values);
+	delete[] keys;
+	delete[] values;
+	return ret;
 }
 
 template<class Value>
@@ -78,27 +81,29 @@ int BSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 							 PageHandle newPh)
 {
 	BlockT<Value> *&orig = *orig_;
-    // start from the middle and find the closest boundary
+    // start from the median and find the boundary closest to the median key
     int left, right, sp;
     int size = orig->sizeWithOverflow();
-    if (size % 2 == 0) {
-        right = size / 2;
-        left = right - 1;
+    if (size % 2) {
+        left = size / 2;
+        right = left + 1;
     }
     else {
         left = right = size / 2;
     }
 
-	Key_t keys[size];
-	Value values[size];
+	Key_t *keys = new Key_t[size];
+	Value *values = new Value[size];
 	orig->getRangeWithOverflow(0, size, keys, values);
 	
+    Key_t spKey;
     while(true) {
         // test if can split in front of left/right position
         // loop is terminated once a split point is found
         if (keys[right-1]/boundary
 			< keys[right]/boundary) { // integer comparison
             sp = right;
+            spKey = (keys[sp-1]/boundary+1)*boundary; // closest to median
             break;
         }
         right++;
@@ -106,13 +111,16 @@ int BSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
         if (keys[left-1]/boundary 
 			< keys[left]/boundary) {
             sp = left;
+            spKey = (keys[sp]/boundary)*boundary; // closest to median
             break;
         }
         left--;
     }
-	Key_t spKey = (keys[sp]/boundary)*boundary;
-	return this->splitHelper(orig_, newBlock, newPh, sp, spKey,
+	int ret = this->splitHelper(orig_, newBlock, newPh, sp, spKey,
 							 keys+sp, values+sp);
+	delete[] keys;
+	delete[] values;
+	return ret;
 }
 
 template<class Value>
@@ -128,8 +136,8 @@ int RSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 	Key_t lower = orig->getLowerBound();
 	Key_t upper = orig->getUpperBound();
 	double max = -1e9;
-	Key_t keys[size];
-	Value values[size];
+	Key_t *keys =  new Key_t[size];
+	Value *values =  new Value[size];
 	orig->getRangeWithOverflow(0, size, keys, values);
 
 	int sp = 1;
@@ -154,8 +162,11 @@ int RSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 		}
 	}
 	//std::cout<<"split before "<<sp<<", with ratio "<<max<<std::endl;
-	return this->splitHelper(orig_, newBlock, newPh, sp, keys[sp],
+	int ret = this->splitHelper(orig_, newBlock, newPh, sp, keys[sp],
 							 keys+sp, values+sp);
+	delete[] keys;
+	delete[] values;
+	return ret;
 }
 
 void riot_handler(const char *reason, const char *file, int line, int gsl_errno)
@@ -178,8 +189,8 @@ int SSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 	Key_t lower = orig->getLowerBound();
 	Key_t upper = orig->getUpperBound();
 	double max = -1e9;
-	Key_t keys[size];
-	Value values[size];
+	Key_t *keys = new Key_t[size];
+	Value *values = new Value[size];
 	orig->getRangeWithOverflow(0, size, keys, values);
 
 	int sp = 1;
@@ -197,8 +208,11 @@ int SSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 		}
 	}
 	//std::cout<<"split before "<<sp<<", with max S="<<max<<std::endl;
-	return this->splitHelper(orig_, newBlock, newPh, sp, keys[sp],
+	int ret = this->splitHelper(orig_, newBlock, newPh, sp, keys[sp],
 							 keys+sp, values+sp);
+	delete[] keys;
+	delete[] values;
+	return ret;
 }
 
 template<class Value>
@@ -240,8 +254,8 @@ int TSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 	int size = orig->sizeWithOverflow();
 	Key_t lower = orig->getLowerBound();
 	Key_t upper = orig->getUpperBound();
-	Key_t keys[size];
-	Value values[size];
+	Key_t *keys =  new Key_t[size];
+	Value *values =  new Value[size];
 	orig->getRangeWithOverflow(0, size, keys, values);
 
 	// all elements in the left node should be < marker0,
@@ -298,17 +312,20 @@ int TSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 		spKey = spKey1;
 	}
 	
-	return this->splitHelper(orig_, newBlock, newPh, sp, spKey,
+	int ret = this->splitHelper(orig_, newBlock, newPh, sp, spKey,
 							 keys+sp, values+sp);
+	delete[] keys;
+	delete[] values;
+	return ret;
 }
 
 template class MSplitter<Datum_t>;
 template class MSplitter<PID_t>;
 template class RSplitter<Datum_t>;
-template class RSplitter<PID_t>;
+//template class RSplitter<PID_t>;
 template class BSplitter<Datum_t>;
-template class BSplitter<PID_t>;
+//template class BSplitter<PID_t>;
 template class TSplitter<Datum_t>;
-template class TSplitter<PID_t>;
+//template class TSplitter<PID_t>;
 template class SSplitter<Datum_t>;
-template class SSplitter<PID_t>;
+//template class SSplitter<PID_t>;

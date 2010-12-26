@@ -13,6 +13,8 @@ using namespace boost;
 //pool<> globalInternalBlockPool(sizeof(InternalBlock));
 //pool<> globalSparseLeafPool(sizeof(SparseLeafBlock));
 
+const Datum_t Block::kDefaultValue = 0.0;
+
 Block * Block::create(Type t, PageHandle ph, Key_t beginsAt, Key_t endsBy)
 {
 	switch (t) {

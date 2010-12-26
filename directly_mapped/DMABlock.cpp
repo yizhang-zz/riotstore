@@ -2,6 +2,9 @@
 #include "DirectlyMappedArray.h"
 #include "DABIterator.h"
 
+const Datum_t DMABlock::DefaultValue = 0.0;
+const size_t DMABlock::CAPACITY = (PAGE_SIZE-sizeof(Header))/sizeof(Datum_t);
+
 DMABlock::DMABlock(PageHandle ph, Key_t lower, Key_t upper) 
 {
     this->ph = ph;

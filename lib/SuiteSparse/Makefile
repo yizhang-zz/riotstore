@@ -7,7 +7,7 @@ include UFconfig/UFconfig.mk
 # Compile the default rules for each package
 default:
 	( cd UFconfig/xerbla ; $(MAKE) )
-#	( cd metis-4.0 ; $(MAKE) )
+	( cd metis-4.0 ; $(MAKE) )
 	( cd AMD ; $(MAKE) )
 	( cd CAMD ; $(MAKE) )
 	( cd COLAMD ; $(MAKE) )

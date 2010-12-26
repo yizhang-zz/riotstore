@@ -332,10 +332,21 @@ void kPermute(T *array, T begin, T end, int k)
 	}
 }
 
-#define Error(format, ...) fprintf(stderr, "[ERROR] " __FILE__ ":%d " format "\n", __LINE__, ##__VA_ARGS__)
+#define STRINGIZE(x) STRINGIZE2(x) 
+#define STRINGIZE2(x) #x 
+#define LINE_STRING STRINGIZE(__LINE__) 
+
+#define Error( ...) do { \
+   	fprintf(stderr, "[ERROR] " __FILE__ LINE_STRING __VA_ARGS__); \
+   	fprintf(stderr, "\n"); \
+} while (0)
 
 #ifdef DEBUG
-#define Debug(format, ...) fprintf(stderr, "[DEBUG] " __FILE__ ":%d " format "\n", __LINE__, ##__VA_ARGS__)
+//#define Debug(format, ...) fprintf(stderr, "[DEBUG] " __FILE__ ":%d " format "\n", __LINE__, ##__VA_ARGS__)
+#define Debug( ...) do { \
+   	fprintf(stderr, "[DEBUG] " __FILE__ LINE_STRING __VA_ARGS__); \
+   	fprintf(stderr, "\n"); \
+} while (0)
 #else
 #define Debug(...)
 #endif

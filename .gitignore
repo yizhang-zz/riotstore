@@ -16,3 +16,5 @@ tags
 */test/test
 array/test/mda*
 lib/
+SunWS_cache
+.AppleDouble

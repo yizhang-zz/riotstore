@@ -128,7 +128,7 @@ public:
 
 	/* If a key is not found in a dense leaf block, it has a default value
 	 * and is omitted. */
-	static const Datum_t kDefaultValue = 0.0;
+	static const Datum_t kDefaultValue;
 	static inline bool IsDefaultValue(Datum_t x) { return x == kDefaultValue; }
 	static Block *create(Type t, PageHandle ph, Key_t beingsAt, Key_t endsBy);
 	static Block *create(PageHandle ph, Key_t beingsAt, Key_t endsBy);

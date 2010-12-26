@@ -320,6 +320,8 @@ RC_t BufferManager::flushAllPages() {
             rec->dirty = false;
         }
     }
+    // storage also needs to flush its metadata info
+    storage->flush();
     return good ? RC_OK : RC_Failure;
 }
 

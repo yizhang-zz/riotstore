@@ -65,15 +65,7 @@ BitmapPagedFile::BitmapPagedFile(const char *pathname, int flag) {
 
 // Remember to write the header back!
 BitmapPagedFile::~BitmapPagedFile() {
-    // make sure number of pages in file is consistent with numContentPages
-	struct stat s;
-	fstat(fd, &s);
-	u32 numTotalPages = NUM_HEADER_PAGES + numContentPages;
-    if(numTotalPages > s.st_size/PAGE_SIZE) {
-        pwrite(fd, header, PAGE_SIZE, (numTotalPages-1)*PAGE_SIZE); // write any data
-    }
-    // write header
-    pwrite(fd, header, HEADER_SIZE, 0);
+    flush();
     close(fd);
     freePageImage(header);
 }
@@ -200,5 +192,19 @@ RC_t BitmapPagedFile::writePage(PageRec *rec) {
         / 1000000.0 ;
     writeCount++;
 #endif
+    return RC_OK;
+}
+
+RC_t BitmapPagedFile::flush()
+{
+    // make sure number of pages in file is consistent with numContentPages
+	struct stat s;
+	fstat(fd, &s);
+	u32 numTotalPages = NUM_HEADER_PAGES + numContentPages;
+    if(numTotalPages > s.st_size/PAGE_SIZE) {
+        pwrite(fd, header, PAGE_SIZE, (numTotalPages-1)*PAGE_SIZE); // write any data
+    }
+    // write header
+    pwrite(fd, header, HEADER_SIZE, 0);
     return RC_OK;
 }

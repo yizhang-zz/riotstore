@@ -24,8 +24,8 @@ protected:
     Datum_t *data;
 
 public:
-    const static Datum_t DefaultValue = 0.0;
-    const static size_t CAPACITY = (PAGE_SIZE-sizeof(Header))/sizeof(Datum_t);
+    const static Datum_t DefaultValue;
+    const static size_t CAPACITY;
 
     /// Initializes the block by reading from a page image.  The index
     /// range and the default data value will be passed in---the caller,

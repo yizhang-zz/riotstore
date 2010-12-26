@@ -62,5 +62,9 @@ public:
      */
 	virtual RC_t writePage(PageRec *) = 0;
 
+    /**
+     * Flushes metadata information.
+     */
+    virtual RC_t flush() = 0;
 };
 #endif

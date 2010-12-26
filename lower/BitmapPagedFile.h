@@ -46,6 +46,7 @@ public:
 
   virtual RC_t writePage(PageRec *);
 
+  virtual RC_t flush();
 private:
   u32 *header;
   int fd;	// file descriptor

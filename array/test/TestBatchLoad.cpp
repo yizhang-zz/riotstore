@@ -7,7 +7,7 @@ using namespace std;
 
 TEST(MDArray, BatchLoad)
 {
-    const char *file = "/Users/yizhang/Downloads/UFget/MM/HB/arc130/arc130.mtx";
+    const char *file = "arc130.mtx";
     i64 dims[2] = {1, 1};
     RowMajor<2> rowMajor(dims);
     Matrix a("a.bin", &rowMajor, 'B', 'M', "MM", file, 13);
