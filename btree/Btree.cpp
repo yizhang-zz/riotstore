@@ -281,19 +281,22 @@ int BTree::putHelper(Key_t key, Datum_t datum, Cursor &cursor)
     header->nnz += block->sizeWithOverflow();
     //buffer->markPageDirty(block->pageHandle);
     switch (ret) {
+    case kOK:
+        break;
     case kOverflow:
         split(cursor);
-	break;
-#ifndef DISABLE_DENSE_LEAF
+        break;
+        //#ifndef DISABLE_DENSE_LEAF
     case kSwitchFormat:
-	cursor[cursor.current].block = block->switchFormat();
-	//TODO: if needed, cursor->indices[cursor->current] should be
-	//updated by calling the new block's search method
-	delete block;
-	break;
-#endif
+        cursor[cursor.current].block = block->switchFormat();
+        //TODO: if needed, cursor->indices[cursor->current] should be
+        //updated by calling the new block's search method
+        delete block;
+        break;
+        //#endif
     default:
-	;
+        Error("invalid return value %d from block->put()", ret);
+        ;
     }
     return ret;
 }

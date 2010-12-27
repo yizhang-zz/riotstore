@@ -12,9 +12,9 @@ using namespace std;
 extern int BufferSize;
 extern const char *fileName;
 
-#ifndef DISABLE_DENSE_LEAF
 TEST(DenseBlock, MSplit)
 {
+    config->disableDenseLeaf = 0;
     PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
@@ -55,7 +55,6 @@ TEST(DenseBlock, MSplit)
 	delete buffer;
 	delete file;
 }
-#endif
 
 TEST(SparseBlock, MSplit)
 {

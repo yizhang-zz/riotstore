@@ -125,11 +125,7 @@ TEST(BTree, InOrderPut_MSplitter)
 
 TEST(DISABLE_BTree, InOrderPut_BSplitter)
 {
-#ifdef DISABLE_DENSE_LEAF
-	lsp = new BSplitter<Datum_t>(config->sparseLeafCapacity);
-#else
-	lsp = new BSplitter<Datum_t>(config->denseLeafCapacity);
-#endif
+	lsp = new BSplitter<Datum_t>(config->BSplitterBoundary());
 	isp = new MSplitter<PID_t>();
 	insert(genOrdered);
 	delete lsp;
@@ -138,11 +134,7 @@ TEST(DISABLE_BTree, InOrderPut_BSplitter)
 
 TEST(BTree, RandomPut_BSplitter)
 {
-#ifdef DISABLE_DENSE_LEAF
-	lsp = new BSplitter<Datum_t>(config->sparseLeafCapacity);
-#else
-	lsp = new BSplitter<Datum_t>(config->denseLeafCapacity);
-#endif
+	lsp = new BSplitter<Datum_t>(config->BSplitterBoundary());
 	isp = new MSplitter<PID_t>();
 	insert(genRandom);
 	delete lsp;

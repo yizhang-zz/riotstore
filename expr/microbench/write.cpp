@@ -45,11 +45,7 @@ int main(int argc, char **argv)
 		lsp = new MSplitter<Datum_t>();
 		break;
 	case 'B':
-#ifdef DISABLE_DENSE_LEAF
-		lsp = new BSplitter<Datum_t>(config->sparseLeafCapacity);
-#else
-		lsp = new BSplitter<Datum_t>(config->denseLeafCapacity);
-#endif
+		lsp = new BSplitter<Datum_t>(config->BSplitterBoundary());
 		break;
 	case 'R':
 		lsp = new RSplitter<Datum_t>();

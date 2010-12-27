@@ -215,11 +215,8 @@ int SparseBlock<Datum_t>::put(int index, Key_t key, const Datum_t &v)
 		this->overflow.key = key;
 		this->overflow.value = v;
 		this->overflow.index = index;
-#ifndef DISABLE_DENSE_LEAF
-		return canSwitchFormat()? kSwitchFormat : kOverflow;
-#else
-		return kOverflow;
-#endif
+		return ((!config->disableDenseLeaf) && canSwitchFormat())
+            ? kSwitchFormat : kOverflow;
 	}
 
 	memmove(pData+(index+1)*kCellSize, pData+index*kCellSize, kCellSize*(*this->nEntries-index));
@@ -332,7 +329,7 @@ void SparseBlock<T>::truncate(int sp, Key_t spKey)
 	this->pageHandle->markDirty();
 }
 
-#ifndef DISABLE_DENSE_LEAF
+//#ifndef DISABLE_DENSE_LEAF
 template<>
 BlockT<Datum_t> * SparseBlock<Datum_t>::switchFormat()
 {
@@ -349,7 +346,7 @@ BlockT<Datum_t> * SparseBlock<Datum_t>::switchFormat()
 	assert(num==numPut);
 	return block;
 }
-#endif
+//#endif
 
 template<class T>
 void SparseBlock<T>::print() const

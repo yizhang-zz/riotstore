@@ -634,11 +634,7 @@ Matrix Matrix::operator*(const Matrix &other)
     BlockBased<2> retLin(retDims, &block[0], orders, orders); 
     MSplitter<PID_t> msp;
     // Param 1: what is the boundary value? dense leaf cap or sparse leaf cap?
-#ifdef DISABLE_DENSE_LEAF
-    BSplitter<Datum_t> bsp(config->sparseLeafCapacity);
-#else
-    BSplitter<Datum_t> bsp(config->denseLeafCapacity);
-#endif
+    BSplitter<Datum_t> bsp(config->BSplitterBoundary());
     // Param 2: what storage type to use? dma or btree?
     Matrix ret(Coord(retDims), &retLin);
     StorageParam param;

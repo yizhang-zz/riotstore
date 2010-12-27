@@ -20,10 +20,10 @@ Block * Block::create(Type t, PageHandle ph, Key_t beginsAt, Key_t endsBy)
 	switch (t) {
 	case kInternal:
 		return new InternalBlock(ph, beginsAt, endsBy, true);
-#ifndef DISABLE_DENSE_LEAF
+//#ifndef DISABLE_DENSE_LEAF
 	case kDenseLeaf:
 		return new DenseLeafBlock(ph, beginsAt, endsBy, true);
-#endif
+//#endif
 	case kSparseLeaf:
 		return new SparseLeafBlock(ph, beginsAt, endsBy, true);
 	default:
@@ -37,10 +37,10 @@ Block * Block::create(PageHandle ph, Key_t beginsAt, Key_t endsBy)
 	switch (*ph->getImage()) {
 	case kInternal:
 		return new InternalBlock(ph, beginsAt, endsBy, false);
-#ifndef DISABLE_DENSE_LEAF
+//#ifndef DISABLE_DENSE_LEAF
 	case kDenseLeaf:
 		return new DenseLeafBlock(ph, beginsAt, endsBy, false);
-#endif
+//#endif
 	case kSparseLeaf:
 		return new SparseLeafBlock(ph, beginsAt, endsBy, false);
 	default:
@@ -119,7 +119,7 @@ void Block::splitTypes(int sp, Key_t spKey, Type *left, Type *right)
 	*left = kInternal;
 	*right = kInternal;
   }
-#ifndef DISABLE_DENSE_LEAF
+//#ifndef DISABLE_DENSE_LEAF
   else if (isDense()) {
 	*left = kSparseLeaf;
 	*right = kSparseLeaf;
@@ -131,14 +131,14 @@ void Block::splitTypes(int sp, Key_t spKey, Type *left, Type *right)
 		|| upper-spKey <= config->denseLeafCapacity)
 	  *right = kDenseLeaf;
   }
-#endif
+//#endif
   else {
 	*left = kSparseLeaf;
 	*right = kSparseLeaf;
-#ifndef DISABLE_DENSE_LEAF
-	if (upper-spKey <= config->denseLeafCapacity)
+//#ifndef DISABLE_DENSE_LEAF
+	if (!config->disableDenseLeaf && upper-spKey <= config->denseLeafCapacity)
 	  *right = kDenseLeaf;
-#endif
+//#endif
   }
 }
 

@@ -146,7 +146,7 @@ namespace Btree
 		{
 			switch(type) {
 			case 'B':
-				return new BSplitter<Value>(config->BSplitterBoundary);
+				return new BSplitter<Value>(config->BSplitterBoundary());
 			case 'M':
 				return new MSplitter<Value>;
 			case 'R':

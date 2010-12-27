@@ -11,12 +11,8 @@ Config::Config(const char *path)
 	sparseLeafCapacity = (PAGE_SIZE-sparseLeafHeaderSize)/(sizeof(Datum_t)+sizeof(Key_t));
 	internalCapacity = (PAGE_SIZE-internalHeaderSize)/(sizeof(PID_t)+sizeof(Key_t));
 
-	// BSplitterBoundary is calculated, not read from conf file
-#ifdef DISABLE_DENSE_LEAF
-	BSplitterBoundary = sparseLeafCapacity;
-#else
-	BSplitterBoundary = denseLeafCapacity;
-#endif
+    disableDenseLeaf = 0;
+	//BSplitterBoundary = denseLeafCapacity;
 	TSplitterThreshold = 0.7;
 	internalSplitter = 'M';
 	leafSplitter = 'B';
@@ -82,6 +78,10 @@ Config::Config(const char *path)
 				batchHistogramNum = atoi(b);
 			} else if (strcmp(a, "matmulBlockFactor") == 0) {
                 matmulBlockFactor = atoi(b);
+            } else if (strcmp(a, "disableDenseLeaf") == 0) {
+                disableDenseLeaf = atoi(b);
+                //if (disableDenseLeaf)
+                //    BSplitterBoundary = sparseLeafCapacity;
             }
 		}
 		fclose(f);

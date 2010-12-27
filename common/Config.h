@@ -22,7 +22,8 @@ public:
     u16 sparseLeafCapacity;
     u16 internalCapacity;
 
-    int BSplitterBoundary; // boundary for the B splitter
+    int disableDenseLeaf;
+    //int BSplitterBoundary; // boundary for the B splitter
     double TSplitterThreshold; // threshold for the T splitter
     char internalSplitter;
     char leafSplitter;
@@ -37,6 +38,14 @@ public:
     u16 batchKeepPidCount;
 
     int matmulBlockFactor;
+
+    int BSplitterBoundary() const
+    {
+        if (disableDenseLeaf)
+            return sparseLeafCapacity;
+        else
+            return denseLeafCapacity;
+    }
 private:
     Config(const char *path);
 };

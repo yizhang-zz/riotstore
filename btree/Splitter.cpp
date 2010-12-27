@@ -39,14 +39,12 @@ int Splitter<Value>::splitHelper(BlockT<Value> **orig, BlockT<Value> **newBlock,
 														  (*orig)->getUpperBound()));
 	(*newBlock)->putRangeSorted(keys, values, newSize, &numPut);
 	(*orig)->truncate(sp, spKey);
-#ifndef DISABLE_DENSE_LEAF
-	if (leftType != (*orig)->type()) {
+	if (!config->disableDenseLeaf && leftType != (*orig)->type()) {
 		BlockT<Value> *newLeft = (*orig)->switchFormat();
 		delete *orig;
 		*orig = newLeft;
 		return 1;  // notify caller
 	}
-#endif
 	return 0;
 }
 
@@ -266,34 +264,34 @@ int TSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 	int index0;
 	binarySearch(keys, keys+size, spKey0, &index0);
 	double r0 = ((double) index0)/config->sparseLeafCapacity;
-#ifndef DISABLE_DENSE_LEAF
-	Key_t spKey0_ = lower+config->denseLeafCapacity;
-	int index0_;
-	binarySearch(keys, keys+size, spKey0_, &index0_);
-	double r0_ = ((double) index0_)/config->denseLeafCapacity;
-	if (r0 < r0_) {
-		r0 = r0_;
-		index0 = index0_;
-		spKey0 = spKey0_;
-	}
-#endif
+    if (!config->disableDenseLeaf) {
+        Key_t spKey0_ = lower+config->denseLeafCapacity;
+        int index0_;
+        binarySearch(keys, keys+size, spKey0_, &index0_);
+        double r0_ = ((double) index0_)/config->denseLeafCapacity;
+        if (r0 < r0_) {
+            r0 = r0_;
+            index0 = index0_;
+            spKey0 = spKey0_;
+        }
+    }
 
 	// try sparse and dense for the right child
 	Key_t spKey1 = upper-config->sparseLeafCapacity;
 	int index1;
 	binarySearch(keys, keys+size, spKey1, &index1);
 	double r1 = ((double) (size-index1))/config->sparseLeafCapacity;
-#ifndef DISABLE_DENSE_LEAF
-	Key_t spKey1_ = upper-config->denseLeafCapacity;
-	int index1_;
-	binarySearch(keys, keys+size, spKey1_, &index1_);
-	double r1_ = ((double) (size-index1_))/config->denseLeafCapacity;
-	if (r1 < r1_) {
-		r1 = r1_;
-		index1 = index1_;
-		spKey1 = spKey1_;
-	}
-#endif
+    if (!config->disableDenseLeaf) {
+        Key_t spKey1_ = upper-config->denseLeafCapacity;
+        int index1_;
+        binarySearch(keys, keys+size, spKey1_, &index1_);
+        double r1_ = ((double) (size-index1_))/config->denseLeafCapacity;
+        if (r1 < r1_) {
+            r1 = r1_;
+            index1 = index1_;
+            spKey1 = spKey1_;
+        }
+    }
 	
 	// if any child is dense enough, then pick the one that results in
 	// the maximum density; otherwise split in the middle

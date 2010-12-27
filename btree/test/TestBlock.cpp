@@ -170,9 +170,9 @@ TEST(InternalBlock, Create)
 }
 
 
-#ifndef DISABLE_DENSE_LEAF
 TEST(DenseBlock, Switch)
 {
+    config->disableDenseLeaf = 0;
     PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
@@ -196,11 +196,10 @@ TEST(DenseBlock, Switch)
 	delete buffer;
 	delete file;
 }
-#endif
 
-#ifndef DISABLE_DENSE_LEAF
 TEST(SparseBlock, Switch)
 {
+    config->disableDenseLeaf = 0;
     PagedStorageContainer *file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
     BufferManager *buffer = new BufferManager(file, BufferSize);
 	PageHandle ph;
@@ -224,4 +223,3 @@ TEST(SparseBlock, Switch)
 	delete buffer;
 	delete file;
 }
-#endif

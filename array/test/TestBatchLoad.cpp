@@ -10,8 +10,13 @@ TEST(MDArray, BatchLoad)
     const char *file = "arc130.mtx";
     i64 dims[2] = {1, 1};
     RowMajor<2> rowMajor(dims);
-    Matrix a("a.bin", &rowMajor, 'B', 'M', "MM", file, 13);
-    Matrix b("a.bin", &rowMajor, 'B', 'M', "MM", file, 13);
+    StorageParam sp;
+    sp.type = BTREE;
+    sp.btreeParam.leafSp = 'B';
+    sp.btreeParam.intSp = 'M';
+    sp.fileName = "a.bin";
+    Matrix a(&sp, &rowMajor, "MM", file, 13);
+    Matrix b(&sp, &rowMajor, "MM", file, 13);
     Matrix c = a * b;
     for (int i=53; i<63; ++i)
         for (int j=52; j<62; ++j) {
