@@ -20,7 +20,7 @@ public:
 		in>>s;
 		assert(s.compare("real")==0);
 		in>>s;
-		assert(s.compare("general")==0);
+		assert(s.compare("general")==0 || s.compare("symmetric")==0);
         in.ignore(INT_MAX, '\n'); // go to next line
         
 		char buf[256];

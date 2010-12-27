@@ -19,10 +19,10 @@
 // maximum of 4K*8*4KB=128MB data. This seems too small for practical use
 class BitmapPagedFile : public PagedStorageContainer {
 public:
-	const static size_t NUM_HEADER_PAGES = 8;
-	const static size_t NUM_BITS_PER_PAGE = PAGE_SIZE * sizeof(char);
-	const static size_t HEADER_SIZE = PAGE_SIZE * NUM_HEADER_PAGES;
-	const static size_t NUM_BITS_HEADER = HEADER_SIZE * sizeof(char);
+	const static size_t NUM_HEADER_PAGES;
+	const static size_t NUM_BITS_PER_PAGE;
+	const static size_t HEADER_SIZE;
+	const static size_t NUM_BITS_HEADER;
 
   BitmapPagedFile(const char *pathname, int flag);
 

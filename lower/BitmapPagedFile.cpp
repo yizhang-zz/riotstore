@@ -13,6 +13,11 @@ int PagedStorageContainer::writeCount = 0;
 double PagedStorageContainer::accessTime = 0.0;
 #endif
 
+const size_t BitmapPagedFile::NUM_HEADER_PAGES = 8;
+const size_t BitmapPagedFile::NUM_BITS_PER_PAGE = PAGE_SIZE * 8;
+const size_t BitmapPagedFile::HEADER_SIZE = PAGE_SIZE * BitmapPagedFile::NUM_HEADER_PAGES;
+const size_t BitmapPagedFile::NUM_BITS_HEADER = BitmapPagedFile::HEADER_SIZE * 8;
+
 /** Creates a BitmapPagedFile over a disk file of a given name. If flag has
  * F_CREATE set, then a new file is created; otherwise the file is assumed
  * to exist. It is the caller's responsibility to ensure the existence of
@@ -85,7 +90,9 @@ RC_t BitmapPagedFile::allocatePage(PID_t &pid) {
     for(u32 k = 0; k < numWords; ++k) {
 		// check one word (4 bytes) at a time
         if(header[k] != ~(u32)0) {
-			setBit(header[k], findFirstZeroBit(header[k]));
+            int bindex = findFirstZeroBit(header[k]);
+			setBit(header[k], bindex);
+            pid = k * 32 + bindex;
 			return RC_OK;
         }
     }

@@ -16,13 +16,13 @@ SO_OBJ = $(OBJ)
 ifeq ($(OS),SunOS)
 	SO_OBJ += $(DTRACE_OBJ)
 endif
-TARGET = libriot_store.so
+TARGET = libriot_store
 
 include flags.mk
 
 .PHONY: all suitesparse clean
 
-all: $(TARGET)
+all: $(TARGET).so
 
 suitesparse:
 	@cd lib/SuiteSparse ; make 
@@ -30,13 +30,13 @@ suitesparse:
 tags: $(OBJ)
 	ctags -R
 
-libriot_store.a: $(OBJ)
-	ar rcs $@ $^
+$(TARGET).a: $(SO_OBJ)
+	$(AR) $@ $^
 
 riot.h: $(DTRACE_SRC)
 	$(DTRACE) -h -o $@ -s $^
 
-$(TARGET): $(SO_OBJ) 
+$(TARGET).so: $(SO_OBJ) 
 	$(CXX) $(SOFLAG) -o $@ $^ $(LDFLAGS)
 
 $(DTRACE_OBJ): $(DTRACE_SRC) $(OBJ)
