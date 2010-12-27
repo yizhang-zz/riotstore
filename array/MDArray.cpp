@@ -105,6 +105,33 @@ MDArray<nDim>::MDArray(const char *fileName, const MDCoord<nDim> &d, Linearizati
     ph->markDirty();
 }
 
+template<int nDim>
+MDArray<nDim>::MDArray(const MDCoord<nDim> &d, Linearization<nDim> *lnrztn): dim(d), storage(NULL)
+{
+    Coord coord = lnrztn->getActualDims();
+
+    size = 1;
+    for (int i=0; i<nDim; ++i)
+        size *= (u32) coord[i];
+   
+    linearization = lnrztn->clone();
+}
+
+template<int nDim>
+void MDArray<nDim>::setStorage(const StorageParam *sp)
+{
+    createStorage(sp);
+
+    PageHandle ph;
+    BufferManager *buffer = storage->getBufferManager();
+    buffer->readPage(0, ph);
+    char *image = ph->getImage();
+    char *header = image + OFFSET;
+	dim.serialize(&header);
+	linearization->serialize(&header);
+    ph->markDirty();
+}
+
 // Create an MDArray from existing file by parsing file content
 template<int nDim>
 MDArray<nDim>::MDArray(const char *fileName): fileName(fileName)
@@ -155,14 +182,39 @@ MDArray<nDim>::MDArray(const MDArray<nDim> &other)
 }
 
 
+// this->size must already be initialized!
+template<int nDim>
+void MDArray<nDim>::createStorage(const StorageParam *sp)
+{
+    if (storage)
+        delete storage;
+
+	char path[40] = "mdaXXXXXX";
+	if (!sp->fileName)
+		mktemp(path);
+	else
+		strcpy(path, sp->fileName);
+	this->fileName = path;
+
+    switch(sp->type) {
+    case DMA:
+        storage = new DirectlyMappedArray(path, size);
+        break;
+    case BTREE:
+        storage = new BTree(path, size, sp->btreeParam.leafSp,
+                sp->btreeParam.intSp);
+        break;
+    default:
+        Error("unknown storage type");
+    }
+}
+
 // for batch put
 template<int nDim>
-MDArray<nDim>::MDArray(
-					   const char *fileName, Linearization<nDim> *lnrztn,
-					   char leafSpType, char intSpType,
+MDArray<nDim>::MDArray(const StorageParam *sp, Linearization<nDim> *lnrztn,
 					   const char *parserType,
 					   const char* inputFileName,
-					   int bufferSize)
+					   int bufferSize) : storage(NULL)
 {
     if (!inputFileName || access(inputFileName, F_OK) != 0)
 		throw ("File for array does not exist.");
@@ -179,15 +231,7 @@ MDArray<nDim>::MDArray(
     for (int i=0; i<nDim; ++i)
         size *= (u32) actualDims[i];
 
-	char path[40] = "mdaXXXXXX";
-	if (!fileName)
-		mktemp(path);
-	else
-		strcpy(path, fileName);
-	this->fileName = path;
-
-	// For now, storage must be btree
-	storage = new BTree(path, size, leafSpType, intSpType);
+    createStorage(sp);
 
     ExternalSort sorter(bufferSize);
     Coord *inputCoord = new Coord[bufferSize];
@@ -218,6 +262,15 @@ MDArray<nDim>::MDArray(
     delete[] data;
     delete[] inputCoord;
     delete parser;
+
+    PageHandle ph;
+    BufferManager *buffer = storage->getBufferManager();
+    buffer->readPage(0, ph);
+    char *image = ph->getImage();
+    char *header = image + OFFSET;
+	dim.serialize(&header);
+	linearization->serialize(&header);
+    ph->markDirty();
 }
 
 
@@ -553,8 +606,10 @@ Matrix Matrix::operator*(const Matrix &other)
     // Use this' linearization
 
     // Param 0: blocking factor of left and right operator
-    Coord blockl(1000,1000);
-    Coord blockr(1000,1000);
+    //Coord blockl(1000,1000);
+    //Coord blockr(1000,1000);
+    Coord blockl(config->matmulBlockFactor, config->matmulBlockFactor);
+    Coord blockr(config->matmulBlockFactor, config->matmulBlockFactor);
     //Coord blockl(3,3);
     //Coord blockr(3,3);
     assert(blockl[1]==blockr[0]);
@@ -579,10 +634,25 @@ Matrix Matrix::operator*(const Matrix &other)
     BlockBased<2> retLin(retDims, &block[0], orders, orders); 
     MSplitter<PID_t> msp;
     // Param 1: what is the boundary value? dense leaf cap or sparse leaf cap?
+#ifdef DISABLE_DENSE_LEAF
+    BSplitter<Datum_t> bsp(config->sparseLeafCapacity);
+#else
     BSplitter<Datum_t> bsp(config->denseLeafCapacity);
+#endif
     // Param 2: what storage type to use? dma or btree?
-    Matrix ret(NULL, Coord(retDims), &retLin, 'B', 'M');
-    //Matrix ret(NULL, Coord(retDims), &retLin);
+    Matrix ret(Coord(retDims), &retLin);
+    StorageParam param;
+    param.fileName = NULL;
+    if (storage->type() == DMA && other.storage->type() == DMA) {
+        param.type = DMA;
+        ret.setStorage(&param);
+    }
+    else {
+        param.type = BTREE;
+        param.btreeParam.leafSp = 'B';
+        param.btreeParam.intSp = 'M';
+        ret.setStorage(&param);
+    }
 
     Coord begin, end;
     int nbr = 1+(dim[0]-1)/blockl[0];

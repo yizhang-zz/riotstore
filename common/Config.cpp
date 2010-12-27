@@ -80,7 +80,9 @@ Config::Config(const char *path)
 				batchUseHistogram = atoi(b);
 			} else if (strcmp(a, "batchHistogramNum") == 0) {
 				batchHistogramNum = atoi(b);
-			}
+			} else if (strcmp(a, "matmulBlockFactor") == 0) {
+                matmulBlockFactor = atoi(b);
+            }
 		}
 		fclose(f);
 	}

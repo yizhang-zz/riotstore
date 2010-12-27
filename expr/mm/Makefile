@@ -1,4 +1,4 @@
-SRC = loadmm.cpp
+SRC = loadmm.cpp mm.cpp
 EXE = $(SRC:.cpp=)
 CXXFLAGS += -I../.. -I/usr/local/include -I../../lib/SuiteSparse/CHOLMOD/Include -I../../lib/SuiteSparse/UFconfig
 LDFLAGS += $(shell pkg-config --libs gsl) 
@@ -13,5 +13,7 @@ libriot_store.so:
 	@cd ../..; $(MAKE)
 	@cp ../../libriot_store.so .
 
+clean:
+	rm -f $(EXE)
 include ../../flags.mk
 

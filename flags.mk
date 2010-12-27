@@ -1,11 +1,19 @@
 CXXFLAGS += -DPROFILING
 CXXFLAGS += -DPROFILE_BUFMAN
-#CXXFLAGS += -DDISABLE_DENSE_LEAF
 CXXFLAGS += -DUSE_BATCH_BUFFER
 
 vpath %.h lib/SuiteSparse/CHOLMOD/Include
 
 OS = $(shell uname -s)
+
+debug ?= 1
+ifeq ($(debug), 1)
+	CXXFLAGS += -g -DDEBUG
+	SOFLAG += -g
+else
+	CXXFLAGS += -O3 -DNDEBUG
+	SOFLAG += -O3
+endif
 
 ifeq ($(OS), SunOS)
 	#CXX = g++
@@ -13,17 +21,17 @@ ifeq ($(OS), SunOS)
 	#DEPFLAGS = -MM -MG
 	#LDFLAGS += -xlic_lib=sunperf
 	CXX = CC
-	CXXFLAGS += -g -xO3 -xarch=sse3 -KPIC -library=stlport4 -instances=extern
+	CXXFLAGS += -xarch=sse3 -KPIC -library=stlport4 #-instances=extern
 	DEPFLAGS = -xM1
-	SOFLAG = -G -g -xO3 -xarch=sse3 -instances=extern
+	SOFLAG += -G -xarch=sse3 #-instances=extern
 	LDFLAGS += -dalign -library=sunperf -library=stlport4
 	RPATH_FLAG := -R
 	AR = CC -xar -o
 else
 	CXX = g++
-	CXXFLAGS += -g -DDEBUG -fPIC -Wall
+	CXXFLAGS += -fPIC -Wall
 	DEPFLAGS = -MM -MG
-	SOFLAG = -shared -g
+	SOFLAG += -shared
 	RPATH_FLAG := -Wl,-rpath,
 	AR = ar rcs
 	ifeq ($(OS), Darwin)

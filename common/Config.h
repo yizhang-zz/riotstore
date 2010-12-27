@@ -35,6 +35,8 @@ public:
     int batchUseHistogram;
     int batchHistogramNum;
     u16 batchKeepPidCount;
+
+    int matmulBlockFactor;
 private:
     Config(const char *path);
 };

@@ -10,6 +10,19 @@
 #include "Linearization.h"
 #include "SparseMatrix.h"
 
+struct StorageParam {
+    StorageType type;
+    const char *fileName;
+    union {
+        struct DMAParam {
+        } dmaParam;
+        struct BtreeParam {
+            char leafSp;
+            char intSp;
+        } btreeParam;
+    };
+};
+
 /**
  * A class for multi-dimensional arrays.  A MDArray presents a logical
  * n-D interface, i.e., access to any of its elements is through a
@@ -64,6 +77,8 @@ public:
      */
     MDArray(const char *fileName, const Coord &dim, Linearization<nDim> *lrnztn);
     MDArray(const char *fileName, const Coord &dim, Linearization<nDim> *lrnztn, char leafSpType, char intSpType);
+    MDArray(const Coord &dim, Linearization<nDim> *lrnztn);
+    void setStorage(const StorageParam *sp);
 
     /**
      * Constructs and initializes a MDArray from a file stored on
@@ -83,8 +98,7 @@ public:
     /**
      * Constructor used for batch loading a file
      */
-    MDArray(const char*fileName, Linearization<nDim> *lrnztn,
-			char leafSpType, char intSpType,
+    MDArray(const StorageParam *sp, Linearization<nDim> *lrnztn,
 			const char *parserType, const char *inputFileName, int bufferSize);
 
     /**
@@ -192,6 +206,8 @@ public:
 	MDArray<nDim> & operator+=(const MDArray<nDim> &other);
 
 protected:
+    void createStorage(const StorageParam *sp);
+
     MDCoord<nDim> dim;
     u32 size; // number of elements
     /// The underlying 1-D storage.
@@ -231,6 +247,11 @@ public:
 	{
 	}
 
+    Matrix(const Coord &dim, Linearization<2> *lrnztn)
+        : MDArray<2>(dim, lrnztn)
+    {
+    }
+
     Matrix(const char *fileName) : MDArray<2>(fileName)
 	{
 	}
@@ -239,11 +260,9 @@ public:
 	{
 	}
 
-    Matrix(const char*fileName, Linearization<2> *lrnztn,
-			char leafSpType, char intSpType,
+    Matrix(const StorageParam *sp, Linearization<2> *lrnztn,
 			const char *parserType, const char *inputFileName, int bufferSize)
-		: MDArray<2>(fileName, lrnztn, leafSpType, intSpType, parserType,
-					 inputFileName, bufferSize)
+		: MDArray<2>(sp, lrnztn, parserType, inputFileName, bufferSize)
 	{
 	}
 
