@@ -1,7 +1,6 @@
 #include "common/Config.h"
-#include "array/MDArray.h"
 #include "array/ColMajor.h"
-#include "array/BlockBased.h"
+#include "array/MDArray.h"
 #include <iostream>
 #include <libgen.h>
 
@@ -39,13 +38,15 @@ int main(int argc, char **argv)
         strcpy(buf, basename(path));
         strcat(buf, ".cm.lab");
         sp.type = BTREE;
-        sp.btreeParam.leafSp = 'B';
-        sp.btreeParam.intSp = 'M';
+        sp.leafSp = 'B';
+        sp.intSp = 'M';
+        sp.useDenseLeaf = true;
         MDArray<2> array1(&sp, &l_col, "MM", path, batchLoadBufferSize);
 
         buf[baselen] = '\0';
         strcat(buf, ".cm.b");
-        sp.btreeParam.leafSp = 'M';
+        sp.leafSp = 'M';
+        sp.useDenseLeaf = false;
         MDArray<2> array2(&sp, &l_col, "MM", path, batchLoadBufferSize);
 
         buf[baselen] = '\0';
@@ -57,13 +58,15 @@ int main(int argc, char **argv)
         buf[baselen] = '\0';
         strcat(buf, ".bb.lab");
         sp.type = BTREE;
-        sp.btreeParam.leafSp = 'B';
-        sp.btreeParam.intSp = 'M';
+        sp.leafSp = 'B';
+        sp.intSp = 'M';
+        sp.useDenseLeaf = true;
         MDArray<2> array4(&sp, &l_bb, "MM", path, batchLoadBufferSize);
 
         buf[baselen] = '\0';
         strcat(buf, ".bb.b");
-        sp.btreeParam.leafSp = 'M';
+        sp.leafSp = 'M';
+        sp.useDenseLeaf = false;
         MDArray<2> array5(&sp, &l_bb, "MM", path, batchLoadBufferSize);
 
         buf[baselen] = '\0';

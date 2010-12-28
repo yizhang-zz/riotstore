@@ -38,8 +38,9 @@ private:
         PID_t root;		/// PID of root
         PID_t firstLeaf;	/// PID of first leaf node
         u32 nnz;    /// number of nonzero entries
-	char leafSpType;
-	char intSpType;
+        char leafSpType;
+        char intSpType;
+        bool useDenseLeaf;
     } *header;
 
     LeafSplitter *leafSplitter;
@@ -67,7 +68,8 @@ public:
      * keys in the BTree should be >=0 and < endsby. The header page
      * (0-th page in the file) is written immediately.
      */
-    BTree(const char *fileName, Key_t endsBy, char leafSpType, char intSpType
+    BTree(const char *fileName, Key_t endsBy, char leafSpType, char intSpType,
+            bool useDenseLeaf
             //#ifdef USE_BATCH_BUFFER
             //, BatchMethod method
             //#endif

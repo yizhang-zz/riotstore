@@ -18,6 +18,10 @@ namespace Btree
     class Splitter
     {
     public:
+        Splitter(bool useDenseLeaf_) : useDenseLeaf(useDenseLeaf_)
+        {
+        }
+
 		/**
 		 * Splits the given node, which has already overflown, into two. The
 		 * original node is reused as the left node, and the right node is
@@ -33,9 +37,14 @@ namespace Btree
 						  PageHandle newPh) = 0;
 		virtual Splitter<Value> *clone() = 0;
     protected:
+        int splitTypes(BlockT<Value> *block, Key_t *keys, int size, int sp, Key_t spKey, Block::Type types[2]);
+        //void splitTypes(BlockT<Value> *block, int sp, Key_t spKey,
+        //        Block::Type &left, Block::Type &right);
 		int splitHelper(BlockT<Value> **orig, BlockT<Value> **newBlock,
 						PageHandle newPh,
-						int sp,	Key_t spKey, Key_t *keys, Value *values);
+						int sp,	Key_t spKey, Key_t *keys, Value *values,
+                        Block::Type types[2]);
+        bool useDenseLeaf;
     };
 
     typedef Splitter<PID_t> InternalSplitter;
@@ -48,11 +57,16 @@ namespace Btree
     class MSplitter : public Splitter<Value>
     {
     public:
+        MSplitter(bool useDenseLeaf) : Splitter<Value>(useDenseLeaf)
+        {
+        }
+
 		int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
 				  PageHandle newPh);
+
 		Splitter<Value> *clone()
 		{
-			return new MSplitter<Value>;
+			return new MSplitter<Value>(this->useDenseLeaf);
 		}
     };
 
@@ -64,19 +78,25 @@ namespace Btree
     class BSplitter : public Splitter<Value>
     {
     public:
+        /**
+         * Constructs a splitter with fixed boundary. Each future split must 
+         * occur on multiples of the given boundary.
+         * @param boundary The splitting boundary.
+		 */
+        BSplitter(bool useDenseLeaf) : Splitter<Value>(useDenseLeaf)
+        {
+            if (useDenseLeaf)
+                boundary = config->denseLeafCapacity;
+            else
+                boundary = config->sparseLeafCapacity;
+        }
+
 		int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
 				  PageHandle newPh);
 
-		/**
-		 * Constructs a splitter with fixed boundary. Each future split must occur
-		 * on multiples of the given boundary.
-		 * @param boundary The splitting boundary.
-		 */
-		BSplitter(int b):boundary(b) { }
-
 		Splitter<Value> *clone()
 		{
-			return new BSplitter<Value>(boundary);
+			return new BSplitter<Value>(this->useDenseLeaf);
 		}
 
     private:
@@ -88,11 +108,12 @@ namespace Btree
     class RSplitter : public Splitter<Value>
     {
     public:
+        RSplitter(bool useDenseLeaf) : Splitter<Value>(useDenseLeaf) {}
 		int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
 				  PageHandle newPh);
 		Splitter<Value> *clone()
 		{
-			return new RSplitter<Value>;
+			return new RSplitter<Value>(this->useDenseLeaf);
 		}
     };
 
@@ -100,14 +121,14 @@ namespace Btree
     class SSplitter : public Splitter<Value>
     {
     public:
-		SSplitter()
+        SSplitter(bool useDenseLeaf) : Splitter<Value>(useDenseLeaf)
 		{
 			gsl_set_error_handler(&riot_handler);
 		}
 
 		Splitter<Value> *clone()
 		{
-			return new SSplitter<Value>;
+			return new SSplitter<Value>(this->useDenseLeaf);
 		}
 
 		int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
@@ -128,11 +149,14 @@ namespace Btree
 		int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
 				  PageHandle newPh);
 
-		TSplitter(double th) : threshold(th) { }
+        TSplitter(double th, bool useDenseLeaf) : Splitter<Value>(useDenseLeaf)
+                                                  ,threshold(th)
+        {
+        }
 
 		Splitter<Value> *clone()
 		{
-			return new TSplitter<Value>(threshold);
+			return new TSplitter<Value>(threshold, this->useDenseLeaf);
 		}
     private:
 		double threshold;
@@ -142,19 +166,19 @@ namespace Btree
     class SplitterFactory
     {
     public:
-		static Splitter<Value> *createSplitter(char type)
+		static Splitter<Value> *createSplitter(char type, bool useDenseLeaf)
 		{
 			switch(type) {
 			case 'B':
-				return new BSplitter<Value>(config->BSplitterBoundary());
+                return new BSplitter<Value>(useDenseLeaf);
 			case 'M':
-				return new MSplitter<Value>;
+				return new MSplitter<Value>(useDenseLeaf);
 			case 'R':
-				return new RSplitter<Value>;
+				return new RSplitter<Value>(useDenseLeaf);
 			case 'S':
-				return new SSplitter<Value>;
+				return new SSplitter<Value>(useDenseLeaf);
 			case 'T':
-				return new TSplitter<Value>(config->TSplitterThreshold);
+				return new TSplitter<Value>(config->TSplitterThreshold,useDenseLeaf);
 			default:
 				Error("Can't create unknown splitter");
 				return NULL;

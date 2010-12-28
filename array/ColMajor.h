@@ -1,7 +1,7 @@
 #ifndef COL_MAJOR_H
 #define COL_MAJOR_H
 
-#include "Linearization.h"
+#include "BlockBased.h"
 
 template<int nDim>
 class ColMajor : public BlockBased<nDim>

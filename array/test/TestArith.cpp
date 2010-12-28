@@ -42,12 +42,19 @@ TEST(Arith, Add)
 	for (int i=0; i<total; ++i)
 		initial[i] = i;
 
-	Matrix a("a.bin", MDCoord<2>(arrayDims), block, 'B', 'M');
+    StorageParam sp;
+    sp.type = BTREE;
+    sp.fileName = "a.bin";
+    sp.intSp = 'M';
+    sp.leafSp = 'B';
+    sp.useDenseLeaf = config->useDenseLeaf;
+	Matrix a(&sp, MDCoord<2>(arrayDims), block);
 	a.batchPut(MDCoord<2>(0,0), MDCoord<2>(rows-1, cols-1), initial);
 	//cout<<"a="<<endl;
 	//printMDArray(a);
 
-	Matrix b("b.bin", MDCoord<2>(arrayDims), block, 'B', 'M');
+    sp.fileName = "b.bin";
+	Matrix b(&sp, MDCoord<2>(arrayDims), block);
 	b.batchPut(MDCoord<2>(0,0), MDCoord<2>(rows-1, cols-1), initial);
 	//cout<<"b="<<endl;
 	//printMDArray(b);
@@ -83,9 +90,16 @@ TEST(Arith, DenseDenseMult)
 
     BlockBased<2> *block = new BlockBased<2>(arrayDims, blockDims, orders, orders);
     Linearization<2> *block1 = block->transpose();
-	Matrix a("a.bin", MDCoord<2>(arrayDims), block, 'B', 'M');
+    StorageParam sp;
+    sp.type = BTREE;
+    sp.fileName = "a.bin";
+    sp.intSp = 'M';
+    sp.leafSp = 'B';
+    sp.useDenseLeaf = config->useDenseLeaf;
+	Matrix a(&sp, MDCoord<2>(arrayDims), block);
 	a.batchPut(MDCoord<2>(0,0), MDCoord<2>(rows-1, cols-1), initial);
-    Matrix b("b.bin", MDCoord<2>(cols, rows), block1, 'B', 'M'); // b=a'
+    sp.fileName = "b.bin";
+    Matrix b(&sp, MDCoord<2>(cols, rows), block1); // b=a'
     b.batchPut(MDCoord<2>(0,0), MDCoord<2>(cols-1, rows-1), initial);
 
     Matrix c = a*b;
@@ -128,7 +142,13 @@ TEST(Arith, SparseSparseMult)
     double *temp = new double[rows*cols];
 
     BlockBased<2> *block = new BlockBased<2>(arrayDims, blockDims, orders, orders);
-    Matrix a("a.bin", MDCoord<2>(arrayDims), block, 'B', 'M');
+    StorageParam sp;
+    sp.type = BTREE;
+    sp.fileName = "a.bin";
+    sp.intSp = 'M';
+    sp.leafSp = 'B';
+    sp.useDenseLeaf = config->useDenseLeaf;
+    Matrix a(&sp, MDCoord<2>(arrayDims), block);
     MDCoord<2> begin(0, 0);
     SparseMatrix asp(elements, total, begin, MDCoord<2>(rows-1, cols-1), false);
     a.batchPut(begin, asp);
@@ -141,7 +161,8 @@ TEST(Arith, SparseSparseMult)
     }
 
     Linearization<2> *block1 = block->transpose();
-    Matrix b("b.bin", MDCoord<2>(cols, rows), block1, 'B', 'M');
+    sp.fileName = "b.bin";
+    Matrix b(&sp, MDCoord<2>(cols, rows), block1);
     for (int i=0; i<total; ++i) {
         i64 temp = elements[i].coord[0];
         elements[i].coord[0] = elements[i].coord[1];
@@ -191,7 +212,13 @@ TEST(Arith, SparseDenseMult)
     }
 
     BlockBased<2> *block = new BlockBased<2>(arrayDims, blockDims, orders, orders);
-    Matrix a("a.bin", MDCoord<2>(arrayDims), block, 'B', 'M');
+    StorageParam sp;
+    sp.type = BTREE;
+    sp.fileName = "a.bin";
+    sp.intSp = 'M';
+    sp.leafSp = 'B';
+    sp.useDenseLeaf = config->useDenseLeaf;
+    Matrix a(&sp, MDCoord<2>(arrayDims), block);
     MDCoord<2> begin(0, 0), end(rows-1, cols-1);
     SparseMatrix asp(elements, total, begin, end, false);
     a.batchPut(begin, asp);
@@ -225,7 +252,8 @@ TEST(Arith, SparseDenseMult)
     // 		}
     // 	    }
     Linearization<2> *block1 = block->transpose();
-    Matrix b("b.bin", MDCoord<2>(cols, rows), block1, 'B', 'M');
+    sp.fileName = "b.bin";
+    Matrix b(&sp, MDCoord<2>(cols, rows), block1);
     total = rows * cols;
     Datum_t *data = new Datum_t[total];
     for (int i=0; i<total; ++i) {

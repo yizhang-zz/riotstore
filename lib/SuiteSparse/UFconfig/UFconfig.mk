@@ -286,11 +286,11 @@ ifeq ($(OS),SunOS)
 # FFLAGS = -fast -KPIC -dalign -xlibmil -m64
 
 # The Sun Performance Library includes both LAPACK and the BLAS:
-CC = suncc
-CPLUSPLUS = CC
-CFLAGS += -O3 -KPIC
-BLAS = -xlic_lib=sunperf
-LAPACK = -xlic_lib=sunperf
+CC = gcc
+CPLUSPLUS = g++
+CFLAGS += -O3 -fPIC
+BLAS = -lblas
+LAPACK = -llapack
 endif
 
 #------------------------------------------------------------------------------

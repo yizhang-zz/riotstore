@@ -14,12 +14,13 @@ struct StorageParam {
     StorageType type;
     const char *fileName;
     union {
-        struct DMAParam {
-        } dmaParam;
-        struct BtreeParam {
+        struct {
+        } ;
+        struct {
             char leafSp;
             char intSp;
-        } btreeParam;
+            bool useDenseLeaf;
+        } ;
     };
 };
 
@@ -75,8 +76,7 @@ public:
      * stored. If omitted, a random name consisting 10 hex digits is
      * generated. Guaranteed no existing file will be overwritten.
      */
-    MDArray(const char *fileName, const Coord &dim, Linearization<nDim> *lrnztn);
-    MDArray(const char *fileName, const Coord &dim, Linearization<nDim> *lrnztn, char leafSpType, char intSpType);
+    MDArray(const StorageParam *sp, const Coord &dim, Linearization<nDim> *lrnztn);
     MDArray(const Coord &dim, Linearization<nDim> *lrnztn);
     void setStorage(const StorageParam *sp);
 
@@ -236,14 +236,8 @@ protected:
 class Matrix : public MDArray<2>
 {
 public:
-    Matrix(const char *fileName, const Coord &dim, Linearization<2> *lrnztn)
-		: MDArray<2>(fileName, dim, lrnztn)
-	{
-	}
-
-    Matrix(const char *fileName, const Coord &dim, Linearization<2> *lrnztn,
-		   char leafSpType, char intSpType)
-		: MDArray<2>(fileName, dim, lrnztn, leafSpType, intSpType)
+    Matrix(const StorageParam *sp, const Coord &dim, Linearization<2> *lrnztn)
+		: MDArray<2>(sp, dim, lrnztn)
 	{
 	}
 

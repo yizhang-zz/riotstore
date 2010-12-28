@@ -1,7 +1,6 @@
 #ifndef ROW_MAJOR_H
 #define ROW_MAJOR_H
 
-#include "Linearization.h"
 #include "BlockBased.h"
 
 template<int nDim>

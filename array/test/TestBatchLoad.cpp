@@ -12,9 +12,10 @@ TEST(MDArray, BatchLoad)
     RowMajor<2> rowMajor(dims);
     StorageParam sp;
     sp.type = BTREE;
-    sp.btreeParam.leafSp = 'B';
-    sp.btreeParam.intSp = 'M';
+    sp.leafSp = 'B';
+    sp.intSp = 'M';
     sp.fileName = "a.bin";
+    sp.useDenseLeaf = config->useDenseLeaf;
     Matrix a(&sp, &rowMajor, "MM", file, 13);
     Matrix b(&sp, &rowMajor, "MM", file, 13);
     Matrix c = a * b;

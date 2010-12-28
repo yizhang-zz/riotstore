@@ -11,35 +11,59 @@
 
 using namespace Btree;
 
-// Needed to force the compiler to compile the template classes
-/*
-MSplitter<Datum_t> md;
-MSplitter<PID_t> mp;
-RSplitter<Datum_t> rd;
-RSplitter<PID_t> rp;
-BSplitter<Datum_t> bd(0);
-BSplitter<PID_t> bp(0);
-TSplitter<Datum_t> td(.6);
-TSplitter<PID_t> tp(.6);
-SSplitter<Datum_t> sd;
-SSplitter<PID_t> sp;
-*/
+template<class Value>
+int Splitter<Value>::splitTypes(BlockT<Value> *block, Key_t *keys, int size,
+        int sp, Key_t spKey, Block::Type types[2])
+{
+    if (block->type() == Block::kInternal)
+        types[0] = types[1] = Block::kInternal;
+    else if (!this->useDenseLeaf)
+        types[0] = types[1] = block->type();
+    else {
+        Key_t boundRange[] = {spKey - block->getLowerBound(),
+            block->getUpperBound() - spKey};
+        Key_t actualRange[] = {keys[sp-1] - keys[0] + 1,
+            keys[size-1] - keys[sp] + 1};
+        int numElements[] = {sp, size-sp};
+        // Invariant: boundRange >= actualRange >= numElements
+        for (int i=0; i<2; i++) {
+            if (boundRange[i] <= config->denseLeafCapacity)
+                types[i] = Block::kDenseLeaf;
+            else if (actualRange[i] <= config->denseLeafCapacity) {
+                types[i] = Block::kDenseLeaf;
+                if (i == 0 && block->type() == Block::kSparseLeaf 
+                        && numElements[i] <= config->sparseLeafCapacity)
+                    types[i] = Block::kSparseLeaf; // favor existing format
+            }
+            else if (numElements[i] <= config->denseLeafCapacity) {
+                if (numElements[i] <= config->sparseLeafCapacity)
+                    types[i] = Block::kSparseLeaf;
+                else
+                    return -1;
+            }
+            else
+                return -1;
+        }
+    }
+    return 0;
+}
+
 template<class Value>
 int Splitter<Value>::splitHelper(BlockT<Value> **orig, BlockT<Value> **newBlock,
 								 PageHandle newPh,
-								 int sp, Key_t spKey, Key_t *keys, Value *values)
+								 int sp, Key_t spKey, Key_t *keys, Value *values, Block::Type types[2])
 								 
 {
-	Block::Type leftType, rightType;
 	int newSize = (*orig)->sizeWithOverflow() - sp;
 	int numPut;
-	(*orig)->splitTypes(sp, spKey, &leftType, &rightType);
-	*newBlock = static_cast<BlockT<Value>*>(Block::create(rightType, newPh,
+	//Block::Type leftType, rightType;
+	//splitTypes(*orig, sp, spKey, leftType, rightType);
+	*newBlock = static_cast<BlockT<Value>*>(Block::create(types[1], newPh,
 														  spKey,
 														  (*orig)->getUpperBound()));
 	(*newBlock)->putRangeSorted(keys, values, newSize, &numPut);
 	(*orig)->truncate(sp, spKey);
-	if (!config->disableDenseLeaf && leftType != (*orig)->type()) {
+	if (types[0] != (*orig)->type()) {
 		BlockT<Value> *newLeft = (*orig)->switchFormat();
 		delete *orig;
 		*orig = newLeft;
@@ -61,14 +85,15 @@ int MSplitter<Value>::split(BlockT<Value> **orig, BlockT<Value> **newBlock,
 
     int size = (*orig)->sizeWithOverflow();
     int sp = size / 2; // split before the sp-th record
-	int newSize = size-sp; // size of new block
+	//int newSize = size-sp; // size of new block
 	// get the second half block
-	Key_t *keys =  new Key_t[newSize];
-	Value *values =  new Value[newSize];
-	(*orig)->getRangeWithOverflow(sp, size, keys, values);
-
-	int ret = this->splitHelper(orig, newBlock, newPh, sp, keys[0],
-							 keys, values);
+	Key_t *keys =  new Key_t[size];
+	Value *values =  new Value[size];
+	(*orig)->getRangeWithOverflow(0, size, keys, values);
+    Block::Type types[2];
+    assert(splitTypes(*orig, keys, size, sp, keys[sp], types) == 0);
+	int ret = this->splitHelper(orig, newBlock, newPh, sp, keys[sp],
+							 keys+sp, values+sp, types);
 	delete[] keys;
 	delete[] values;
 	return ret;
@@ -95,6 +120,7 @@ int BSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 	orig->getRangeWithOverflow(0, size, keys, values);
 	
     Key_t spKey;
+    Block::Type types[2];
     while(true) {
         // test if can split in front of left/right position
         // loop is terminated once a split point is found
@@ -102,7 +128,10 @@ int BSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 			< keys[right]/boundary) { // integer comparison
             sp = right;
             spKey = (keys[sp-1]/boundary+1)*boundary; // closest to median
-            break;
+            //if (sp <= config->sparseLeafCapacity || keys[sp-1]-keys[0]+1 <= config->denseLeafCapacity) // left node can be either sparse or dense
+            //    break;
+            if (splitTypes(orig, keys, size, sp, spKey, types) == 0)
+                break;
         }
         right++;
 
@@ -110,12 +139,15 @@ int BSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 			< keys[left]/boundary) {
             sp = left;
             spKey = (keys[sp]/boundary)*boundary; // closest to median
-            break;
+            //if (size-sp <= config->sparseLeafCapacity || keys[size-1]-keys[sp]+1 <= config->denseLeafCapacity)
+            //    break;
+            if (splitTypes(orig, keys, size, sp, spKey, types) == 0)
+                break;
         }
         left--;
     }
 	int ret = this->splitHelper(orig_, newBlock, newPh, sp, spKey,
-							 keys+sp, values+sp);
+							 keys+sp, values+sp, types);
 	delete[] keys;
 	delete[] values;
 	return ret;
@@ -140,19 +172,20 @@ int RSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 
 	int sp = 1;
 	double r1, r2, smaller;
-	Block::Type t1, t2;
+	Block::Type types[2];
 	for (int i=1; i<size; i++) {
 		// try to split before the i-th element
-		orig->splitTypes(i, keys[i], &t1, &t2);
+		if (splitTypes(orig, keys, size, i, keys[i], types) != 0)
+            continue;
 		// r = #slots / remaining domain size
 		if (keys[i]-lower-i==0)
 			r1 = DBL_MAX;
 		else
-			r1 = (capacities[t1]-i) / ((keys[i]-lower)-i);
+			r1 = (capacities[types[0]]-i) / ((keys[i]-lower)-i);
 		if (upper-keys[i]-(size-i)==0)
 			r2 = DBL_MAX;
 		else
-			r2 = (capacities[t2]-(size-i)) / ((upper-keys[i])-(size-i));
+			r2 = (capacities[types[1]]-(size-i)) / ((upper-keys[i])-(size-i));
 		smaller = r1 < r2 ? r1 : r2;
 		if (smaller > max) {
 			max = smaller;
@@ -160,8 +193,9 @@ int RSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 		}
 	}
 	//std::cout<<"split before "<<sp<<", with ratio "<<max<<std::endl;
+    assert(splitTypes(orig, keys, size, sp, keys[sp], types) == 0);
 	int ret = this->splitHelper(orig_, newBlock, newPh, sp, keys[sp],
-							 keys+sp, values+sp);
+							 keys+sp, values+sp, types);
 	delete[] keys;
 	delete[] values;
 	return ret;
@@ -193,11 +227,12 @@ int SSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 
 	int sp = 1;
 	int lcap, rcap;
-	Block::Type t1, t2;
+	Block::Type types[2];
 	for (int i=1; i<size; i++) {
-		orig->splitTypes(i, keys[i], &t1, &t2);
-		lcap = capacities[t1];
-		rcap = capacities[t2];
+		if (splitTypes(orig, keys, size, i, keys[i], types) != 0)
+            continue;
+		lcap = capacities[types[0]];
+		rcap = capacities[types[1]];
 		double x = sValue(lcap-i, rcap-(size-i), (keys[i]-lower)-i, 
 						  (upper-keys[i])-(size-i));
 		if (x > max) {
@@ -206,8 +241,9 @@ int SSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 		}
 	}
 	//std::cout<<"split before "<<sp<<", with max S="<<max<<std::endl;
+    assert(splitTypes(orig, keys, size, sp, keys[sp], types) == 0); 
 	int ret = this->splitHelper(orig_, newBlock, newPh, sp, keys[sp],
-							 keys+sp, values+sp);
+							 keys+sp, values+sp, types);
 	delete[] keys;
 	delete[] values;
 	return ret;
@@ -264,7 +300,7 @@ int TSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 	int index0;
 	binarySearch(keys, keys+size, spKey0, &index0);
 	double r0 = ((double) index0)/config->sparseLeafCapacity;
-    if (!config->disableDenseLeaf) {
+    if (this->useDenseLeaf) {
         Key_t spKey0_ = lower+config->denseLeafCapacity;
         int index0_;
         binarySearch(keys, keys+size, spKey0_, &index0_);
@@ -281,7 +317,7 @@ int TSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 	int index1;
 	binarySearch(keys, keys+size, spKey1, &index1);
 	double r1 = ((double) (size-index1))/config->sparseLeafCapacity;
-    if (!config->disableDenseLeaf) {
+    if (this->useDenseLeaf) {
         Key_t spKey1_ = upper-config->denseLeafCapacity;
         int index1_;
         binarySearch(keys, keys+size, spKey1_, &index1_);
@@ -310,8 +346,10 @@ int TSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 		spKey = spKey1;
 	}
 	
+    Block::Type types[2];
+    assert(splitTypes(orig, keys, size, sp, spKey, types) == 0);
 	int ret = this->splitHelper(orig_, newBlock, newPh, sp, spKey,
-							 keys+sp, values+sp);
+							 keys+sp, values+sp, types);
 	delete[] keys;
 	delete[] values;
 	return ret;

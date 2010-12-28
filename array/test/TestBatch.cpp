@@ -31,9 +31,12 @@ TEST(MDArray, BatchPutDMA)
 	for (int i=0; i<size; ++i)
 		data[i] = i+1;
 
+    StorageParam sp;
+    sp.type = DMA;
+    sp.fileName = "array.bin";
 	// put range [0,1]x[0,1]
 	RowMajor<2> rowMajor(&dim[0]);
-	MDArray<2> array("array.bin", dim, &rowMajor);
+	MDArray<2> array(&sp, dim, &rowMajor);
 	array.batchPut(begin, end, data);
 	checkRect(array, begin, end, data);
 
@@ -63,9 +66,15 @@ TEST(MDArray, BatchPutBtree)
 	for (int i=0; i<size; ++i)
 		data[i] = i+1;
 
+    StorageParam sp;
+    sp.type = BTREE;
+    sp.fileName = "array.bin";
+    sp.intSp = 'M';
+    sp.leafSp = 'B';
+    sp.useDenseLeaf = config->useDenseLeaf;
 	// put range [0,1]x[0,1]
 	RowMajor<2> rowMajor(&dim[0]);
-	MDArray<2> array("array.bin", dim, &rowMajor, 'B', 'M');
+	MDArray<2> array(&sp, dim, &rowMajor);
 	array.batchPut(begin, end, data);
 	checkRect(array, begin, end, data);
 
@@ -98,8 +107,15 @@ TEST(MDArray, BatchGetSparse)
 
 	RowMajor<2> rowMajor(&dim[0]);
 	
+    StorageParam sp;
+    sp.type = BTREE;
+    sp.fileName = "array.bin";
+    sp.intSp = 'M';
+    sp.leafSp = 'B';
+    sp.useDenseLeaf = config->useDenseLeaf;
+
 	{
-		Matrix array("array.bin", dim, &rowMajor, 'B', 'M');
+		Matrix array(&sp, dim, &rowMajor);
 
 		for (int i=0; i<nz; ++i)
 			array.put(coords[i], data[i]);
@@ -107,7 +123,7 @@ TEST(MDArray, BatchGetSparse)
 	// array is destructed here
 	
 	{
-		Matrix array("array.bin");
+		Matrix array(sp.fileName);
 		SparseMatrix sp = array.batchGet(MDCoord<2>(0,0), MDCoord<2>(rows-1,cols-1));
         SparseMatrix::Iterator it = sp.begin();
         int i = 0;
@@ -139,14 +155,19 @@ TEST(MDArray, BatchPutSparse)
     }
     
     MDCoord<2> begin(0,0), end(rows-1,cols-1);
-    SparseMatrix sp(elements, nz, begin, end, false);
+    SparseMatrix sm(elements, nz, begin, end, false);
 
-    char file[40];
 	RowMajor<2> rowMajor(&dim[0]);
+    StorageParam sp;
+    sp.type = BTREE;
+    sp.fileName = "batchputsparse.bin";
+    sp.intSp = 'M';
+    sp.leafSp = 'B';
+    sp.useDenseLeaf = config->useDenseLeaf;
+
     {
-        Matrix a(NULL, dim, &rowMajor, 'B', 'M');
-        a.batchPut(begin, sp);
-        strcpy(file, a.getFileName());
+        Matrix a(&sp, dim, &rowMajor);
+        a.batchPut(begin, sm);
         for (int i=0; i<nz; ++i) {
             Datum_t x;
             a.get(elements[i].coord, x);
@@ -155,7 +176,7 @@ TEST(MDArray, BatchPutSparse)
     }
 
     {
-        Matrix b(file);
+        Matrix b(sp.fileName);
         for (int i=0; i<nz; ++i) {
             Datum_t x;
             b.get(elements[i].coord, x);

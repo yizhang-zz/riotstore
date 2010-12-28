@@ -222,7 +222,7 @@ template<class T>
 class BlockT : public Block
 {
 public:
-	BlockT(PageHandle ph, Key_t lower, Key_t upper):Block(ph,lower,upper)
+	BlockT(PageHandle ph, Key_t lower, Key_t upper) : Block(ph,lower,upper)
 	{
 	}
 
@@ -244,9 +244,9 @@ public:
 	virtual int del(int index) = 0;
 	virtual int putRangeSorted(Key_t *keys, T *values, int num, int *numPut) = 0;
 
-#ifndef DISABLE_DENSE_LEAF
+//#ifndef DISABLE_DENSE_LEAF
 	virtual BlockT<T> *switchFormat() = 0;
-#endif
+//#endif
 
 	struct OverflowEntry
 	{

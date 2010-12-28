@@ -115,13 +115,14 @@ void print(int depth)
 
 void Block::splitTypes(int sp, Key_t spKey, Type *left, Type *right)
 {
+    // WARNING: problem with this code!
   if (!isLeaf()) {
 	*left = kInternal;
 	*right = kInternal;
   }
 //#ifndef DISABLE_DENSE_LEAF
   else if (isDense()) {
-	*left = kSparseLeaf;
+	*left = kDenseLeaf;
 	*right = kSparseLeaf;
 	// if left can still fit in a dense format, then keep it
 	// that way
@@ -136,10 +137,14 @@ void Block::splitTypes(int sp, Key_t spKey, Type *left, Type *right)
 	*left = kSparseLeaf;
 	*right = kSparseLeaf;
 //#ifndef DISABLE_DENSE_LEAF
-	if (!config->disableDenseLeaf && upper-spKey <= config->denseLeafCapacity)
+	if (upper-spKey <= config->denseLeafCapacity)
 	  *right = kDenseLeaf;
 //#endif
   }
+  //assert(*left != kSparseLeaf || sp <= config->sparseLeafCapacity);
+  //assert(*right != kSparseLeaf || sizeWithOverflow()-sp <= config->sparseLeafCapacity);
+  //assert(*left != kDenseLeaf || spKey-getLowerBound() <= config->denseLeafCapacity);
+  //assert(*right != kDenseLeaf || getUpperBound()-spKey <= config->denseLeafCapacity);
 }
 
 /*

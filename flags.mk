@@ -16,17 +16,19 @@ else
 endif
 
 ifeq ($(OS), SunOS)
-	#CXX = g++
-	#CXXFLAGS += -g -DDEBUG -fPIC -Wall
-	#DEPFLAGS = -MM -MG
-	#LDFLAGS += -xlic_lib=sunperf
-	CXX = CC
-	CXXFLAGS += -xarch=sse3 -KPIC -library=stlport4 #-instances=extern
-	DEPFLAGS = -xM1
-	SOFLAG += -G -xarch=sse3 #-instances=extern
-	LDFLAGS += -dalign -library=sunperf -library=stlport4
+	CXX = g++
+	CXXFLAGS += -msse3 -fPIC -Wall
+	DEPFLAGS = -MM -MG
+	SOFLAG += -shared -msse3
+	LDFLAGS += 
+	AR = ar rcs
+	#CXX = CC
+	#CXXFLAGS += -xarch=sse3 -KPIC -library=stlport4 #-instances=extern
+	#DEPFLAGS = -xM1
+	#SOFLAG += -G -xarch=sse3 #-instances=extern
+	#LDFLAGS += -dalign -library=sunperf -library=stlport4
+	#AR = CC -xar -o
 	RPATH_FLAG := -R
-	AR = CC -xar -o
 else
 	CXX = g++
 	CXXFLAGS += -fPIC -Wall

@@ -76,7 +76,7 @@ void BTree::initBatching()
 #endif
 
 BTree::BTree(const char *fileName, Key_t endsBy,
-	     char leafSpType, char intSpType)
+	     char leafSpType, char intSpType, bool useDenseLeaf)
 {
     // The tree should have one leaf node after initialization.
     // The leaf node also serves as the root node.
@@ -85,8 +85,8 @@ BTree::BTree(const char *fileName, Key_t endsBy,
     initBatching();
 #endif
 
-    leafSplitter = SplitterFactory<Datum_t>::createSplitter(leafSpType);
-    internalSplitter = SplitterFactory<PID_t>::createSplitter(intSpType);
+    leafSplitter = SplitterFactory<Datum_t>::createSplitter(leafSpType, useDenseLeaf);
+    internalSplitter = SplitterFactory<PID_t>::createSplitter(intSpType, useDenseLeaf);
 
     // create first child
     PageHandle ph;
@@ -100,6 +100,7 @@ BTree::BTree(const char *fileName, Key_t endsBy,
     header->nnz = 0;
     header->leafSpType = leafSpType;
     header->intSpType = intSpType;
+    header->useDenseLeaf = useDenseLeaf;
     headerPage->markDirty();
 
     Block *block = Block::create(Block::kSparseLeaf, ph, 0, header->endsBy);
@@ -114,8 +115,10 @@ BTree::BTree(const char *fileName)
 #ifdef USE_BATCH_BUFFER
     initBatching();
 #endif
-    leafSplitter = SplitterFactory<Datum_t>::createSplitter(header->leafSpType);
-    internalSplitter = SplitterFactory<PID_t>::createSplitter(header->intSpType);
+    leafSplitter = SplitterFactory<Datum_t>::createSplitter(header->leafSpType,
+            header->useDenseLeaf);
+    internalSplitter = SplitterFactory<PID_t>::createSplitter(header->intSpType,
+            header->useDenseLeaf);
 }
 
 BTree::~BTree()
@@ -288,10 +291,14 @@ int BTree::putHelper(Key_t key, Datum_t datum, Cursor &cursor)
         break;
         //#ifndef DISABLE_DENSE_LEAF
     case kSwitchFormat:
-        cursor[cursor.current].block = block->switchFormat();
+        if (header->useDenseLeaf) {
+            cursor[cursor.current].block = block->switchFormat();
+            delete block;
+        }
+        else
+            split(cursor);
         //TODO: if needed, cursor->indices[cursor->current] should be
         //updated by calling the new block's search method
-        delete block;
         break;
         //#endif
     default:
@@ -418,9 +425,9 @@ int BTree::batchPut(i64 putCount, const Entry *puts)
 {
     Cursor cursor(buffer);
     for (i64 i=0; i<putCount; ++i) {
-	if (puts[i].key >= header->endsBy)
-	    continue;
-	putHelper(puts[i].key, puts[i].datum, cursor);
+        if (puts[i].key >= header->endsBy)
+            continue;
+        putHelper(puts[i].key, puts[i].datum, cursor);
     }
     return AC_OK;
 }

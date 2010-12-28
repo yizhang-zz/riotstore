@@ -58,6 +58,7 @@ Status DenseLeafBlock::extendStoredRange(Key_t key)
 		*headIndex = 0;
 		*tailIndex = 1;
 		tailKey = key+1;
+        value_(*headIndex) = kDefaultValue;
 		return kOK;
 	}
 
@@ -111,7 +112,7 @@ Status DenseLeafBlock::extendStoredRange(Key_t key)
 		if (key+1-*headKey <= capacity) {
 			// expand the current segment
 			i16 oldIndex = *tailIndex;
-			*tailIndex = (key+1-*headKey)+*headIndex;
+			*tailIndex += key+1-tailKey;
 			tailKey = key+1;
 			if (*tailIndex >= capacity) { // wrap-around
 				*tailIndex -= capacity;
@@ -302,17 +303,24 @@ void DenseLeafBlock::truncate(int pos, Key_t end)
 	upper = end;
 	if (!isOverflowed || overflow.index > 0) {
 		*nEntries = pos;
-		*tailIndex = *headIndex + (end - *headKey);
-		if (*tailIndex >= capacity)
-			*tailIndex -= capacity;
+        if (end > tailKey) end = tailKey;
+        // set [end .. tailKey) to 0
+        for (Key_t k = end; k < tailKey; k++)
+            value_(k-*headKey) = kDefaultValue;
+        // update tailIndex and tailKey
+        *tailIndex -= tailKey - end;
+		if (*tailIndex < 0) *tailIndex += capacity;
 		tailKey = end;
 		isOverflowed = false;
 	}
 	else { // must be that overflow.index < 0
 		*nEntries = --pos; // pos includes the overflow entry
-		*tailIndex = *headIndex + (end - *headKey);
-		if (*tailIndex >= capacity)
-			*tailIndex -= capacity;
+        // set [end .. tailKey) to 0
+        for (Key_t k = end; k < tailKey; k++)
+            value_(k-*headKey) = kDefaultValue;
+        // update tailIndex and tailKey
+		*tailIndex -= tailKey - end;
+		if (*tailIndex < 0) *tailIndex += capacity;
 		tailKey = end;
 		if (kOK == put(overflow.key, overflow.value))
 			isOverflowed = false;

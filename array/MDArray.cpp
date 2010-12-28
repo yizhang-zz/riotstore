@@ -41,7 +41,7 @@ MDArray<nDim>::Coord MDArray<nDim>::peekDim(const char *fileName)
 */
 
 template<int nDim>
-MDArray<nDim>::MDArray(const char *fileName, const MDCoord<nDim> &d, Linearization<nDim> *lnrztn, char leafSpType, char intSpType): dim(d)
+MDArray<nDim>::MDArray(const StorageParam *sp, const MDCoord<nDim> &d, Linearization<nDim> *lnrztn): dim(d), storage(NULL)
 {
     // The linearized space can be larger than what dim indicates;
     // e.g., when 2x2 blocks are used for a 3x3 array, the linearized
@@ -53,56 +53,7 @@ MDArray<nDim>::MDArray(const char *fileName, const MDCoord<nDim> &d, Linearizati
         size *= (u32) coord[i];
    
     linearization = lnrztn->clone();
-
-    char path[40] = "mdaXXXXXX"; // should be long enough
-    if (!fileName)
-		mktemp(path);
-    else
-        strcpy(path, fileName);
-	this->fileName = path;
-
-    storage = new BTree(path, size, leafSpType, intSpType); 
-
-    PageHandle ph;
-    BufferManager *buffer = storage->getBufferManager();
-    buffer->readPage(0, ph);
-    char *image = ph->getImage();
-    char *header = image + OFFSET;
-	dim.serialize(&header);
-	linearization->serialize(&header);
-
-    ph->markDirty();
-}
-
-// Create an MDArray backed by the DMA storage format
-template<int nDim>
-MDArray<nDim>::MDArray(const char *fileName, const MDCoord<nDim> &d, Linearization<nDim> *lnrztn): dim(d)
-{
-    Coord coord = lnrztn->getActualDims();
-
-    size = 1;
-    for (int i=0; i<nDim; ++i)
-        size *= (u32) coord[i];
-   
-    linearization = lnrztn->clone();
-
-    char path[40] = "mdaXXXXXX"; // should be long enough..
-    if (!fileName)
-        mktemp(path);
-    else
-        strcpy(path, fileName);
-    this->fileName = path;
-
-    storage = new DirectlyMappedArray(path, size);
-
-    PageHandle ph;
-    BufferManager *buffer = storage->getBufferManager();
-    buffer->readPage(0, ph);
-    char *image = ph->getImage();
-    char *header = image + OFFSET;
-	dim.serialize(&header);
-	linearization->serialize(&header);
-    ph->markDirty();
+    setStorage(sp);
 }
 
 template<int nDim>
@@ -201,8 +152,8 @@ void MDArray<nDim>::createStorage(const StorageParam *sp)
         storage = new DirectlyMappedArray(path, size);
         break;
     case BTREE:
-        storage = new BTree(path, size, sp->btreeParam.leafSp,
-                sp->btreeParam.intSp);
+        storage = new BTree(path, size, sp->leafSp,
+                sp->intSp, sp->useDenseLeaf);
         break;
     default:
         Error("unknown storage type");
@@ -632,9 +583,9 @@ Matrix Matrix::operator*(const Matrix &other)
     i64 retDims[] = {dim[0], other.dim[1]};
     u8 orders[]   = {1, 0}; // result should be column major?
     BlockBased<2> retLin(retDims, &block[0], orders, orders); 
-    MSplitter<PID_t> msp;
+    MSplitter<PID_t> msp(false);
     // Param 1: what is the boundary value? dense leaf cap or sparse leaf cap?
-    BSplitter<Datum_t> bsp(config->BSplitterBoundary());
+    BSplitter<Datum_t> bsp(config->useDenseLeaf);
     // Param 2: what storage type to use? dma or btree?
     Matrix ret(Coord(retDims), &retLin);
     StorageParam param;
@@ -645,8 +596,8 @@ Matrix Matrix::operator*(const Matrix &other)
     }
     else {
         param.type = BTREE;
-        param.btreeParam.leafSp = 'B';
-        param.btreeParam.intSp = 'M';
+        param.leafSp = 'B';
+        param.intSp = 'M';
         ret.setStorage(&param);
     }
 

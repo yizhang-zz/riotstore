@@ -136,7 +136,8 @@ int SparseBlock<T>::getRange(int beginsAt, int endsBy, Key_t *keys, T *vals) con
 template<class T>
 int SparseBlock<T>::getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, T *vals) const
 {
-	if (beginsAt <= this->overflow.index && this->overflow.index < endsBy) {
+	if (this->isOverflowed &&
+            beginsAt <= this->overflow.index && this->overflow.index < endsBy) {
 		//T *vals = static_cast<T*>(values);
 		for (int i=beginsAt; i<this->overflow.index; ++i) {
 			keys[i-beginsAt] = key_(i);
@@ -150,7 +151,7 @@ int SparseBlock<T>::getRangeWithOverflow(int beginsAt, int endsBy, Key_t *keys, 
 		}
 		return kOK;
 	}
-	else if (beginsAt > this->overflow.index)
+	else if (this->isOverflowed && beginsAt > this->overflow.index)
 		return getRange(beginsAt-1, endsBy-1, keys, vals);
 	else
 		return getRange(beginsAt, endsBy, keys, vals);
@@ -215,8 +216,7 @@ int SparseBlock<Datum_t>::put(int index, Key_t key, const Datum_t &v)
 		this->overflow.key = key;
 		this->overflow.value = v;
 		this->overflow.index = index;
-		return ((!config->disableDenseLeaf) && canSwitchFormat())
-            ? kSwitchFormat : kOverflow;
+		return (canSwitchFormat() ? kSwitchFormat : kOverflow);
 	}
 
 	memmove(pData+(index+1)*kCellSize, pData+index*kCellSize, kCellSize*(*this->nEntries-index));
@@ -323,7 +323,7 @@ void SparseBlock<T>::truncate(int sp, Key_t spKey)
 	else {
 		//freeCells(sp-1, *this->nEntries);
 		*this->nEntries = sp-1;
-		put(this->overflow.key, this->overflow.value);
+		put(this->overflow.index, this->overflow.key, this->overflow.value);
 		this->isOverflowed = false;
 	}
 	this->pageHandle->markDirty();

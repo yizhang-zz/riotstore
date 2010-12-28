@@ -19,7 +19,7 @@ all: test
 -include $(DEPS)
 
 test: $(OBJ)
-	$(CXX) -o $@ $^ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 
 clean : 
