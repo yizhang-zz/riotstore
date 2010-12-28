@@ -6,6 +6,7 @@
 #define _in
 #define _out
 
+#define STORAGE_METADATA_PAGES 16
 /*
 #if defined(_LP64) || defined(__LP64__)
 #define D64 "ld"

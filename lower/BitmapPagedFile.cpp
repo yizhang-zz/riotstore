@@ -13,7 +13,7 @@ int PagedStorageContainer::writeCount = 0;
 double PagedStorageContainer::accessTime = 0.0;
 #endif
 
-const size_t BitmapPagedFile::NUM_HEADER_PAGES = 8;
+const size_t BitmapPagedFile::NUM_HEADER_PAGES = STORAGE_METADATA_PAGES;
 const size_t BitmapPagedFile::NUM_BITS_PER_PAGE = PAGE_SIZE * 8;
 const size_t BitmapPagedFile::HEADER_SIZE = PAGE_SIZE * BitmapPagedFile::NUM_HEADER_PAGES;
 const size_t BitmapPagedFile::NUM_BITS_HEADER = BitmapPagedFile::HEADER_SIZE * 8;
