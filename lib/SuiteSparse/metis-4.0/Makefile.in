@@ -6,10 +6,10 @@ CC = cc
 OPTFLAGS = -O2 
 
 # What options to be used by the compiler
-COPTIONS = 
+COPTIONS = -m64
 
 # What options to be used by the loader
-LDOPTIONS = 
+LDOPTIONS = -m64
 
 # What archiving to use
 AR = ar rv

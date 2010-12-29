@@ -127,13 +127,13 @@ public:
     void setInternalSplitter(InternalSplitter *sp) {internalSplitter = sp; }
     void setLeafSplitter(LeafSplitter *sp) { leafSplitter = sp; }
 
-    void print();
+    void print(bool statOnly);
 #ifdef USE_BATCH_BUFFER
     void flushAndPrint()
     {
         if (batbuf)
             batbuf->flushAll();
-        print();
+        print(false);
     }
 #endif
 
@@ -159,11 +159,17 @@ public:
        */
 
 private:
+    struct PrintStat
+    {
+        size_t denseCount;
+        size_t sparseCount;
+        size_t internalCount;
+    };
     void init(const char *fileName, int fileFlag);
 #ifdef USE_BATCH_BUFFER
     void initBatching();
 #endif
-    void print(PID_t pid, Key_t beginsAt, Key_t endsBy, int depth);
+    void print(PID_t pid, Key_t beginsAt, Key_t endsBy, int depth, PrintStat*, bool statOnly);
     int putHelper(Key_t key, Datum_t datum, Cursor &cursor);
     int getHelper(Key_t key, Datum_t &datum, Cursor &cursor);
 

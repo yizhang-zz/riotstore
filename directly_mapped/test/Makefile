@@ -1,4 +1,5 @@
-LDFLAGS += -lgtest -L../.. -lriot_store
+LDFLAGS += -L/usr/local/lib -lgtest -L../.. -lriot_store
+LDFLAGS += $(shell pkg-config --libs gsl)
 LD_RUN_PATH = ../..
 
 .PHONY: all clean 
@@ -13,7 +14,7 @@ include $(objects:.o=.dd)
 
 
 test: $(objects) 
-	$(CXX) -o $@ $^ $(LDFLAGS) 
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) 
 
 clean : 
 	rm -f *.o

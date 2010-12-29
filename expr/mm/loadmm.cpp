@@ -1,6 +1,7 @@
 #include "common/Config.h"
 #include "array/ColMajor.h"
 #include "array/MDArray.h"
+#include "btree/Btree.h"
 #include <iostream>
 #include <libgen.h>
 
@@ -8,11 +9,16 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
-    if (argc < 2) {
-        cerr<<"usage: "<<argv[0]<<" inputlist.txt"<<endl
-            <<"where inputlist.txt contains paths to MatrixMarket format files"<<endl;
+    if (argc < 3) {
+        cerr<<"usage: "<<argv[0]<<" inputlist to_types(BLD)"<<endl
+            <<"inputlist: a file containing paths to MatrixMarket format files"<<endl
+            <<"B: B-tree L: LAB-tree D: DirectlyMapped"<<endl;
         exit(1);
     }
+    char types[256] = {0};
+    for (char *p=argv[2]; *p; ++p)
+        types[*p] = 1;
+
     char *inputfile = argv[1];
     char path[256];
     ifstream in(inputfile);
@@ -41,18 +47,24 @@ int main(int argc, char **argv)
         sp.leafSp = 'B';
         sp.intSp = 'M';
         sp.useDenseLeaf = true;
-        MDArray<2> array1(&sp, &l_col, "MM", path, batchLoadBufferSize);
+        if (types['L']) {
+            MDArray<2> array1(&sp, &l_col, "MM", path, batchLoadBufferSize);
+            ((Btree::BTree*)array1.storage)->print(true);
+        }
 
         buf[baselen] = '\0';
         strcat(buf, ".cm.b");
         sp.leafSp = 'M';
         sp.useDenseLeaf = false;
-        MDArray<2> array2(&sp, &l_col, "MM", path, batchLoadBufferSize);
-
+        if (types['B']) {
+            MDArray<2> array2(&sp, &l_col, "MM", path, batchLoadBufferSize);
+            ((Btree::BTree*)array2.storage)->print(true);
+        }
         buf[baselen] = '\0';
         strcat(buf, ".cm.dma");
         sp.type = DMA;
-        MDArray<2> array3(&sp, &l_col, "MM", path, batchLoadBufferSize);
+        if (types['D'])
+            MDArray<2> array3(&sp, &l_col, "MM", path, batchLoadBufferSize);
 
         // block based
         buf[baselen] = '\0';
@@ -61,17 +73,24 @@ int main(int argc, char **argv)
         sp.leafSp = 'B';
         sp.intSp = 'M';
         sp.useDenseLeaf = true;
-        MDArray<2> array4(&sp, &l_bb, "MM", path, batchLoadBufferSize);
+        if (types['L']) {
+            MDArray<2> array4(&sp, &l_bb, "MM", path, batchLoadBufferSize);
+            ((Btree::BTree*)array4.storage)->print(true);
+        }
 
         buf[baselen] = '\0';
         strcat(buf, ".bb.b");
         sp.leafSp = 'M';
         sp.useDenseLeaf = false;
-        MDArray<2> array5(&sp, &l_bb, "MM", path, batchLoadBufferSize);
+        if (types['B']) {
+            MDArray<2> array5(&sp, &l_bb, "MM", path, batchLoadBufferSize);
+            ((Btree::BTree*)array5.storage)->print(true);
+        }
 
         buf[baselen] = '\0';
         strcat(buf, ".bb.dma");
         sp.type = DMA;
-        MDArray<2> array6(&sp, &l_bb, "MM", path, batchLoadBufferSize);
+        if (types['D'])
+            MDArray<2> array6(&sp, &l_bb, "MM", path, batchLoadBufferSize);
     }
 }

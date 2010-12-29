@@ -20,7 +20,7 @@ include ../../flags.mk
 include $(DEP)
 
 test: $(OBJ)
-	$(CXX) -instances=extern -o $@ $^ $(LDFLAGS)
+	$(CXX) -m64 -o $@ $^ $(LDFLAGS)
 
 clean : 
 	rm -f $(OBJ)

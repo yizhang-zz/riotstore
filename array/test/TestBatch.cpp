@@ -4,6 +4,7 @@
 #include "array/RowMajor.h"
 #include "array/ColMajor.h"
 #include "array/BlockBased.h"
+#include "btree/Btree.h"
 
 using namespace std;
 
@@ -70,13 +71,14 @@ TEST(MDArray, BatchPutBtree)
     sp.type = BTREE;
     sp.fileName = "array.bin";
     sp.intSp = 'M';
-    sp.leafSp = 'B';
-    sp.useDenseLeaf = config->useDenseLeaf;
+    sp.leafSp = 'M';
+    sp.useDenseLeaf = false;//config->useDenseLeaf;
 	// put range [0,1]x[0,1]
 	RowMajor<2> rowMajor(&dim[0]);
 	MDArray<2> array(&sp, dim, &rowMajor);
 	array.batchPut(begin, end, data);
 	checkRect(array, begin, end, data);
+    ((Btree::BTree*)array.storage)->print(true);
 
     ASSERT_DOUBLE_EQ(double(size)/(dim[0]*dim[1]), array.sparsity());
 

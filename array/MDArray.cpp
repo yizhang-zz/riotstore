@@ -596,8 +596,9 @@ Matrix Matrix::operator*(const Matrix &other)
     }
     else {
         param.type = BTREE;
-        param.leafSp = 'B';
-        param.intSp = 'M';
+        param.leafSp = config->leafSplitter;
+        param.intSp = config->internalSplitter;
+        param.useDenseLeaf = config->useDenseLeaf;
         ret.setStorage(&param);
     }
 

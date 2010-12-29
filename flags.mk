@@ -1,5 +1,5 @@
-CXXFLAGS += -DPROFILING
-CXXFLAGS += -DPROFILE_BUFMAN
+#CXXFLAGS += -DPROFILING
+#CXXFLAGS += -DPROFILE_BUFMAN
 CXXFLAGS += -DUSE_BATCH_BUFFER
 
 vpath %.h lib/SuiteSparse/CHOLMOD/Include
@@ -8,8 +8,7 @@ OS = $(shell uname -s)
 
 debug ?= 1
 ifeq ($(debug), 1)
-	CXXFLAGS += -g -DDEBUG
-	SOFLAG += -g
+	CXXFLAGS += -DDEBUG
 else
 	CXXFLAGS += -O3 -DNDEBUG
 	SOFLAG += -O3
@@ -17,9 +16,9 @@ endif
 
 ifeq ($(OS), SunOS)
 	CXX = g++
-	CXXFLAGS += -msse3 -fPIC -Wall
+	CXXFLAGS += -g -m64 -msse3 -fPIC -Wall
 	DEPFLAGS = -MM -MG
-	SOFLAG += -shared -msse3
+	SOFLAG += -g -m64 -msse3 -shared 
 	LDFLAGS += 
 	AR = ar rcs
 	#CXX = CC

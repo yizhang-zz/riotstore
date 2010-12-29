@@ -85,6 +85,7 @@ RC_t BufferManager::allocatePage(PageHandle &ph) {
 #endif
 		return ret;
 	}
+    //Debug("with page %10d\n", pid);
 
 	rec->pid = pid;
     //rec->pinCount = 1;
@@ -124,6 +125,7 @@ RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
 #endif
         return ret;
     }
+    //Debug("with page %10d\n", pid);
     
     //ph = rec;
     rec->pid = pid;
@@ -188,6 +190,7 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
         if ((ret=replacePage(rec)) != RC_OK) {
             return ret;
         }
+        //Debug("with page %10d\n", pid);
         
         rec->pid = pid;
         if ((ret=storage->readPage(rec)) != RC_OK) {
@@ -222,6 +225,7 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
         if ((ret=replacePage(rec)) != RC_OK) {
             return ret;
         }
+        //Debug("with page %10d\n", pid);
         
         rec->pid = pid;
         ret = storage->readPage(rec);
@@ -342,6 +346,7 @@ RC_t BufferManager::replacePage(PageRec *&bh)
         Error("Out of memory: cannot allocate page in buffer, error %d", ret);
         return ret;
     }
+    //Debug("relace page %10d ", bh->pid);
     if (bh->dirty) {
         //if (packer && bh->unpacked)
         //    packer->pack(bh->unpacked, bh->image);

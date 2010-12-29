@@ -387,37 +387,52 @@ void BTree::split(Cursor &cursor)
     }
 }
 
-void BTree::print(PID_t pid, Key_t beginsAt, Key_t endsBy, int depth)
+void BTree::print(PID_t pid, Key_t beginsAt, Key_t endsBy, int depth, 
+        PrintStat *ps, bool statOnly)
 {
-    int indent = 2*depth;
-    char *buf =  new char[indent+1];
-    memset(buf, ' ', indent);
-    buf[indent] = '\0';
-	
     PageHandle ph;
     buffer->readPage(pid, ph);
     Block *block = Block::create(ph, beginsAt, endsBy);
-    std::cout<<buf;
-	delete[] buf;
-    block->print();
+
+    if (!statOnly) {
+        int indent = 2*depth;
+        char *buf =  new char[indent+1];
+        memset(buf, ' ', indent);
+        buf[indent] = '\0';
+        std::cout<<buf;
+        block->print();
+        delete[] buf;
+    }
     if (depth < header->depth-1) {
-	InternalBlock *iblock = static_cast<InternalBlock*>(block);
-	int num = iblock->size();
-	int i;
-	for (i=0; i<num-1; ++i)
-	    print(iblock->value(i), iblock->key(i), iblock->key(i+1), depth+1);
-	print(iblock->value(i), iblock->key(i), iblock->getUpperBound(), depth+1);
+        InternalBlock *iblock = static_cast<InternalBlock*>(block);
+        int num = iblock->size();
+        int i;
+        for (i=0; i<num-1; ++i)
+            print(iblock->value(i), iblock->key(i), iblock->key(i+1), depth+1, ps, statOnly);
+        print(iblock->value(i), iblock->key(i), iblock->getUpperBound(), depth+1, ps, statOnly);
+        ps->internalCount++;
+    }
+    else {
+        if (block->type() == Block::kDenseLeaf)
+            ps->denseCount++;
+        else if (block->type() == Block::kSparseLeaf)
+            ps->sparseCount++;
     }
     delete block;
 }
 
-void BTree::print()
+void BTree::print(bool statOnly)
 {
     using namespace std;
+    PrintStat ps = {0,0,0};
     cout<<"BEGIN--------------------------------------"<<endl;
     cout<<"BTree with depth "<<header->depth<<endl;
     //if (header->depth > 0)
-    print(header->root, 0, header->endsBy, 0);
+    print(header->root, 0, header->endsBy, 0, &ps, statOnly);
+    cout<<"Dense leaves: "<<ps.denseCount<<endl
+        <<"Sparse leaves: "<<ps.sparseCount<<endl
+        <<"Internal nodes: "<<ps.internalCount<<endl
+        <<"Total nodes: "<<ps.denseCount+ps.sparseCount+ps.internalCount<<endl;
     cout<<"END----------------------------------------"<<endl;
 }
 

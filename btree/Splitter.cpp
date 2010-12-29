@@ -91,7 +91,7 @@ int MSplitter<Value>::split(BlockT<Value> **orig, BlockT<Value> **newBlock,
 	Value *values =  new Value[size];
 	(*orig)->getRangeWithOverflow(0, size, keys, values);
     Block::Type types[2];
-    assert(splitTypes(*orig, keys, size, sp, keys[sp], types) == 0);
+    splitTypes(*orig, keys, size, sp, keys[sp], types);
 	int ret = this->splitHelper(orig, newBlock, newPh, sp, keys[sp],
 							 keys+sp, values+sp, types);
 	delete[] keys;
@@ -193,7 +193,7 @@ int RSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 		}
 	}
 	//std::cout<<"split before "<<sp<<", with ratio "<<max<<std::endl;
-    assert(splitTypes(orig, keys, size, sp, keys[sp], types) == 0);
+    splitTypes(orig, keys, size, sp, keys[sp], types);
 	int ret = this->splitHelper(orig_, newBlock, newPh, sp, keys[sp],
 							 keys+sp, values+sp, types);
 	delete[] keys;
@@ -241,7 +241,7 @@ int SSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 		}
 	}
 	//std::cout<<"split before "<<sp<<", with max S="<<max<<std::endl;
-    assert(splitTypes(orig, keys, size, sp, keys[sp], types) == 0); 
+    splitTypes(orig, keys, size, sp, keys[sp], types); 
 	int ret = this->splitHelper(orig_, newBlock, newPh, sp, keys[sp],
 							 keys+sp, values+sp, types);
 	delete[] keys;
@@ -347,7 +347,7 @@ int TSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 	}
 	
     Block::Type types[2];
-    assert(splitTypes(orig, keys, size, sp, spKey, types) == 0);
+    splitTypes(orig, keys, size, sp, spKey, types);
 	int ret = this->splitHelper(orig_, newBlock, newPh, sp, spKey,
 							 keys+sp, values+sp, types);
 	delete[] keys;

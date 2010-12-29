@@ -205,13 +205,13 @@ public:
 	// math methods
 	MDArray<nDim> & operator+=(const MDArray<nDim> &other);
 
+    LinearStorage *storage;
 protected:
     void createStorage(const StorageParam *sp);
 
     MDCoord<nDim> dim;
     u32 size; // number of elements
     /// The underlying 1-D storage.
-    LinearStorage *storage;
     /// The Linearization tied to the underlying 1-D storage.
     Linearization<nDim> *linearization;
     std::string fileName;

@@ -40,7 +40,7 @@ $(TARGET).so: $(SO_OBJ)
 	$(CXX) $(SOFLAG) -o $@ $^ $(LDFLAGS)
 
 $(DTRACE_OBJ): $(DTRACE_SRC) $(OBJ)
-	$(DTRACE) -G -32 -o $@ -s $^
+	$(DTRACE) -G -64 -o $@ -s $^
 
 -include $(DEPS)
 
