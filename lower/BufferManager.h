@@ -2,6 +2,7 @@
 #define BUFFER_MANAGER_H
 
 #include <boost/unordered_map.hpp>
+#include <boost/pool/pool.hpp>
 #include "../common/common.h"
 #include "PagedStorageContainer.h"
 
@@ -54,7 +55,7 @@ private:
     PagedStorageContainer *storage;
 
     // Maximum number of pages the buffer can hold.
-    uint32_t numSlots;
+    size_t numSlots;
 
     // The buffer memory.  It is implemented as an array of size
     // numSlots.
@@ -87,13 +88,19 @@ private:
     //friend class PageReplacer;
     PageReplacer *pageReplacer;
 
-    //PagePacker *packer;
+    boost::pool<> ppool;
+    PageDealloc pageDealloc;
+    
+    PageHandle make_ph(PageRec *p)
+    {
+        return PageHandle(new (ppool.malloc()) Page(p, this), pageDealloc);
+    }
 
 public:
 
     // Constructs a BufferManager for a paged storage container with a
     // memory buffer that holds a given number of pages.
-    BufferManager(PagedStorageContainer *s, uint32_t n, PageReplacer *pr=NULL);
+    BufferManager(PagedStorageContainer *s, size_t n, PageReplacer *pr=NULL);
 
     // Destructs the BufferManager.  All dirty pages will be flushed.
     ~BufferManager();
@@ -128,8 +135,11 @@ public:
     
 	// Print the status of the buffer manager
     void print() ;
+    void printStat();
 
 private:
+	RC_t replacePage(PageRec *&bh);
+    int totalPinCount;
     // Marks a pinned page as dirty (i.e., modified).
     RC_t markPageDirty(PageRec *p);
 
@@ -155,8 +165,6 @@ private:
 	}
 	*/
 
-private:
-	RC_t replacePage(PageRec *&bh);
 };
 
 #endif

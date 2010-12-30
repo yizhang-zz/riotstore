@@ -19,7 +19,7 @@ class DirectlyMappedArray : public LinearStorage
 public:
     /// If numElements > 0, create a new array; otherwise read from disk.
     /// Whether file exists is ignored.
-    DirectlyMappedArray(const char* fileName, uint32_t numElements=0);
+    DirectlyMappedArray(const char* fileName, Key_t numElements=0);
     virtual ~DirectlyMappedArray();
 
     virtual int get(const Key_t &key, Datum_t &datum);
@@ -32,7 +32,7 @@ public:
     virtual StorageType type() const { return DMA; }
     virtual ArrayInternalIterator *createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy);
     virtual Key_t upperBound() const { return header->endsBy; }
-    virtual u32 nnz() const { return header->nnz; }
+    virtual size_t nnz() const { return header->nnz; }
 
     PID_t findPage(Key_t key)
     {
@@ -54,7 +54,7 @@ private:
     {
         int storageType;
         Key_t endsBy;
-        u32 nnz; // number of nonzeros
+        size_t nnz; // number of nonzeros
         //enum DataType dataType;
         //char ch;
     } *header;

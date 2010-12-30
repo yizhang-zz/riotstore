@@ -30,11 +30,8 @@
 template<int nDim>
 class MDCoord
 {
-	typedef i64 Coord;
-private:
-	Coord coords[nDim];
-
 public:
+	typedef i64 Coord;
 
     /**
      * Constructs an empty MDCoord.
@@ -274,6 +271,9 @@ public:
 
 	template<int N>
 	friend std::ostream & operator<<(std::ostream &out, const MDCoord<N> &coord);
+
+private:
+	Coord coords[nDim];
 };
 
 template<int N>

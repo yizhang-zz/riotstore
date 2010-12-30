@@ -30,3 +30,4 @@ char* Page::getImage() const
 {
 	return prec->image;
 }
+

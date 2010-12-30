@@ -29,15 +29,6 @@ public:
 	 * 2		offset of first free space
 	 * 2		offset of first byte of cell content area
 	 */
-    void *operator new(size_t size)
-	{
-		return memPool.malloc();
-	}
-	void operator delete(void *p)
-	{
-		memPool.free(p);
-	}
-	
 	// ctor is specialized
 	SparseBlock(PageHandle ph, Key_t beginsAt, Key_t endsBy, bool create)
 		:BlockT<T>(ph, beginsAt, endsBy)
@@ -86,7 +77,6 @@ public:
 	int del(int index);
 	int putRangeSorted(Key_t *keys, T *values, int num, int *numPut);
 	void truncate(int sp, Key_t spKey);
-	BlockT<T> *switchFormat() { return NULL; }
 	size_t valueTypeSize() const { return sizeof(T); }
 	void print() const;
 
@@ -117,7 +107,6 @@ public:
 		int index;
 	};
 private:
-	static boost::pool<> memPool;
 	static const int kCellSize;
 	char *pData;
 	//u16 *dataOffset; // where the data section has grown to (from high-address to low-address)
@@ -198,9 +187,6 @@ template<>
 SparseBlock<Datum_t>::SparseBlock(PageHandle ph, Key_t beginsAt, Key_t endsBy, bool create);
 
 template<>
-BlockT<Datum_t> * SparseBlock<Datum_t>::switchFormat();
-
-template<>
 int SparseBlock<PID_t>::put(int index, Key_t key, const PID_t &val);
 
 template<>
@@ -237,9 +223,6 @@ inline int SparseBlock<Datum_t>::getThis->HeaderSize() const
 
 typedef SparseBlock<PID_t> InternalBlock;
 typedef SparseBlock<Datum_t> SparseLeafBlock;
-
-template<class T>
-boost::pool<> SparseBlock<T>::memPool(sizeof(SparseBlock<T>));
 
 template<class T>
 const int SparseBlock<T>::kCellSize = sizeof(Key_t) + sizeof(T);

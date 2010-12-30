@@ -15,7 +15,7 @@ double LinearStorage::accessTime = 0.0;
 
 /// If numElements > 0, create a new array; otherwise read from disk.
 /// Whether file exists is ignored.
-DirectlyMappedArray::DirectlyMappedArray(const char* fileName, uint32_t numElements) 
+DirectlyMappedArray::DirectlyMappedArray(const char* fileName, Key_t numElements) 
 {
    if (numElements > 0)		// new array to be created
    {

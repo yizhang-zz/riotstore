@@ -48,9 +48,10 @@ MDArray<nDim>::MDArray(const StorageParam *sp, const MDCoord<nDim> &d, Lineariza
     // space will be of size 4x4=16. Thus the linear storage should
     // be able to hold at least this many records.
     Coord coord = lnrztn->getActualDims();
-    size = 1;
+    typename Coord::Coord size_ = 1;
     for (int i=0; i<nDim; ++i)
-        size *= (u32) coord[i];
+        size_ *= coord[i];
+    size = (size_t) size_;
    
     linearization = lnrztn->clone();
     setStorage(sp);
@@ -61,9 +62,10 @@ MDArray<nDim>::MDArray(const MDCoord<nDim> &d, Linearization<nDim> *lnrztn): dim
 {
     Coord coord = lnrztn->getActualDims();
 
-    size = 1;
+    typename Coord::Coord size_ = 1;
     for (int i=0; i<nDim; ++i)
-        size *= (u32) coord[i];
+        size_ *= coord[i];
+    size = (size_t) size_;
    
     linearization = lnrztn->clone();
 }
@@ -101,9 +103,10 @@ MDArray<nDim>::MDArray(const char *fileName): fileName(fileName)
 	linearization = Linearization<nDim>::parse(&header);
 
     Coord coord = linearization->getActualDims();
-    size = 1;
+    typename Coord::Coord size_ = 1;
     for (int i=0; i<nDim; ++i)
-        size *= (u32) coord[i];
+        size_ *= coord[i];
+    size = (size_t) size_;
 }
 
 template<int nDim>
@@ -178,9 +181,11 @@ MDArray<nDim>::MDArray(const StorageParam *sp, Linearization<nDim> *lnrztn,
     linearization->setDims(dim);
 
     Coord actualDims = linearization->getActualDims();
-    size = 1;
+
+    typename Coord::Coord size_ = 1;
     for (int i=0; i<nDim; ++i)
-        size *= (u32) actualDims[i];
+        size_ *= actualDims[i];
+    size = (size_t) size_;
 
     createStorage(sp);
 
@@ -423,6 +428,7 @@ int MDArray<nDim>::batchGet(const Coord &begin, const Coord &end, std::vector<En
 	// but storage->batchGet is exclusive
         storage->batchGet(it->begin, it->end+1, v);
     }
+    //storage->getBufferManager()->printStat();
     delete segments;
     return AC_OK;
 }

@@ -30,15 +30,6 @@ public:
 	//static u16 capacity() { return _capacity; }
 	//u16 getCapacity() const { return config->denseLeafCapacity; }
 	//int getHeaderSize() const { return config->denseLeafHeaderSize; }
-	void *operator new(size_t size)
-	{
-		return memPool.malloc();
-	}
-	void operator delete(void *p)
-	{
-		memPool.free(p);
-	}
-	
 	DenseLeafBlock(PageHandle ph, Key_t beginsAt, Key_t endsBy, bool create);
 	~DenseLeafBlock()
 	{
@@ -55,7 +46,6 @@ public:
 	int del(int index);
 	int putRangeSorted(Key_t *keys, Datum_t *values, int num, int *numPut);
 	void truncate(int pos, Key_t end);
-	LeafBlock *switchFormat();
 	void print() const;
 
 	Key_t key(int index) const { return key_(index); }
@@ -206,8 +196,6 @@ public:
 	};
 
 private:
-	static boost::pool<> memPool;
-
 	i16 *headIndex; // inclusive
 	i16 *tailIndex;	// exclusive
 	Key_t *headKey;

@@ -30,10 +30,10 @@ public:
 
     ~Cursor()
 	{
-		for (int i=current; i>=0; i--) {
-			//buffer->unpinPage(levels[i].block->pageHandle);
-			delete levels[i].block;
-		}
+        // blocks are all created by placement new operator
+        // so should not call delete
+		for (int i=current; i>=0; i--)
+            levels[i].block->~Block();
 	}
 
 	void grow()
@@ -41,8 +41,6 @@ public:
 		assert(current<MaxDepth);
 		for (int i=current; i>=0; i--) {
 			levels[i+1] = levels[i];
-			//trace[i+1] = trace[i];
-			//indices[i+1] = indices[i];
 		}
 		current++;
 	}

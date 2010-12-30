@@ -31,7 +31,6 @@ public:
     // TODO: implement these?
 	//BlockType getType() const {} // leaf or internal
 	//BlockFormat getFormat() const {} // dense or sparse
-	//uint32_t getEntryCount() const {}
 	//_D getDefaultValue() const {}
 
 	void setRange(_K lower, _K upper) {

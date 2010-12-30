@@ -4,8 +4,6 @@
 
 using namespace Btree;
 
-boost::pool<> DenseLeafBlock::memPool(sizeof(DenseLeafBlock));
-
 //u16 DenseLeafBlock::capacity = DenseLeafBlock::initCapacity();
 
 /*
@@ -327,23 +325,6 @@ void DenseLeafBlock::truncate(int pos, Key_t end)
 		// put could return kSwitchFormat, which will be dealt by the caller
 	}
 	pageHandle->markDirty();
-}
-
-// this should be deleted immediately after calling switchFormat
-LeafBlock *DenseLeafBlock::switchFormat()
-{
-	int num = sizeWithOverflow();
-	Key_t *keys = new Key_t[num];
-	Datum_t *vals = new Datum_t[num];
-	getRangeWithOverflow(0,num,keys,vals);
-	SparseLeafBlock *block = new SparseLeafBlock(pageHandle, lower,
-			upper, true);
-	int numPut;
-	block->putRangeSorted(keys,vals,num,&numPut);
-	assert(num==numPut);
-	delete[] keys;
-	delete[] vals;
-	return block;
 }
 
 void DenseLeafBlock::print() const

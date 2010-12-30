@@ -4,9 +4,6 @@
 
 using namespace Btree;
 
-//boost::pool<> SparseBlock<Datum_t>::memPool(sizeof(SparseBlock<Datum_t>));
-//boost::pool<> SparseBlock<PID_t>::memPool(sizeof(SparseBlock<PID_t>));
-
 /*
 template<class T>
 const int SparseBlock<T>::headerSize = 0;
@@ -328,25 +325,6 @@ void SparseBlock<T>::truncate(int sp, Key_t spKey)
 	}
 	this->pageHandle->markDirty();
 }
-
-//#ifndef DISABLE_DENSE_LEAF
-template<>
-BlockT<Datum_t> * SparseBlock<Datum_t>::switchFormat()
-{
-	int num = this->sizeWithOverflow();
-	Key_t *keys = new Key_t[num];
-	Datum_t *vals = new Datum_t[num];
-	getRangeWithOverflow(0,num,keys,vals);
-	DenseLeafBlock *block = new DenseLeafBlock(this->pageHandle, 
-			this->lower, this->upper, true);
-	int numPut;
-	block->putRangeSorted(keys,vals,num,&numPut);
-    delete[] keys;
-    delete[] vals;
-	assert(num==numPut);
-	return block;
-}
-//#endif
 
 template<class T>
 void SparseBlock<T>::print() const

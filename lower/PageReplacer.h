@@ -27,7 +27,6 @@ public:
     // members that may be useful.
     /* const bool *getUsedBits() const; */
     /* const bool *getDirtyBits() const; */
-    /* const uint32_t *getPinCounts() const; */
 
     // Returns the index (into BufferManager::images) of the recommended
     // page to be replaced when called by BufferManager.  All pages in
@@ -46,7 +45,6 @@ public:
 
     // Called by BufferManager to reset statistics about a page.
     // indexOfPage is the index into BufferManager::images.
-    //void reset(uint32_t indexOfPage);
 };
 
 #endif

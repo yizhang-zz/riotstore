@@ -106,7 +106,7 @@ public:
     /**
      * Returns the number of nonzero entries.
      */
-    virtual u32 nnz() const = 0;
+    virtual size_t nnz() const = 0;
 
     double sparsity() const { return double(nnz())/upperBound(); }
 

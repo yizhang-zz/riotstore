@@ -2,6 +2,7 @@
 #define PAGEREC_H
 
 #include "../common/common.h"
+#include <boost/pool/pool.hpp>
 
 class BufferManager;
 
@@ -13,7 +14,7 @@ public:
     PageRec *prev;
     PageRec *next;
     PID_t pid;
-	u32 pinCount;
+	int pinCount;
     bool dirty;
     PageRec()
     {
@@ -41,6 +42,15 @@ public:
 	void flush();
 	PID_t getPid() const;
 	char* getImage() const;
+};
+
+struct PageDealloc
+{
+    PageDealloc(boost::pool<> &p) : pool(p) { }
+    PageDealloc(const PageDealloc &other) : pool(other.pool) { }
+    void operator() (Page *p) { p->~Page(); pool.free(p); }
+private:
+    boost::pool<> &pool;
 };
 
 #endif

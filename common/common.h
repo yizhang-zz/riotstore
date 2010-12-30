@@ -123,10 +123,10 @@ typedef int64_t i64;
 //@}
 
 /// Key type.
-typedef uint32_t Key_t;
+typedef uint64_t Key_t;
 #define MAX_KEY (~((Key_t) 0))
 /// Key difference type.
-typedef int32_t KeyDiff_t;
+typedef int64_t KeyDiff_t;
 /// Datum type.
 typedef double Datum_t;
 

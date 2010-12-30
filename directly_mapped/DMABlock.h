@@ -16,7 +16,7 @@ class DMABlock : public Block<Key_t, Datum_t>
 protected:
     // header is placed at the end of the block
     struct Header {
-        u32 nnz;
+        size_t nnz;
     } *header;
 
     /// A data array that corresponds to the portion of the

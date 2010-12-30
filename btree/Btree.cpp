@@ -22,9 +22,9 @@ void BTree::init(const char *fileName, int fileFlag)
     file = new BitmapPagedFile(fileName, fileFlag);
     buffer = new BufferManager(file, config->btreeBufferSize);
     if (fileFlag&BitmapPagedFile::CREATE)
-	buffer->allocatePageWithPID(0, headerPage);
+        buffer->allocatePageWithPID(0, headerPage);
     else
-	buffer->readPage(0, headerPage);
+        buffer->readPage(0, headerPage);
     header = (Header*) headerPage->getImage();
 }
 
@@ -32,51 +32,51 @@ void BTree::init(const char *fileName, int fileFlag)
 void BTree::initBatching()
 {
     if (config->batchUseHistogram)
-	leafHist = new LeafHist(config->batchHistogramNum, header->endsBy);
+        leafHist = new LeafHist(config->batchHistogramNum, header->endsBy);
     else
-	leafHist = NULL;
+        leafHist = NULL;
     switch (config->batchMethod) {
     case kFWF:
-	batbuf = new BatchBufferFWF(config->batchBufferSize, this);
-	break;
+        batbuf = new BatchBufferFWF(config->batchBufferSize, this);
+        break;
     case kLRU:
-	if (config->batchUseHistogram) 
-	    batbuf = new BatchBufferLRU<HistPageId>(config->batchBufferSize, this);
-	else 
-	    batbuf = new BatchBufferLRU<BoundPageId>(config->batchBufferSize, this);
-	break;
+        if (config->batchUseHistogram) 
+            batbuf = new BatchBufferLRU<HistPageId>(config->batchBufferSize, this);
+        else 
+            batbuf = new BatchBufferLRU<BoundPageId>(config->batchBufferSize, this);
+        break;
     case kLS:
-	if (config->batchUseHistogram)
-	    batbuf = new BatchBufferLS<HistPageId>(config->batchBufferSize, this);
-	else
-	    batbuf = new BatchBufferLS<BoundPageId>(config->batchBufferSize, this);
-	break;
+        if (config->batchUseHistogram)
+            batbuf = new BatchBufferLS<HistPageId>(config->batchBufferSize, this);
+        else
+            batbuf = new BatchBufferLS<BoundPageId>(config->batchBufferSize, this);
+        break;
     case kLS_RAND:
-	if (config->batchUseHistogram)
-	    batbuf = new BatchBufferLSRand<HistPageId>(config->batchBufferSize, this);
-	else
-	    batbuf = new BatchBufferLSRand<BoundPageId>(config->batchBufferSize, this);
-	break;
+        if (config->batchUseHistogram)
+            batbuf = new BatchBufferLSRand<HistPageId>(config->batchBufferSize, this);
+        else
+            batbuf = new BatchBufferLSRand<BoundPageId>(config->batchBufferSize, this);
+        break;
     case kLG:
-	if (config->batchUseHistogram)
-	    batbuf = new BatchBufferLG<HistPageId>(config->batchBufferSize, this);
-	else
-	    batbuf = new BatchBufferLG<BoundPageId>(config->batchBufferSize, this);
-	break;
+        if (config->batchUseHistogram)
+            batbuf = new BatchBufferLG<HistPageId>(config->batchBufferSize, this);
+        else
+            batbuf = new BatchBufferLG<BoundPageId>(config->batchBufferSize, this);
+        break;
     case kLG_RAND:
-	if (config->batchUseHistogram)
-	    batbuf = new BatchBufferLGRand<HistPageId>(config->batchBufferSize, this);
-	else
-	    batbuf = new BatchBufferLGRand<BoundPageId>(config->batchBufferSize, this);
-	break;
+        if (config->batchUseHistogram)
+            batbuf = new BatchBufferLGRand<HistPageId>(config->batchBufferSize, this);
+        else
+            batbuf = new BatchBufferLGRand<BoundPageId>(config->batchBufferSize, this);
+        break;
     default:
-	batbuf = NULL;
+        batbuf = NULL;
     }
 }
 #endif
 
 BTree::BTree(const char *fileName, Key_t endsBy,
-	     char leafSpType, char intSpType, bool useDenseLeaf)
+        char leafSpType, char intSpType, bool useDenseLeaf)
 {
     // The tree should have one leaf node after initialization.
     // The leaf node also serves as the root node.
@@ -92,7 +92,7 @@ BTree::BTree(const char *fileName, Key_t endsBy,
     PageHandle ph;
     buffer->allocatePage(ph);
 
-	header->storageType = BTREE;
+    header->storageType = BTREE;
     header->endsBy = endsBy;
     header->depth = 1;
     header->nLeaves = 1;
@@ -103,15 +103,14 @@ BTree::BTree(const char *fileName, Key_t endsBy,
     header->useDenseLeaf = useDenseLeaf;
     headerPage->markDirty();
 
-    Block *block = Block::create(Block::kSparseLeaf, ph, 0, header->endsBy);
-    onNewLeaf(block);
-    delete block;
+    SparseLeafBlock block(ph, 0, header->endsBy, true);
+    onNewLeaf(&block);
 }
 
 BTree::BTree(const char *fileName)
 {
     init(fileName, 0);
-	assert(header->storageType == BTREE);
+    assert(header->storageType == BTREE);
 #ifdef USE_BATCH_BUFFER
     initBatching();
 #endif
@@ -126,11 +125,11 @@ BTree::~BTree()
     headerPage.reset();
 #ifdef USE_BATCH_BUFFER
     if (leafHist) {
-	//leafHist->print();
-	delete leafHist;
+        //leafHist->print();
+        delete leafHist;
     }
     if (batbuf)
-	delete batbuf;
+        delete batbuf;
 #endif
     delete buffer;
     delete file;
@@ -138,45 +137,45 @@ BTree::~BTree()
     delete internalSplitter;
 }
 
-int BTree::search(Key_t key, Cursor &cursor)
+int BTree::search(Key_t key, Cursor &cursor, BlockPool &pool)
 {
     int &current = cursor.current;
 
     for (; current>=0; --current) {
-	Block *&block = cursor[current].block;
-	if (block->inRange(key))
-	    break;
-	delete block;
-	block = NULL;
+        Block *&block = cursor[current].block;
+        if (block->inRange(key))
+            break;
+        block->~Block();
+        block = NULL;
     }
     // current should be >=0 if cursor's trace wasn't empty, and -1 if
     // otherwise
 
     if (current < 0) {
-	// start with the root page
-	PageHandle ph;
-	buffer->readPage(header->root, ph);
-	cursor[0].block = Block::create(ph, 0, header->endsBy);
-	current = 0;
+        // start with the root page
+        PageHandle ph;
+        buffer->readPage(header->root, ph);
+        cursor[0].block = pool.get(ph, 0, header->endsBy);
+        current = 0;
     }
 
     for (; current < header->depth-1; current++) {
-	PIDBlock *pidblock = static_cast<PIDBlock*>(cursor[current].block);
+        PIDBlock *pidblock = static_cast<PIDBlock*>(cursor[current].block);
         int &idx = cursor[current].index;
         int ret = pidblock->search(key, idx);
         // idx is the position where the key should be inserted at.
-	// To follow the child pointer, the position should be
-	// decremented.
+        // To follow the child pointer, the position should be
+        // decremented.
         if (ret == kNotFound)
             --idx;
         Key_t l, u;
         PID_t child;
-	PageHandle ph;
+        PageHandle ph;
         pidblock->get(idx, l, child);
         buffer->readPage(child, ph);
         u = pidblock->size()==idx+1 ? pidblock->getUpperBound() : pidblock->key(idx+1);
         // load child block
-        cursor[current+1].block = Block::create(ph, l, u);
+        cursor[current+1].block = pool.get(ph, l, u);
     }
 
     // already at the leaf level
@@ -202,20 +201,20 @@ void BTree::locate(Key_t key, BoundPageId &pageId)
     InternalBlock *block;
 
     for (int i=1; i<header->depth; i++) {
-	buffer->readPage(pid, ph);
-	// read, do not creat!
-	block = new InternalBlock(ph, l, u, false);
+        buffer->readPage(pid, ph);
+        // read, do not creat!
+        block = new InternalBlock(ph, l, u, false);
         int idx;
         // idx is the position where the key should be inserted at.
-	// To follow the child pointer, the position should be
-	// decremented.
+        // To follow the child pointer, the position should be
+        // decremented.
         if (block->search(key, idx) == kNotFound)
             idx--;
-	block->get(idx, l, pid);
-	++idx;
+        block->get(idx, l, pid);
+        ++idx;
         u = block->size()==idx ? block->getUpperBound() : block->key(idx);
         //u = block->key(idx+1);
-	delete block;
+        delete block;
     }
     pageId.lower = l;
     pageId.upper = u;
@@ -228,22 +227,23 @@ void BTree::locate(Key_t key, BoundPageId &pageId)
 int BTree::get(const Key_t &key, Datum_t &datum)
 {
     if (key >= header->endsBy) {
-	datum = Block::kDefaultValue;
-	return kOutOfBound;
+        datum = Block::kDefaultValue;
+        return kOutOfBound;
     }
 
 #ifdef USE_BATCH_BUFFER
     if (batbuf && batbuf->find(key, datum))
-	return kOK;
+        return kOK;
 #endif
-	
+
     Cursor cursor(buffer);
-    return getHelper(key, datum, cursor);
+    BlockPool pool;
+    return getHelper(key, datum, cursor, pool);
 }
 
-int BTree::getHelper(Key_t key, Datum_t &datum, Cursor &cursor)
+int BTree::getHelper(Key_t key, Datum_t &datum, Cursor &cursor, BlockPool &pool)
 {
-    if (search(key, cursor) != kOK) {
+    if (search(key, cursor, pool) != kOK) {
         datum = Block::kDefaultValue;
         return kOK;
     }
@@ -254,28 +254,29 @@ int BTree::getHelper(Key_t key, Datum_t &datum, Cursor &cursor)
 int BTree::put(const Key_t &key, const Datum_t &datum)
 {
     if (key >= header->endsBy)
-	return kOutOfBound;
+        return kOutOfBound;
 
 #ifdef DTRACE_SDT
     RIOT_BTREE_PUT();
 #endif
 #ifdef USE_BATCH_BUFFER
     if (batbuf) {
-	batbuf->put(key, datum);
-	return kOK;
+        batbuf->put(key, datum);
+        return kOK;
     }
 #endif
-	
+
     Cursor cursor(buffer);
-    return putHelper(key, datum, cursor);
+    BlockPool pool;
+    return putHelper(key, datum, cursor, pool);
 }
 
 // Caller should guarantee that datum is not kDefaultValue, i.e.,
 // this is not a remove operation.
-int BTree::putHelper(Key_t key, Datum_t datum, Cursor &cursor)
+int BTree::putHelper(Key_t key, Datum_t datum, Cursor &cursor, BlockPool &pool)
 {
     cursor.key = key;  // remember this key
-    int ret = search(key, cursor);
+    int ret = search(key, cursor, pool);
     assert(cursor.current >= 0);
 
     LeafBlock *block = static_cast<LeafBlock*>(cursor[cursor.current].block);
@@ -287,16 +288,14 @@ int BTree::putHelper(Key_t key, Datum_t datum, Cursor &cursor)
     case kOK:
         break;
     case kOverflow:
-        split(cursor);
+        split(cursor, pool);
         break;
         //#ifndef DISABLE_DENSE_LEAF
     case kSwitchFormat:
-        if (header->useDenseLeaf) {
-            cursor[cursor.current].block = block->switchFormat();
-            delete block;
-        }
+        if (header->useDenseLeaf)
+            switchFormat(&cursor[cursor.current].block, pool);
         else
-            split(cursor);
+            split(cursor, pool);
         //TODO: if needed, cursor->indices[cursor->current] should be
         //updated by calling the new block's search method
         break;
@@ -308,15 +307,15 @@ int BTree::putHelper(Key_t key, Datum_t datum, Cursor &cursor)
     return ret;
 }
 
-void BTree::split(Cursor &cursor)
+void BTree::split(Cursor &cursor, BlockPool &pool)
 {
     PageHandle newPh;
     int cur = cursor.current;
     LeafBlock *block = static_cast<LeafBlock*>(cursor[cur].block);
     LeafBlock *newLeafBlock;
     buffer->allocatePage(newPh);
-    if (leafSplitter->split(&block, &newLeafBlock, newPh)) {
-	cursor[cur].block = block;
+    if (leafSplitter->split(block, &newLeafBlock, newPh, pool)) {
+        switchFormat(&cursor[cur].block, pool);
     }
     onNewLeaf(newLeafBlock);
     block->setNextLeaf(newPh->getPid());
@@ -326,64 +325,64 @@ void BTree::split(Cursor &cursor)
     Block *tempBlock = newBlock;
     // If the inserted key ends up in the new block
     if (newLeafBlock->inRange(cursor.key)) {
-	// the original block won't be in the trace anymore
-	// so mark it as temp and it will be deleted shortly
-	tempBlock = block;
-	// store the new block in the trace
-	cursor[cur].block = newLeafBlock;
-	cursor[cur].index -= block->size();
+        // the original block won't be in the trace anymore
+        // so mark it as temp and it will be deleted shortly
+        tempBlock = block;
+        // store the new block in the trace
+        cursor[cur].block = newLeafBlock;
+        cursor[cur].index -= block->size();
     }
     for (cur--; cur>=0; cur--) {
         PIDBlock *parent = static_cast<InternalBlock*>(cursor[cur].block);
         PID_t newPid = newBlock->pageHandle->getPid();
         ret = parent->put(cursor[cur].index+1, newBlock->getLowerBound(), newPid);
-	//assert(indexTemp == cursor[cur].index+1);
-	if (newBlock->inRange(cursor.key))
-	    cursor[cur].index++;
+        //assert(indexTemp == cursor[cur].index+1);
+        if (newBlock->inRange(cursor.key))
+            cursor[cur].index++;
         //buffer->markPageDirty(parent->pageHandle);
         //buffer->unpinPage(tempBlock->pageHandle);
-        delete tempBlock;
+        tempBlock->~Block(); // explicitly destruct
         if (ret != kOverflow)
             break;
         buffer->allocatePage(newPh);
-	PIDBlock *newSibling;
-        if (internalSplitter->split(&parent, &newSibling, newPh)) {
-	    cursor[cur].block = parent;
-	}
+        PIDBlock *newSibling;
+        if (internalSplitter->split(parent, &newSibling, newPh, pool)) {
+            switchFormat(&cursor[cur].block, pool);
+        }
 #ifdef DTRACE_SDT
-	RIOT_BTREE_SPLIT_INTERNAL();
+        RIOT_BTREE_SPLIT_INTERNAL();
 #endif
-	newBlock = newSibling;
-	tempBlock = newSibling;
-	if (newSibling->inRange(cursor.key)) {
-	    tempBlock = parent;
-	    cursor[cur].block = newSibling;
-	    cursor[cur].index -= parent->size();
-	}
+        newBlock = newSibling;
+        tempBlock = newSibling;
+        if (newSibling->inRange(cursor.key)) {
+            tempBlock = parent;
+            cursor[cur].block = newSibling;
+            cursor[cur].index -= parent->size();
+        }
     }
     if (ret == kOverflow) {
         // overflow has propagated to the root
         PageHandle rootPh;
         buffer->allocatePage(rootPh);
-        InternalBlock *newRoot = new InternalBlock(rootPh, 0,
-						   header->endsBy, true);
+        InternalBlock *newRoot = static_cast<InternalBlock*>(
+                pool.create(Block::kInternal, rootPh, 0, header->endsBy));
         PID_t oldRootPid = header->root;
-	//int indexTemp;
+        //int indexTemp;
         newRoot->put(0, 0, oldRootPid);
         PID_t newChildPid = newPh->getPid();
         newRoot->put(1, newBlock->getLowerBound(), newChildPid);
-	cursor.grow();
-	cursor[0].block = newRoot;
-	if (newBlock->inRange(cursor.key)) {
-	    cursor[0].index = 1;
-	}
-	else {
-	    cursor[0].index = 0;
-	}
+        cursor.grow();
+        cursor[0].block = newRoot;
+        if (newBlock->inRange(cursor.key)) {
+            cursor[0].index = 1;
+        }
+        else {
+            cursor[0].index = 0;
+        }
         header->root = rootPh->getPid();
         header->depth++;
-	headerPage->markDirty();
-        delete tempBlock;
+        headerPage->markDirty();
+        tempBlock->~Block();
     }
 }
 
@@ -439,10 +438,11 @@ void BTree::print(bool statOnly)
 int BTree::batchPut(i64 putCount, const Entry *puts)
 {
     Cursor cursor(buffer);
+    BlockPool pool;
     for (i64 i=0; i<putCount; ++i) {
         if (puts[i].key >= header->endsBy)
             continue;
-        putHelper(puts[i].key, puts[i].datum, cursor);
+        putHelper(puts[i].key, puts[i].datum, cursor, pool);
     }
     return AC_OK;
 }
@@ -450,11 +450,12 @@ int BTree::batchPut(i64 putCount, const Entry *puts)
 int BTree::batchPut(std::vector<Entry> &v)
 {
     Cursor cursor(buffer);
+    BlockPool pool;
     int size = v.size();
     for (int i=0; i<size; ++i) {
-	if (v[i].key >= header->endsBy)
-	    continue;
-	putHelper(v[i].key, v[i].datum, cursor);
+        if (v[i].key >= header->endsBy)
+            continue;
+        putHelper(v[i].key, v[i].datum, cursor, pool);
     }
     return AC_OK;
 }
@@ -462,11 +463,12 @@ int BTree::batchPut(std::vector<Entry> &v)
 int BTree::batchGet(i64 getCount, Entry *gets)
 {
     Cursor cursor(buffer);
+    BlockPool pool;
     for (i64 i=0; i<getCount; ++i) {
-	if (gets[i].key < header->endsBy) 
-	    getHelper(gets[i].key, *gets[i].pdatum, cursor);
-	else
-	    *gets[i].pdatum = Block::kDefaultValue;
+        if (gets[i].key < header->endsBy) 
+            getHelper(gets[i].key, *gets[i].pdatum, cursor, pool);
+        else
+            *gets[i].pdatum = Block::kDefaultValue;
     }
 
     return AC_OK;
@@ -475,9 +477,10 @@ int BTree::batchGet(i64 getCount, Entry *gets)
 int BTree::batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &v)
 {
     Cursor cursor(buffer);
-    search(beginsAt, cursor);
+    BlockPool pool;
+    search(beginsAt, cursor, pool);
     Cursor cursor_end(buffer);
-    search(endsBy-1, cursor_end); // upperbound is exclusive
+    search(endsBy-1, cursor_end, pool); // upperbound is exclusive
     PID_t pid_end = cursor_end[cursor_end.current].block->pageHandle->getPid();
 
     LeafBlock *block = static_cast<LeafBlock*>(cursor[cursor.current].block);
@@ -485,14 +488,14 @@ int BTree::batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &v)
     PID_t pid_last = block->pageHandle->getPid();
     PID_t pid = block->getNextLeaf();
     while(pid != INVALID_PID && pid_last != pid_end) {
-	PageHandle ph;
-	buffer->readPage(pid, ph);
-	// we don't know the bounds, but that won't affect the batchGet op
-	block = static_cast<LeafBlock*>(Block::create(ph, 0, 0));
-	block->batchGet(beginsAt, endsBy, v);
-	pid_last = pid;
-	pid = block->getNextLeaf();
-	delete block;
+        PageHandle ph;
+        buffer->readPage(pid, ph);
+        // we don't know the bounds, but that won't affect the batchGet op
+        block = static_cast<LeafBlock*>(pool.get(ph, 0, 0));
+        block->batchGet(beginsAt, endsBy, v);
+        pid_last = pid;
+        pid = block->getNextLeaf();
+        block->~Block(); // release resource
     }
     return kOK;
 }
@@ -504,6 +507,33 @@ void BTree::flush()
         batbuf->flushAll();
 #endif
     buffer->flushAllPages();
+}
+
+void BTree::switchFormat(Block **orig_, BlockPool &pool)
+{
+    LeafBlock *orig = static_cast<LeafBlock*>(*orig_);
+	int num = orig->sizeWithOverflow();
+	Key_t *keys = new Key_t[num];
+	Datum_t *vals = new Datum_t[num];
+	(orig)->getRangeWithOverflow(0,num,keys,vals);
+	Block *block;
+    if ((orig)->type() == Block::kDenseLeaf)
+        block = pool.create(Block::kSparseLeaf,
+                (orig)->pageHandle, (orig)->lower, (orig)->upper);
+    else if ((orig)->type() == Block::kSparseLeaf)
+        block = pool.create(Block::kDenseLeaf,
+                (orig)->pageHandle, (orig)->lower, (orig)->upper);
+    else {
+        Error("unknown format");
+        exit(1);
+    }
+	int numPut;
+	((LeafBlock*)block)->putRangeSorted(keys,vals,num,&numPut);
+	assert(num==numPut);
+	delete[] keys;
+	delete[] vals;
+    (orig)->~Block();
+	*orig_ = block;
 }
 
 ArrayInternalIterator *BTree::createIterator(IteratorType t, Key_t &beginsAt, Key_t &endsBy)

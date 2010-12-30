@@ -10,18 +10,23 @@ using namespace std;
 double BufferManager::accessTime = 0.0;
 #endif
 
+void BufferManager::printStat()
+{
+    cout<<"total pin count="<<totalPinCount<<endl;
+}
+
 // Constructs a BufferManager for a paged storage container with a
 // memory buffer that holds a given number of pages.
-BufferManager::BufferManager(PagedStorageContainer *s, uint32_t n,
-                             PageReplacer *pr) {
+BufferManager::BufferManager(PagedStorageContainer *s, size_t n,
+        PageReplacer *pr)
+: storage(s), numSlots(n), ppool(sizeof(Page)), pageDealloc(ppool) {
+    totalPinCount = 0;
     //packer = NULL;
     if (pr)
         pageReplacer = pr;
     else
         pageReplacer = new LRUPageReplacer();
     
-    numSlots = n;
-    storage = s;
     // aligned allocation
     pool = allocPageImage(numSlots);
     if (pool == NULL) {
@@ -33,7 +38,7 @@ BufferManager::BufferManager(PagedStorageContainer *s, uint32_t n,
     // handles = new PageHandle[numSlots];
     headers = new PageRec[numSlots];
     //freelist = headers;
-    for (u32 i=0; i<numSlots; i++) {
+    for (size_t i=0; i<numSlots; i++) {
         headers[i].image = (char*)pool+i*PAGE_SIZE;
         pageReplacer->add(headers+i);
     }
@@ -46,7 +51,7 @@ BufferManager::BufferManager(PagedStorageContainer *s, uint32_t n,
 BufferManager::~BufferManager() {
     flushAllPages();
 #ifdef DEBUG
-	for (u32 i=0; i<numSlots; i++)
+	for (size_t i=0; i<numSlots; i++)
 		assert(headers[i].pinCount == 0);
 #endif
     //for (int i=0; i<numSlots; i++) {
@@ -88,9 +93,8 @@ RC_t BufferManager::allocatePage(PageHandle &ph) {
     //Debug("with page %10d\n", pid);
 
 	rec->pid = pid;
-    //rec->pinCount = 1;
     rec->dirty = true;
-    ph = PageHandle(new Page(rec, this));
+    ph = make_ph(rec);
     pageHash->insert(PageHashMap::value_type(pid, rec));
 #ifdef PROFILE_BUFMAN
 	TIMESTAMP(t2);
@@ -127,11 +131,9 @@ RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
     }
     //Debug("with page %10d\n", pid);
     
-    //ph = rec;
     rec->pid = pid;
-    //rec->pinCount = 1;
     rec->dirty = true;
-	ph = PageHandle(new Page(rec, this));
+	ph = make_ph(rec);
     pageHash->insert(PageHashMap::value_type(pid, rec));
 #ifdef PROFILE_BUFMAN
 	TIMESTAMP(t2);
@@ -182,9 +184,7 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
         rec = it->second;
         if (rec->pinCount == 0)
             pageReplacer->remove(rec);
-        //rec->pinCount++;
-        //ph = rec;
-		ph = PageHandle(new Page(rec, this));
+		ph = make_ph(rec);
     }
     else {
         if ((ret=replacePage(rec)) != RC_OK) {
@@ -200,9 +200,7 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
             return ret;
         }
         rec->dirty = false;
-        //rec->pinCount = 1;
-        //ph = rec;
-		ph = PageHandle(new Page(rec, this));
+		ph = make_ph(rec);
         pageHash->insert(PageHashMap::value_type(pid, rec));
     }
     return RC_OK;
@@ -217,9 +215,7 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
         rec = it->second;
         if (rec->pinCount == 0)
             pageReplacer->remove(rec);
-        //rec->pinCount++;
-        //ph = rec;
-		ph = PageHandle(new Page(rec, this));
+		ph = make_ph(rec);
     }
     else {
         if ((ret=replacePage(rec)) != RC_OK) {
@@ -240,9 +236,7 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
             }
             rec->dirty = true;
         }
-        //rec->pinCount = 1;
-        //ph = rec;
-		ph = PageHandle(new Page(rec, this));
+		ph = make_ph(rec);
         pageHash->insert(PageHashMap::value_type(pid, rec));
     }
     return RC_OK;
@@ -266,6 +260,7 @@ RC_t BufferManager::pinPage(PageRec *rec) {
     //PageHashMap::iterator it = pageHash->find(rec->pid);
     //assert(it != pageHash->end());
     rec->pinCount++;
+    totalPinCount++;
     return RC_OK;
 }
 
@@ -276,6 +271,7 @@ RC_t BufferManager::unpinPage(PageRec *rec) {
     //PageHashMap::iterator it = pageHash->find(rec->pid);
     //assert(it != pageHash->end());
     rec->pinCount--;
+    totalPinCount--;
     if (rec->pinCount == 0) {
         // Access to this page has all terminated;
         // Let PageReplacer manager this page

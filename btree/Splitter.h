@@ -3,6 +3,7 @@
 
 #include <gsl/gsl_errno.h>
 #include "BtreeBlock.h"
+#include "BlockPool.h"
 #include "common/Config.h"
 
 void riot_handler(const char *reason, const char *file, int line, int gsl_errno);
@@ -31,17 +32,17 @@ namespace Btree
 		 * @param new_block The new block.
 		 * @param ph The page handle for the new node.
 		 * @param new_image The location where the new node should be stored.
-		 * @return 0 if orig's format is not changed, nonzero otherwise.
+		 * @return 0 if orig's format should change, nonzero otherwise.
 		 */
-		virtual int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
-						  PageHandle newPh) = 0;
+		virtual int split(BlockT<Value> *orig, BlockT<Value> **newBlock,
+						  PageHandle newPh, BlockPool &pool) = 0;
 		virtual Splitter<Value> *clone() = 0;
     protected:
         int splitTypes(BlockT<Value> *block, Key_t *keys, int size, int sp, Key_t spKey, Block::Type types[2]);
         //void splitTypes(BlockT<Value> *block, int sp, Key_t spKey,
         //        Block::Type &left, Block::Type &right);
-		int splitHelper(BlockT<Value> **orig, BlockT<Value> **newBlock,
-						PageHandle newPh,
+		int splitHelper(BlockT<Value> *orig, BlockT<Value> **newBlock,
+						PageHandle newPh, BlockPool &pool,
 						int sp,	Key_t spKey, Key_t *keys, Value *values,
                         Block::Type types[2]);
         bool useDenseLeaf;
@@ -61,8 +62,8 @@ namespace Btree
         {
         }
 
-		int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
-				  PageHandle newPh);
+		int split(BlockT<Value> *orig, BlockT<Value> **newBlock,
+                PageHandle newPh, BlockPool &pool);
 
 		Splitter<Value> *clone()
 		{
@@ -91,8 +92,8 @@ namespace Btree
                 boundary = config->sparseLeafCapacity;
         }
 
-		int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
-				  PageHandle newPh);
+		int split(BlockT<Value> *orig, BlockT<Value> **newBlock,
+                PageHandle newPh, BlockPool &pool);
 
 		Splitter<Value> *clone()
 		{
@@ -109,8 +110,8 @@ namespace Btree
     {
     public:
         RSplitter(bool useDenseLeaf) : Splitter<Value>(useDenseLeaf) {}
-		int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
-				  PageHandle newPh);
+		int split(BlockT<Value> *orig, BlockT<Value> **newBlock,
+                PageHandle newPh, BlockPool &pool);
 		Splitter<Value> *clone()
 		{
 			return new RSplitter<Value>(this->useDenseLeaf);
@@ -131,8 +132,8 @@ namespace Btree
 			return new SSplitter<Value>(this->useDenseLeaf);
 		}
 
-		int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
-				  PageHandle newPh);
+		int split(BlockT<Value> *orig, BlockT<Value> **newBlock,
+                PageHandle newPh, BlockPool &pool);
     private:
 		double sValue(int b1, int b2, int d1, int d2);
     };
@@ -146,8 +147,8 @@ namespace Btree
 		 * than the given threshold, then split so as to achieve the best
 		 * density; otherwise fallback to the M scheme.
 		 */
-		int split(BlockT<Value> **orig, BlockT<Value> **newBlock,
-				  PageHandle newPh);
+		int split(BlockT<Value> *orig, BlockT<Value> **newBlock,
+                PageHandle newPh, BlockPool &pool);
 
         TSplitter(double th, bool useDenseLeaf) : Splitter<Value>(useDenseLeaf)
                                                   ,threshold(th)

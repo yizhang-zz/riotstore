@@ -288,7 +288,7 @@ ifeq ($(OS),SunOS)
 # The Sun Performance Library includes both LAPACK and the BLAS:
 CC = gcc
 CPLUSPLUS = g++
-CFLAGS += -m64 -g -O3 -fPIC
+CFLAGS += -m64 -O3 -fPIC
 BLAS = -L/usr/local/lib -lf77blas -latlas -lgfortran
 LAPACK = -L/usr/local/lib -llapack -lcblas
 endif

@@ -4,6 +4,7 @@
 #include "lower/LinearStorage.h"
 #include "BtreeBlock.h"
 #include "BtreeCursor.h"
+#include "BlockPool.h"
 #include "Splitter.h"
 #include "BatchBuffer.h"
 #include "LeafHist.h"
@@ -33,11 +34,11 @@ private:
     struct Header {
 		int storageType;
         Key_t endsBy;	/// all keys >=0 and < endsBy
-        u32 nLeaves;	/// number of leaf nodes
+        size_t nLeaves;	/// number of leaf nodes
         int depth;		/// depth of tree; root is at depth 0
         PID_t root;		/// PID of root
         PID_t firstLeaf;	/// PID of first leaf node
-        u32 nnz;    /// number of nonzero entries
+        size_t nnz;    /// number of nonzero entries
         char leafSpType;
         char intSpType;
         bool useDenseLeaf;
@@ -50,7 +51,7 @@ private:
     PageHandle headerPage;
     static const PID_t headerPID = 0;
 
-    void split(Cursor &cursor);
+    void split(Cursor &cursor, BlockPool &pool);
 
     PID_t lastPageInBatch; // for batch insertion
     int   lastPageCapacity;
@@ -91,7 +92,7 @@ public:
 
     // cursor can be a valid path, in which case the search is
     // incremental (first up the tree and then down)
-    int search(Key_t key, Cursor &cursor);
+    int search(Key_t key, Cursor &cursor, BlockPool &pool);
 
 #ifdef USE_BATCH_BUFFER
     // finds the PID of the leaf block where key should go into
@@ -114,9 +115,10 @@ public:
         int put(Iterator begin, Iterator end)
         {
             Cursor cursor(buffer);
+            BlockPool pool;
             int ret = 0;
             for (; begin != end; ++begin) {
-                putHelper(begin->key, begin->datum, cursor);
+                putHelper(begin->key, begin->datum, cursor, pool);
                 ++ret;
             }
             return ret;
@@ -137,9 +139,9 @@ public:
     }
 #endif
 
-    u32   numLeaves() const { return header->nLeaves; }
+    size_t   numLeaves() const { return header->nLeaves; }
     Key_t upperBound() const { return header->endsBy; }
-    u32   nnz() const { return header->nnz; }
+    size_t   nnz() const { return header->nnz; }
     /*
        void allocatePage(PID_t &pid, PageHandle &ph) {
        buffer->allocatePage(ph);
@@ -170,8 +172,9 @@ private:
     void initBatching();
 #endif
     void print(PID_t pid, Key_t beginsAt, Key_t endsBy, int depth, PrintStat*, bool statOnly);
-    int putHelper(Key_t key, Datum_t datum, Cursor &cursor);
-    int getHelper(Key_t key, Datum_t &datum, Cursor &cursor);
+    int putHelper(Key_t key, Datum_t datum, Cursor &cursor, BlockPool &pool);
+    int getHelper(Key_t key, Datum_t &datum, Cursor &cursor, BlockPool &pool);
+    void switchFormat(Block **orig, BlockPool &pool);
 
     void onNewLeaf(Block *leaf)
     {

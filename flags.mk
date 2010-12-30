@@ -8,7 +8,8 @@ OS = $(shell uname -s)
 
 debug ?= 1
 ifeq ($(debug), 1)
-	CXXFLAGS += -DDEBUG
+	CXXFLAGS += -g -DDEBUG
+	SOFLAG += -g
 else
 	CXXFLAGS += -O3 -DNDEBUG
 	SOFLAG += -O3
@@ -16,9 +17,9 @@ endif
 
 ifeq ($(OS), SunOS)
 	CXX = g++
-	CXXFLAGS += -g -m64 -msse3 -fPIC -Wall
+	CXXFLAGS += -m64 -msse3 -fPIC -Wall
 	DEPFLAGS = -MM -MG
-	SOFLAG += -g -m64 -msse3 -shared 
+	SOFLAG += -m64 -msse3 -shared 
 	LDFLAGS += 
 	AR = ar rcs
 	#CXX = CC

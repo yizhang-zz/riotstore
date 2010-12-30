@@ -130,7 +130,6 @@ public:
 	 * and is omitted. */
 	static const Datum_t kDefaultValue;
 	static inline bool IsDefaultValue(Datum_t x) { return x == kDefaultValue; }
-	static Block *create(Type t, PageHandle ph, Key_t beingsAt, Key_t endsBy);
 	static Block *create(PageHandle ph, Key_t beingsAt, Key_t endsBy);
 
 	Block(PageHandle ph, Key_t _lower, Key_t _upper)
@@ -243,10 +242,6 @@ public:
 	virtual int put(int index, Key_t key, const T &v) = 0;
 	virtual int del(int index) = 0;
 	virtual int putRangeSorted(Key_t *keys, T *values, int num, int *numPut) = 0;
-
-//#ifndef DISABLE_DENSE_LEAF
-	virtual BlockT<T> *switchFormat() = 0;
-//#endif
 
 	struct OverflowEntry
 	{

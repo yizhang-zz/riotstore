@@ -49,32 +49,26 @@ int Splitter<Value>::splitTypes(BlockT<Value> *block, Key_t *keys, int size,
 }
 
 template<class Value>
-int Splitter<Value>::splitHelper(BlockT<Value> **orig, BlockT<Value> **newBlock,
-								 PageHandle newPh,
+int Splitter<Value>::splitHelper(BlockT<Value> *orig, BlockT<Value> **newBlock,
+								 PageHandle newPh, BlockPool &pool,
 								 int sp, Key_t spKey, Key_t *keys, Value *values, Block::Type types[2])
 								 
 {
-	int newSize = (*orig)->sizeWithOverflow() - sp;
+	int newSize = orig->sizeWithOverflow() - sp;
 	int numPut;
 	//Block::Type leftType, rightType;
 	//splitTypes(*orig, sp, spKey, leftType, rightType);
-	*newBlock = static_cast<BlockT<Value>*>(Block::create(types[1], newPh,
-														  spKey,
-														  (*orig)->getUpperBound()));
+	*newBlock = static_cast<BlockT<Value>*>(
+            pool.create(types[1], newPh, spKey,
+                orig->getUpperBound()));
 	(*newBlock)->putRangeSorted(keys, values, newSize, &numPut);
-	(*orig)->truncate(sp, spKey);
-	if (types[0] != (*orig)->type()) {
-		BlockT<Value> *newLeft = (*orig)->switchFormat();
-		delete *orig;
-		*orig = newLeft;
-		return 1;  // notify caller
-	}
-	return 0;
+	orig->truncate(sp, spKey);
+	return (types[0] != orig->type());
 }
 
 template<class Value>
-int MSplitter<Value>::split(BlockT<Value> **orig, BlockT<Value> **newBlock,
-							PageHandle newPh)
+int MSplitter<Value>::split(BlockT<Value> *orig, BlockT<Value> **newBlock,
+							PageHandle newPh, BlockPool &pool)
 {
     /*
      * orig's dense/sparse format will not be changed for efficiency
@@ -83,16 +77,16 @@ int MSplitter<Value>::split(BlockT<Value> **orig, BlockT<Value> **newBlock,
      * format is used.
      */
 
-    int size = (*orig)->sizeWithOverflow();
+    int size = orig->sizeWithOverflow();
     int sp = size / 2; // split before the sp-th record
 	//int newSize = size-sp; // size of new block
 	// get the second half block
 	Key_t *keys =  new Key_t[size];
 	Value *values =  new Value[size];
-	(*orig)->getRangeWithOverflow(0, size, keys, values);
+	orig->getRangeWithOverflow(0, size, keys, values);
     Block::Type types[2];
-    splitTypes(*orig, keys, size, sp, keys[sp], types);
-	int ret = this->splitHelper(orig, newBlock, newPh, sp, keys[sp],
+    splitTypes(orig, keys, size, sp, keys[sp], types);
+	int ret = this->splitHelper(orig, newBlock, newPh, pool, sp, keys[sp],
 							 keys+sp, values+sp, types);
 	delete[] keys;
 	delete[] values;
@@ -100,10 +94,9 @@ int MSplitter<Value>::split(BlockT<Value> **orig, BlockT<Value> **newBlock,
 }
 
 template<class Value>
-int BSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
-							 PageHandle newPh)
+int BSplitter<Value>::split(BlockT<Value> *orig, BlockT<Value> **newBlock,
+							PageHandle newPh, BlockPool &pool)
 {
-	BlockT<Value> *&orig = *orig_;
     // start from the median and find the boundary closest to the median key
     int left, right, sp;
     int size = orig->sizeWithOverflow();
@@ -146,7 +139,7 @@ int BSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
         }
         left--;
     }
-	int ret = this->splitHelper(orig_, newBlock, newPh, sp, spKey,
+	int ret = this->splitHelper(orig, newBlock, newPh, pool, sp, spKey,
 							 keys+sp, values+sp, types);
 	delete[] keys;
 	delete[] values;
@@ -154,14 +147,13 @@ int BSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 }
 
 template<class Value>
-int RSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
-							 PageHandle newPh)
+int RSplitter<Value>::split(BlockT<Value> *orig, BlockT<Value> **newBlock,
+							PageHandle newPh, BlockPool &pool)
 {
 	static double capacities[] = {config->internalCapacity,
 								  config->sparseLeafCapacity,
 								  0,
 								  config->denseLeafCapacity};
-	BlockT<Value> *&orig = *orig_;
 	int size = orig->sizeWithOverflow();
 	Key_t lower = orig->getLowerBound();
 	Key_t upper = orig->getUpperBound();
@@ -194,7 +186,7 @@ int RSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 	}
 	//std::cout<<"split before "<<sp<<", with ratio "<<max<<std::endl;
     splitTypes(orig, keys, size, sp, keys[sp], types);
-	int ret = this->splitHelper(orig_, newBlock, newPh, sp, keys[sp],
+	int ret = this->splitHelper(orig, newBlock, newPh, pool, sp, keys[sp],
 							 keys+sp, values+sp, types);
 	delete[] keys;
 	delete[] values;
@@ -209,14 +201,13 @@ void riot_handler(const char *reason, const char *file, int line, int gsl_errno)
 }
 
 template<class Value>
-int SSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
-							PageHandle newPh)
+int SSplitter<Value>::split(BlockT<Value> *orig, BlockT<Value> **newBlock,
+							PageHandle newPh, BlockPool &pool)
 {
 	static double capacities[] = {config->internalCapacity,
 								  config->sparseLeafCapacity,
 								  0,
 								  config->denseLeafCapacity};
-	BlockT<Value> *&orig = *orig_;
 	int size = orig->sizeWithOverflow();
 	Key_t lower = orig->getLowerBound();
 	Key_t upper = orig->getUpperBound();
@@ -242,7 +233,7 @@ int SSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 	}
 	//std::cout<<"split before "<<sp<<", with max S="<<max<<std::endl;
     splitTypes(orig, keys, size, sp, keys[sp], types); 
-	int ret = this->splitHelper(orig_, newBlock, newPh, sp, keys[sp],
+	int ret = this->splitHelper(orig, newBlock, newPh, pool, sp, keys[sp],
 							 keys+sp, values+sp, types);
 	delete[] keys;
 	delete[] values;
@@ -281,10 +272,9 @@ double SSplitter<Value>::sValue(int b1, int b2, int d1, int d2)
 }
 
 template<class Value>
-int TSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
-							PageHandle newPh)
+int TSplitter<Value>::split(BlockT<Value> *orig, BlockT<Value> **newBlock,
+							PageHandle newPh, BlockPool &pool)
 {
-	BlockT<Value> *&orig = *orig_;
 	int size = orig->sizeWithOverflow();
 	Key_t lower = orig->getLowerBound();
 	Key_t upper = orig->getUpperBound();
@@ -348,7 +338,7 @@ int TSplitter<Value>::split(BlockT<Value> **orig_, BlockT<Value> **newBlock,
 	
     Block::Type types[2];
     splitTypes(orig, keys, size, sp, spKey, types);
-	int ret = this->splitHelper(orig_, newBlock, newPh, sp, spKey,
+	int ret = this->splitHelper(orig, newBlock, newPh, pool, sp, spKey,
 							 keys+sp, values+sp, types);
 	delete[] keys;
 	delete[] values;

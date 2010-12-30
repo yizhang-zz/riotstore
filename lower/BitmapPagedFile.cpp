@@ -86,8 +86,8 @@ RC_t BitmapPagedFile::allocatePage(PID_t &pid) {
     }
 
     // check for empty slot in allocated header space
-	u32 numWords = NUM_BITS_HEADER / 32;
-    for(u32 k = 0; k < numWords; ++k) {
+	size_t numWords = NUM_BITS_HEADER / 32;
+    for(size_t k = 0; k < numWords; ++k) {
 		// check one word (4 bytes) at a time
         if(header[k] != ~(u32)0) {
             int bindex = findFirstZeroBit(header[k]);
@@ -207,7 +207,7 @@ RC_t BitmapPagedFile::flush()
     // make sure number of pages in file is consistent with numContentPages
 	struct stat s;
 	fstat(fd, &s);
-	u32 numTotalPages = NUM_HEADER_PAGES + numContentPages;
+	size_t numTotalPages = NUM_HEADER_PAGES + numContentPages;
     if(numTotalPages > s.st_size/PAGE_SIZE) {
         pwrite(fd, header, PAGE_SIZE, (numTotalPages-1)*PAGE_SIZE); // write any data
     }

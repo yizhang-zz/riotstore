@@ -15,22 +15,6 @@ using namespace boost;
 
 const Datum_t Block::kDefaultValue = 0.0;
 
-Block * Block::create(Type t, PageHandle ph, Key_t beginsAt, Key_t endsBy)
-{
-	switch (t) {
-	case kInternal:
-		return new InternalBlock(ph, beginsAt, endsBy, true);
-//#ifndef DISABLE_DENSE_LEAF
-	case kDenseLeaf:
-		return new DenseLeafBlock(ph, beginsAt, endsBy, true);
-//#endif
-	case kSparseLeaf:
-		return new SparseLeafBlock(ph, beginsAt, endsBy, true);
-	default:
-		return NULL;
-	}
-}
-
 Block * Block::create(PageHandle ph, Key_t beginsAt, Key_t endsBy)
 {
 	// first byte of the block image contains the type

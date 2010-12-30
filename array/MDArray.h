@@ -210,7 +210,7 @@ protected:
     void createStorage(const StorageParam *sp);
 
     MDCoord<nDim> dim;
-    u32 size; // number of elements
+    size_t size; // number of elements
     /// The underlying 1-D storage.
     /// The Linearization tied to the underlying 1-D storage.
     Linearization<nDim> *linearization;
