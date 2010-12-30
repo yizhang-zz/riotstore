@@ -6,8 +6,8 @@ LDFLAGS += -L../.. -lriot_store
 
 all: $(EXE)
 
-%:%.cpp
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+%:%.o
+	$(CXX) -o $@ $^ $(LDFLAGS)
 
 libriot_store.so:
 	@cd ../..; $(MAKE)
@@ -15,5 +15,6 @@ libriot_store.so:
 
 clean:
 	rm -f $(EXE)
+	rm -f $(SRC:.cpp=.o)
 include ../../flags.mk
 

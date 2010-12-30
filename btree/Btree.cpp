@@ -236,8 +236,8 @@ int BTree::get(const Key_t &key, Datum_t &datum)
         return kOK;
 #endif
 
-    Cursor cursor(buffer);
     BlockPool pool;
+    Cursor cursor(buffer);
     return getHelper(key, datum, cursor, pool);
 }
 
@@ -266,8 +266,8 @@ int BTree::put(const Key_t &key, const Datum_t &datum)
     }
 #endif
 
-    Cursor cursor(buffer);
     BlockPool pool;
+    Cursor cursor(buffer);
     return putHelper(key, datum, cursor, pool);
 }
 
@@ -437,8 +437,8 @@ void BTree::print(bool statOnly)
 
 int BTree::batchPut(i64 putCount, const Entry *puts)
 {
-    Cursor cursor(buffer);
     BlockPool pool;
+    Cursor cursor(buffer);
     for (i64 i=0; i<putCount; ++i) {
         if (puts[i].key >= header->endsBy)
             continue;
@@ -449,8 +449,8 @@ int BTree::batchPut(i64 putCount, const Entry *puts)
 
 int BTree::batchPut(std::vector<Entry> &v)
 {
-    Cursor cursor(buffer);
     BlockPool pool;
+    Cursor cursor(buffer);
     int size = v.size();
     for (int i=0; i<size; ++i) {
         if (v[i].key >= header->endsBy)
@@ -462,8 +462,8 @@ int BTree::batchPut(std::vector<Entry> &v)
 
 int BTree::batchGet(i64 getCount, Entry *gets)
 {
-    Cursor cursor(buffer);
     BlockPool pool;
+    Cursor cursor(buffer);
     for (i64 i=0; i<getCount; ++i) {
         if (gets[i].key < header->endsBy) 
             getHelper(gets[i].key, *gets[i].pdatum, cursor, pool);
@@ -476,8 +476,8 @@ int BTree::batchGet(i64 getCount, Entry *gets)
 
 int BTree::batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &v)
 {
-    Cursor cursor(buffer);
     BlockPool pool;
+    Cursor cursor(buffer);
     search(beginsAt, cursor, pool);
     Cursor cursor_end(buffer);
     search(endsBy-1, cursor_end, pool); // upperbound is exclusive

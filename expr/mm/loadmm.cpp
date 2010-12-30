@@ -24,6 +24,7 @@ int main(int argc, char **argv)
     ifstream in(inputfile);
     // support two linearizations: col-major and block based
     i64 blockDims[] = {config->matmulBlockFactor, config->matmulBlockFactor};
+    //i64 blockDims[] = {500,500};
     u8 orders[] = {1,0};
     BlockBased<2> l_bb(blockDims, blockDims, orders, orders);
     ColMajor<2> l_col(blockDims); // bogus dim

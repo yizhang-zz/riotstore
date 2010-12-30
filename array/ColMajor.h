@@ -16,6 +16,12 @@ public:
 		*p += sizeof(i64)*nDim;
 	}
 
+    void setDims(const MDCoord<nDim> &arrayDims)
+    {
+        memcpy(this->blockDims, &arrayDims[0], nDim*sizeof(i64));
+        BlockBased<nDim>::setDims(arrayDims);
+    }
+
 	ColMajor(const i64 *arrayDims) : BlockBased<nDim>(arrayDims, false)
 	{
 	}

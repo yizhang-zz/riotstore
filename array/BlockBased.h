@@ -27,6 +27,8 @@ public:
 		memcpy(this->arrayDims, &arrayDims[0], nDim*sizeof(i64));
 		blockSize = 1;
 		for (int i = 0; i < nDim; i++) {
+            if (blockDims[i] > arrayDims[i])
+                blockDims[i] = arrayDims[i];
 			blockSize *= blockDims[i];
 			numBlocks[i] = (1+(arrayDims[i]-1)/blockDims[i]);
 			this->actualDims[i] = blockDims[i]*numBlocks[i];
@@ -57,9 +59,9 @@ public:
 			}
 		}
 		else {
-			for (int i=nDim-1; i>=0; --i) {
-				this->blockOrders[i] = i;
-				this->microOrders[i] = i;
+			for (int i=0; i<nDim; ++i) {
+				this->blockOrders[i] = nDim-1-i;
+				this->microOrders[i] = nDim-1-i;
 			}
 		}
 		BlockBased<nDim>::setDims(MDCoord<nDim>(arrayDims_));
