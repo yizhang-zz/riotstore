@@ -15,7 +15,7 @@ all: $(EXE)
 -include $(OBJ:.o=.dd)
 
 %:%.o
-	$(CXX) -o $@ $^ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 clean : 
 	rm -f $(EXE)

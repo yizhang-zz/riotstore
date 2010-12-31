@@ -28,7 +28,7 @@ int main(int argc, char **argv)
     u8 orders[] = {1,0};
     BlockBased<2> l_bb(blockDims, blockDims, orders, orders);
     ColMajor<2> l_col(blockDims); // bogus dim
-    int batchLoadBufferSize = 4000000;
+    int batchLoadBufferSize = blockDims[0] * blockDims[1];
     while (in.good()) {
         in.getline(path, 256);
         if (!in.good())

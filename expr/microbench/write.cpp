@@ -38,6 +38,7 @@ int main(int argc, char **argv)
 
 	int infile = open(filename, O_RDONLY);
 
+    /*
 	InternalSplitter *isp = new MSplitter<PID_t>();
 	LeafSplitter *lsp = NULL;
 	switch(splitterType) {
@@ -57,10 +58,10 @@ int main(int argc, char **argv)
 		lsp = new TSplitter<Datum_t>(config->TThreshold);
 		break;
 	}
-
+    */
 	Key_t size = atoi(filename+1);
 	Key_t total = size*size;
-	BTree *tree = new BTree(fileName, total, lsp, isp);
+	BTree *tree = new BTree(fileName, total, splitterType, 'M', config->useDenseLeaf);
 
 	/*
 	char logFile[100];
@@ -87,6 +88,6 @@ int main(int argc, char **argv)
 	}
 	close(infile);
 	delete tree;
-	delete isp;
-	delete lsp;
+	//delete isp;
+	//delete lsp;
 }

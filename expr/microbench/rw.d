@@ -3,7 +3,8 @@
 
 uint64_t rcount;
 uint64_t wcount;
-uint64_t rwtime;
+uint64_t rtime;
+uint64_t wtime;
 uint64_t begintime;
 uint64_t leafcount;
 
@@ -26,17 +27,19 @@ riot$target:::btree-locate-end
 }
 */
 
+riot$target:::dma-put,
 riot$target:::btree-put
 / self->timer > 0 /
 {
 	self->timer--;
 }
 
+riot$target:::dma-put,
 riot$target:::btree-put
 / self->timer == 0 /
 {
 	self->timer = freq;
-	printf("%d %d %d %d %d\n", leafcount, rcount, wcount, rwtime, timestamp-begintime);
+	printf("%d %d %d %d %d %d\n", leafcount, rcount, wcount, rtime, wtime, timestamp-begintime);
 }
 
 riot$target:::btree-split-leaf
@@ -60,7 +63,7 @@ syscall::pread*:return
 / self->ts /
 {
 	rcount++;
-	rwtime += timestamp - self->ts;
+	rtime += timestamp - self->ts;
 	self->ts = 0;
 }
 
@@ -68,7 +71,7 @@ syscall::pwrite*:return
 / self->ts /
 {
 	wcount++;
-	rwtime += timestamp - self->ts;
+	wtime += timestamp - self->ts;
 	self->ts = 0;
 }
 
@@ -115,6 +118,6 @@ io:::done
 
 END
 {
-	printf("%d %d %d %d %d\n", leafcount, rcount, wcount, rwtime, timestamp-begintime);
+	printf("%d %d %d %d %d %d\n", leafcount, rcount, wcount, rtime, wtime, timestamp-begintime);
 }
 

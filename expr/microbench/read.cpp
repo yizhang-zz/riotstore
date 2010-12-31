@@ -26,11 +26,11 @@ int main(int argc, char **argv)
 	const char *fileName = argv[1];
 	char readOrder = argv[2][0];
 
-	InternalSplitter *isp = new MSplitter<PID_t>();
-	LeafSplitter *lsp = new MSplitter<Datum_t>();
+	//InternalSplitter *isp = new MSplitter<PID_t>();
+	//LeafSplitter *lsp = new MSplitter<Datum_t>();
 
-	BTree *tree = new BTree(fileName, lsp, isp);
-	Key_t total = tree->getUpperBound();
+	BTree *tree = new BTree(fileName);
+	Key_t total = tree->upperBound();
 	Key_t i,j;
 	Key_t size =  (Key_t) sqrt(total);
 	Key_t *keys = new Key_t[total];
