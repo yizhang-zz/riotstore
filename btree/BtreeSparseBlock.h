@@ -29,6 +29,12 @@ public:
 	 * 2		offset of first free space
 	 * 2		offset of first byte of cell content area
 	 */
+
+	struct Header : public Block::Header
+	{
+		// no extra fields
+	};
+	
 	// ctor is specialized
 	SparseBlock(PageHandle ph, Key_t beginsAt, Key_t endsBy, bool create)
 		:BlockT<T>(ph, beginsAt, endsBy)
@@ -61,7 +67,7 @@ public:
 	}
 	int get(int index, Key_t &k, T &v) const
 	{
-		assert(index >= 0 && index < *(this->nEntries));
+		assert(index >= 0 && index < header->nEntries);
 		k = key_(index);
 		v = value_(index);
 		return kOK;
@@ -108,6 +114,7 @@ public:
 	};
 private:
 	static const int kCellSize;
+	Header *header;
 	char *pData;
 	//u16 *dataOffset; // where the data section has grown to (from high-address to low-address)
 	                 // the next record can be placed s.t. it ends at the current dataOffset
@@ -151,7 +158,7 @@ private:
 	{
 		Key_t min, max;
 		min = key_(0);
-		max = key_(*(this->nEntries)-1);
+		max = key_(header->nEntries-1);
 		if (this->overflow.key < min) min = this->overflow.key;
 		else if (this->overflow.key > max) max = this->overflow.key;
 		return (max-min+1 <= config->denseLeafCapacity);

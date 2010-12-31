@@ -90,19 +90,23 @@ struct OverflowEntry : public Entry
 
 class Block {
 public:
+	struct Header
+	{
+		char flag;
+		char reserved;
+		// How many entries with non-default values. This never
+		// includes the overflow entry, if any.
+		u16 nEntries;
+		PID_t nextLeaf;
+	};
+	
 	PageHandle pageHandle;
-    char	*header;
+	Header *commonHeader;
 	u16		capacity;
 	Key_t	lower;		// all keys >= lower 
 	Key_t	upper;		// all keys < upper 
-	// How many entries with non-default values. This never includes the
-	// overflow entry, if any.
-	u16		*nEntries;
-    PID_t	*nextLeaf;
-	//OverflowEntry	overflow;
 	bool	isOverflowed;
 
-public:
 	enum Type {
         kInternal = 0,
         kLeaf = 1,
@@ -133,7 +137,8 @@ public:
 	static Block *create(PageHandle ph, Key_t beingsAt, Key_t endsBy);
 
 	Block(PageHandle ph, Key_t _lower, Key_t _upper)
-		:pageHandle(ph),header(ph->getImage()),lower(_lower),upper(_upper),isOverflowed(false)
+		:pageHandle(ph), commonHeader((Header*)ph->getImage()),
+		 lower(_lower), upper(_upper), isOverflowed(false)
 	{
 	}
 
@@ -153,14 +158,14 @@ public:
 
 	Key_t getLowerBound() const { return lower; }
 	Key_t getUpperBound() const { return upper; }
-	void setNextLeaf(PID_t pid) { *nextLeaf = pid; }
-	PID_t getNextLeaf() { return *nextLeaf; }
+	void setNextLeaf(PID_t pid) { commonHeader->nextLeaf = pid; }
+	PID_t getNextLeaf() { return commonHeader->nextLeaf; }
 	bool inRange(Key_t key) const { return key >= lower && key < upper; }
-	Type type() const { return (Type)(int)*header; }
-	bool isDense() { return *((u8*)header) & 2; }
-	bool isLeaf() { return *((u8*)header) & 1; }
-	u16 size() const { return *nEntries; }
-	u16 sizeWithOverflow() const { return (*nEntries)+isOverflowed; }
+	Type type() const { return (Type)(int)commonHeader->flag; }
+	bool isDense() { return type() & 2; }
+	bool isLeaf() { return type() & 1; }
+	u16 size() const { return commonHeader->nEntries; }
+	u16 sizeWithOverflow() const { return size()+isOverflowed; }
 	void splitTypes(int sp, Key_t spKey, Type *left, Type *right);
 
 	/*

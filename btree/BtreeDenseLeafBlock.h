@@ -11,6 +11,12 @@ namespace Btree
 class DenseLeafBlock : public LeafBlock
 {
 public:
+	struct Header : public Block::Header
+	{
+		i16 headIndex;
+		i16 tailIndex;
+		Key_t headKey;
+	};
 	/* Header consists of the following:
 	 * Size		Note
 	 * 1		flag
@@ -49,11 +55,11 @@ public:
 	void print() const;
 
 	Key_t key(int index) const { return key_(index); }
-	Key_t key_(int index) const { return *headKey + index; }
+	Key_t key_(int index) const { return header->headKey + index; }
 	Datum_t &value(int index) const { return value_(index); }
 	Datum_t &value_(int index) const
 	{
-		int i = index + *headIndex;
+		int i = index + header->headIndex;
 		if (i >= capacity)
 			i -= capacity;
 		return data[i];
@@ -97,7 +103,7 @@ public:
 		{
 			d_index = -1;
 			int numNonDefault = 0;
-			int span = block->tailKey - *block->headKey;
+			int span = block->tailKey - block->header->headKey;
 			while (d_index < span && numNonDefault < index+1) {
 				++d_index;
 				if (block->value(d_index) != kDefaultValue)
@@ -154,9 +160,9 @@ public:
 			return key == other.key;
 		}
 		Entry dereference() const {
-			if (key < *block->headKey || key >= block->tailKey)
+			if (key < block->header->headKey || key >= block->tailKey)
 				return Entry(key, kDefaultValue);
-			return Entry(key, block->value_(key-*block->headKey));
+			return Entry(key, block->value_(key-block->header->headKey));
 		}
 	};
 
@@ -171,8 +177,8 @@ public:
 		SparseKeyIterator(const DenseLeafBlock *b, Key_t k):block(b)
 		{
 			if (k > block->tailKey) k = block->tailKey;
-			if (k < *block->headKey) k = *block->headKey;
-			index = k - *block->headKey;
+			if (k < block->header->headKey) k = block->header->headKey;
+			index = k - block->header->headKey;
 			while (k < block->tailKey && block->value_(index) == Block::kDefaultValue)
 				k++, index++;
 		}
@@ -196,11 +202,14 @@ public:
 	};
 
 private:
+	/*
 	i16 *headIndex; // inclusive
 	i16 *tailIndex;	// exclusive
 	Key_t *headKey;
-	Key_t tailKey;
+	*/
+	Header *header;
 	Datum_t *data;
+	Key_t tailKey; // derived info
 	
 	/*
 	Key_t getTailKey() const
@@ -232,7 +241,7 @@ private:
 	*/
 	bool canSwitchFormat() const
 	{
-		return (*nEntries + 1) <= config->sparseLeafCapacity;
+		return (header->nEntries + 1) <= config->sparseLeafCapacity;
 	}
 
 	Status extendStoredRange(Key_t key) ;

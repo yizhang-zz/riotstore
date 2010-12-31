@@ -1,4 +1,6 @@
 #include "Config.h"
+#include "btree/BtreeDenseLeafBlock.h"
+#include "btree/BtreeSparseBlock.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,9 +9,12 @@ Config *config = Config::getGlobalConfig();
 
 Config::Config(const char *path)
 {
-	denseLeafCapacity = (PAGE_SIZE-denseLeafHeaderSize)/(sizeof(Datum_t));
-	sparseLeafCapacity = (PAGE_SIZE-sparseLeafHeaderSize)/(sizeof(Datum_t)+sizeof(Key_t));
-	internalCapacity = (PAGE_SIZE-internalHeaderSize)/(sizeof(PID_t)+sizeof(Key_t));
+	denseLeafCapacity = (PAGE_SIZE-sizeof(Btree::DenseLeafBlock::Header))
+		/ sizeof(Datum_t);
+	sparseLeafCapacity = (PAGE_SIZE-sizeof(Btree::SparseLeafBlock::Header))
+		/ (sizeof(Datum_t) + sizeof(Key_t));
+	internalCapacity = (PAGE_SIZE-sizeof(Btree::InternalBlock::Header))
+		/ (sizeof(PID_t)+sizeof(Key_t));
 
     useDenseLeaf = 1;
 	//BSplitterBoundary = denseLeafCapacity;

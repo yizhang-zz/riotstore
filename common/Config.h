@@ -14,9 +14,9 @@ class Config
 public:
     static Config* getGlobalConfig();
     
-    const static int denseLeafHeaderSize = 16;
-    const static int sparseLeafHeaderSize = 12;
-    const static int internalHeaderSize = 8;
+    //const static int denseLeafHeaderSize = 16;
+    //const static int sparseLeafHeaderSize = 12;
+    //const static int internalHeaderSize = 8;
 
     u16 denseLeafCapacity;
     u16 sparseLeafCapacity;

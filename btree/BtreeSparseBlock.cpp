@@ -27,20 +27,20 @@ SparseBlock<PID_t>::SparseBlock(PageHandle ph, Key_t beginsAt, Key_t endsBy, boo
 	:BlockT<PID_t>(ph, beginsAt, endsBy)
 {
 	capacity	= config->internalCapacity;
+	header = (Header*) ph->getImage();
 	// data grows towards low-address direction and cannot pass this boundary
 	//boundary	= config->internalHeaderSize+capacity*2; // each offset occupies 2 bytes
 
-	nEntries	= (u16*)(header+2);
 	//freeCell	= (u16*)(header+4);
 	//dataOffset	= (u16*)(header+6);
 	//offsets = (u16*) (header+config->internalHeaderSize);
 	if (create) {
-		*header = kInternal; // flag
-		*nEntries = 0;
+		header->flag = kInternal; // flag
+		header->nEntries = 0;
 		//*freeCell = 0;
 		//*dataOffset = PAGE_SIZE;
 	}
-	pData = header+config->internalHeaderSize;
+	pData = ph->getImage() + sizeof(Header);
 }
 
 template<>
@@ -48,22 +48,21 @@ SparseBlock<Datum_t>::SparseBlock(PageHandle ph, Key_t beginsAt, Key_t endsBy, b
 	:BlockT<Datum_t>(ph, beginsAt, endsBy)
 {
 	capacity	= config->sparseLeafCapacity;
+	header = (Header*) ph->getImage();
 	// data grows towards low-address direction and cannot pass this boundary
 	//boundary	= config->sparseLeafHeaderSize+capacity*2; // each offset occupies 2 bytes
 
-	nEntries	= (u16*)(header+2);
 	//freeCell	= (u16*)(header+4);
 	//dataOffset	= (u16*)(header+6);
 	//offsets = (u16*) (header+config->sparseLeafHeaderSize);
-	nextLeaf	= (PID_t*)(header+8);
 	if (create) {
-		*header = kSparseLeaf; // flag
-		*nEntries = 0;
+		header->flag = kSparseLeaf; // flag
+		header->nEntries = 0;
 		//*freeCell = 0;
 		//*dataOffset = PAGE_SIZE;
-		*nextLeaf = INVALID_PID;
+		header->nextLeaf = INVALID_PID;
 	}
-	pData = header+config->sparseLeafHeaderSize;
+	pData = ph->getImage() + sizeof(Header);
 }
 
 template<class T>
@@ -108,7 +107,7 @@ int SparseBlock<T>::getRange(Key_t beginsAt, Key_t endsBy, T *vals) const
 	int num = endsBy - beginsAt;
 	search(beginsAt, index);
 	for (int i=0; i<num; ++i) {
-		if (index<*(this->nEntries) && key_(index)==beginsAt+i) {
+		if (index<(header->nEntries) && key_(index)==beginsAt+i) {
 			vals[i] = value_(index);
 			++index;
 		}
@@ -170,11 +169,11 @@ int SparseBlock<Datum_t>::batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Ent
 template<class T>
 int SparseBlock<T>::del(int index)
 {
-	if (index < 0 || index >= *this->nEntries)
+	if (index < 0 || index >= header->nEntries)
 		return kOutOfBound;
-	if (index < *this->nEntries - 1)
-		memmove(pData+index*kCellSize, pData+(index+1)*kCellSize, kCellSize*(*this->nEntries-index-1));
-	--*this->nEntries;
+	if (index < header->nEntries - 1)
+		memmove(pData+index*kCellSize, pData+(index+1)*kCellSize, kCellSize*(header->nEntries-index-1));
+	--header->nEntries;
 	this->pageHandle->markDirty();
 	return kOK;
 }
@@ -191,10 +190,10 @@ template<>
 int SparseBlock<Datum_t>::put(int index, Key_t key, const Datum_t &v)
 {
 	assert(key >= this->lower && key < this->upper);
-	assert(index >= 0 && index <= *nEntries);
+	assert(index >= 0 && index <= header->nEntries);
 
 	// check if overwriting a record
-	if (index < *nEntries && key_(index) == key) {
+	if (index < header->nEntries && key_(index) == key) {
 		if (v == Block::kDefaultValue) // delete existent
 			return del(index);
 		else  { // overwrite existent
@@ -208,7 +207,7 @@ int SparseBlock<Datum_t>::put(int index, Key_t key, const Datum_t &v)
 
 	pageHandle->markDirty();
 
-	if (*this->nEntries >= this->capacity) { // block full
+	if (header->nEntries >= this->capacity) { // block full
 		this->isOverflowed = true;
 		this->overflow.key = key;
 		this->overflow.value = v;
@@ -216,9 +215,9 @@ int SparseBlock<Datum_t>::put(int index, Key_t key, const Datum_t &v)
 		return (canSwitchFormat() ? kSwitchFormat : kOverflow);
 	}
 
-	memmove(pData+(index+1)*kCellSize, pData+index*kCellSize, kCellSize*(*this->nEntries-index));
+	memmove(pData+(index+1)*kCellSize, pData+index*kCellSize, kCellSize*(header->nEntries-index));
 	setCell(pData+kCellSize*index, key, v);
-	++*this->nEntries;
+	++header->nEntries;
 	return kOK;
 }
 
@@ -226,17 +225,17 @@ template<>
 int SparseBlock<PID_t>::put(int index, Key_t key, const PID_t &v)
 {
 	assert(key >= this->lower && key < this->upper);
-	assert(index >= 0 && index <= *nEntries);
+	assert(index >= 0 && index <= header->nEntries);
 
 	pageHandle->markDirty();
 
 	// check if overwriting a record
-	if (index < *nEntries && key_(index) == key) {
+	if (index < header->nEntries && key_(index) == key) {
 		value_(index) = v;
 		return kOK;
 	}
 
-	if (*this->nEntries >= this->capacity) { // block full
+	if (header->nEntries >= this->capacity) { // block full
 		this->isOverflowed = true;
 		this->overflow.key = key;
 		this->overflow.value = v;
@@ -244,9 +243,9 @@ int SparseBlock<PID_t>::put(int index, Key_t key, const PID_t &v)
 		return kOverflow;
 	}
 
-	memmove(pData+(index+1)*kCellSize, pData+index*kCellSize, kCellSize*(*this->nEntries-index));
+	memmove(pData+(index+1)*kCellSize, pData+index*kCellSize, kCellSize*(header->nEntries-index));
 	setCell(pData+kCellSize*index, key, v);
-	++*this->nEntries;
+	++header->nEntries;
 	return kOK;
 }
 
@@ -257,14 +256,14 @@ int SparseBlock<T>::putRangeSorted(Key_t *keys, T *vals, int num, int *numPut)
 	int p,r=0;
 	*numPut = 0;
 	int &q = *numPut;
-	int count = *this->nEntries;
+	int count = header->nEntries;
 
 	search(keys[0], p);
 	int pp = p;
 	char *tmp = new char[(this->capacity-p)*kCellSize];
 	char *cur = tmp;
 
-	while (q<num && p<count && *this->nEntries<this->capacity) {
+	while (q<num && p<count && header->nEntries<this->capacity) {
 		if (key_(p)==keys[q]) {
 			setCell(cur, keys[q],vals[q]);
 			++p;
@@ -277,7 +276,7 @@ int SparseBlock<T>::putRangeSorted(Key_t *keys, T *vals, int num, int *numPut)
 		else {
 			setCell(cur, keys[q], vals[q]);
 			++q;
-			++(*this->nEntries);
+			++(header->nEntries);
 		}
 		++r;
 		cur += kCellSize;
@@ -285,10 +284,10 @@ int SparseBlock<T>::putRangeSorted(Key_t *keys, T *vals, int num, int *numPut)
 	// Check if existing records have been exhausted during the merge.
 	// If so, keep merging new records.
 	if (q<num && p==count) {
-		while (q<num && *this->nEntries<this->capacity) {
+		while (q<num && header->nEntries<this->capacity) {
 			setCell(cur, keys[q], vals[q]);
 			++q;
-			++(*this->nEntries);
+			++(header->nEntries);
 			++r;
 			cur += kCellSize;
 		}
@@ -300,7 +299,7 @@ int SparseBlock<T>::putRangeSorted(Key_t *keys, T *vals, int num, int *numPut)
 	// we ran out of space. We can actually put one more cause we have room
 	// for an overflow entry.
 	if (q<num) {
-		assert (*this->nEntries==this->capacity);
+		assert (header->nEntries==this->capacity);
 		++q;
 		return put(keys[q-1], vals[q-1]);
 	}
@@ -315,11 +314,11 @@ void SparseBlock<T>::truncate(int sp, Key_t spKey)
 	if (!this->isOverflowed || sp <= this->overflow.index) {
 		//freeCells(sp, *this->nEntries);
 		this->isOverflowed = false;
-		*this->nEntries = sp;
+		header->nEntries = sp;
 	}
 	else {
 		//freeCells(sp-1, *this->nEntries);
-		*this->nEntries = sp-1;
+		header->nEntries = sp-1;
 		put(this->overflow.index, this->overflow.key, this->overflow.value);
 		this->isOverflowed = false;
 	}
