@@ -6,6 +6,9 @@
 #include "DMADenseIterator.h"
 #include "DMASparseIterator.h"
 #include "DirectlyMappedArray.h"
+#ifdef DTRACE_SDT
+#include "riot.h"
+#endif
 
 #ifdef PROFILING
 int LinearStorage::readCount = 0;
@@ -23,7 +26,7 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, Key_t numElements
       file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
       buffer = new BufferManager(file, config->dmaBufferSize); 
 	  RC_t rc = buffer->allocatePageWithPID(0, headerPage);
-      assert(RC_OK == rc);
+      assert(RC_OK & rc);
       // page is already marked dirty
       header = (Header*) headerPage->getImage();
       header->nnz = 0;
@@ -69,7 +72,7 @@ int DirectlyMappedArray::get(const Key_t &key, Datum_t &datum)
    DMABlock *dab;
    RC_t ret;
    PID_t pid = findPage(key);
-   if ((ret=readBlock(pid, &dab)) != RC_OK)
+   if ((ret=readBlock(pid, &dab)) & RC_FAIL)
 	   datum = DMABlock::DefaultValue;
    else {
 	   datum = dab->get(key);
@@ -107,7 +110,7 @@ int DirectlyMappedArray::batchGet(i64 getCount, Entry *gets)
 
 		if (lastPid != newPid) {
 			if (lastPid != INVALID_PID) {
-				if (readBlock(lastPid, &dab) != RC_OK) {
+				if (readBlock(lastPid, &dab) & RC_FAIL) {
 					for (i64 k = nGets; k > 0; k--)
 						*(gets[i-k].pdatum) = DMABlock::DefaultValue;
 				}
@@ -125,7 +128,7 @@ int DirectlyMappedArray::batchGet(i64 getCount, Entry *gets)
 	}
     // don't forget last block!
 	if (nGets > 0 && lastPid != INVALID_PID) {
-		if (readBlock(lastPid, &dab) != RC_OK) {
+		if (readBlock(lastPid, &dab) & RC_FAIL) {
 			for (i64 k = nGets; k > 0; k--)
 				*(gets[getCount-k].pdatum) = DMABlock::DefaultValue;
 		}
@@ -150,7 +153,7 @@ int DirectlyMappedArray::batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entr
 	PID_t pid = findPage(beginsAt);
 	DMABlock *block = NULL;
 	while ((pid-1)*DMABlock::CAPACITY < endsBy) {
-		if (readBlock(pid, &block) == RC_OK) {
+		if (readBlock(pid, &block) & RC_OK) {
 			block->batchGet(beginsAt, endsBy, v);
 			//buffer->unpinPage(dab->getPageHandle());
 			delete block;
@@ -183,10 +186,10 @@ int DirectlyMappedArray::put(const Key_t &key, const Datum_t &datum)
 	DMABlock *dab;
 	PID_t pid = findPage(key);
 	int ret = readBlock(pid, &dab);
-	if (datum == DMABlock::DefaultValue && ret != RC_OK)
+	if (datum == DMABlock::DefaultValue && ret & RC_FAIL)
 		return AC_OK; // delete non-existent
 
-	if (ret != RC_OK && newBlock(pid, &dab) != RC_OK) {
+	if (ret & RC_FAIL && newBlock(pid, &dab) & RC_FAIL) {
 		Error("cannot read/allocate page %d",pid);
 		exit(1);
 	}   
@@ -228,7 +231,7 @@ int DirectlyMappedArray::batchPut(i64 putCount, const Entry *puts)
         if (lastPid != newPid) // encountered a new page, ready to write last batch
         {
             if (lastPid != INVALID_PID && hasNonDefault) {
-                if ((ret=readOrAllocBlock(lastPid, &dab)) != RC_OK)
+                if ((ret=readOrAllocBlock(lastPid, &dab)) & RC_FAIL)
                     Error("Cannot read or allocate block %d", lastPid);
                 header->nnz += dab->batchPut(nPuts, puts + i - nPuts);
                 //buffer->markPageDirty(dab->getPageHandle());
@@ -247,7 +250,7 @@ int DirectlyMappedArray::batchPut(i64 putCount, const Entry *puts)
     }
     // don't forget put for last block!
     if (lastPid != INVALID_PID && hasNonDefault) {
-        if ((ret=readOrAllocBlock(lastPid, &dab)) != RC_OK)
+        if ((ret=readOrAllocBlock(lastPid, &dab)) & RC_FAIL)
             Error("Cannot read or allocate block %d", lastPid);
         header->nnz += dab->batchPut(nPuts, puts + i - nPuts);
         //buffer->markPageDirty(dab->getPageHandle());
@@ -283,10 +286,11 @@ RC_t DirectlyMappedArray::readBlock(PID_t pid, DMABlock** block)
 {
    PageHandle ph;
    RC_t ret;
-   if ((ret=buffer->readPage(pid, ph)) != RC_OK)
+   *block = NULL;
+   if ((ret=buffer->readPage(pid, ph)) & RC_FAIL)
       return ret;
    Key_t CAPACITY = DMABlock::CAPACITY;
-   *block = new DMABlock(ph, CAPACITY*(pid-1), CAPACITY*pid);
+   *block = new DMABlock(ph, CAPACITY*(pid-1), CAPACITY*pid, false);
    return RC_OK;
 }
 
@@ -294,24 +298,33 @@ RC_t DirectlyMappedArray::readOrAllocBlock(PID_t pid, DMABlock** block)
 {
    PageHandle ph;
    RC_t ret;
-   if ((ret=buffer->readOrAllocatePage(pid, ph)) != RC_OK)
+   *block = NULL;
+   if ((ret=buffer->readOrAllocatePage(pid, ph)) & RC_FAIL)
       return ret;
    Key_t CAPACITY = DMABlock::CAPACITY;
-   *block = new DMABlock(ph, CAPACITY*(pid-1), CAPACITY*pid);
+   if ((ret & RC_READ) == RC_READ)
+       *block = new DMABlock(ph, CAPACITY*(pid-1), CAPACITY*pid, false);
+   else if ((ret & RC_ALLOC) == RC_ALLOC) {
+       *block = new DMABlock(ph, CAPACITY*(pid-1), CAPACITY*pid, true);
+#ifdef DTRACE_SDT
+       RIOT_DMA_NEW_BLOCK();
+#endif
+   }
    return RC_OK;
 }
 
 RC_t DirectlyMappedArray::readNextBlock(PageHandle ph, DMABlock** block) 
 {
     //PID_t pid = buffer->getPID(ph);
+    *block = NULL;
 	PID_t pid = ph->getPid();
     if (DMABlock::CAPACITY*pid >= header->endsBy)
         return RC_OutOfRange;
     RC_t ret;
-    if ((ret=buffer->readPage(pid+1, ph)) != RC_OK)
+    if ((ret=buffer->readPage(pid+1, ph)) & RC_FAIL)
         return ret;
    Key_t CAPACITY = DMABlock::CAPACITY;
-   *block = new DMABlock(ph, CAPACITY*(pid), CAPACITY*(pid+1));
+   *block = new DMABlock(ph, CAPACITY*(pid), CAPACITY*(pid+1), false);
    return RC_OK;
 }
 
@@ -319,10 +332,14 @@ RC_t DirectlyMappedArray::newBlock(PID_t pid, DMABlock** block)
 {
    PageHandle ph;
    RC_t ret;
-   if ((ret=buffer->allocatePageWithPID(pid, ph)) != RC_OK)
+   *block = NULL;
+   if ((ret=buffer->allocatePageWithPID(pid, ph)) & RC_FAIL)
       return ret;
    Key_t CAPACITY = DMABlock::CAPACITY;
-   *block = new DMABlock(ph, CAPACITY*(pid-1), CAPACITY*pid);
+   *block = new DMABlock(ph, CAPACITY*(pid-1), CAPACITY*pid, true);
+#ifdef DTRACE_SDT
+   RIOT_DMA_NEW_BLOCK();
+#endif
    return RC_OK;
 }
 

@@ -1,7 +1,7 @@
 #ifndef DMA_BLOCK
 #define DMA_BLOCK
 
-#include "Block.h"
+#include "common/common.h"
 #include "../common/ArrayInternalIterator.h"
 #include <vector>
 
@@ -11,13 +11,17 @@ class DirectlyMappedArray;
  * simply stores a data array.  It stores a continuguous subrange for a
  * DirectlyMappedArray.
  */
-class DMABlock : public Block<Key_t, Datum_t> 
+class DMABlock
 {
 protected:
     // header is placed at the end of the block
     struct Header {
         size_t nnz;
     } *header;
+
+    PageHandle ph;
+    Key_t lowerBound;
+    Key_t upperBound;
 
     /// A data array that corresponds to the portion of the
     /// DirectlyMappedArray in the index range [beginsAt, endsBy).
@@ -32,7 +36,7 @@ public:
     /// with the knowledge of the overall DirectlyMappedArray, should
     /// know the exact index range that this page is responsible for.
     /// The default data value will also be supplied by the caller.
-    DMABlock(PageHandle ph, Key_t lower, Key_t upper);
+    DMABlock(PageHandle ph, Key_t lower, Key_t upper, bool create);
     ~DMABlock();
 
     // Clears all values to zero
@@ -49,6 +53,9 @@ public:
     int batchPut(std::vector<Entry>::const_iterator &begin,
             std::vector<Entry>::const_iterator end);
 
+    const PageHandle & getPageHandle() const { return ph; }
+    Key_t getUpperBound() const { return upperBound; }
+    Key_t getLowerBound() const { return lowerBound; }
     /// assume beginsAt and endsBy are within upperBound and lowerBound
     ArrayInternalIterator* getIterator(Key_t beginsAt, Key_t endsBy);
     ArrayInternalIterator* getIterator();

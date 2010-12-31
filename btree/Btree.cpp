@@ -442,6 +442,9 @@ int BTree::batchPut(i64 putCount, const Entry *puts)
     for (i64 i=0; i<putCount; ++i) {
         if (puts[i].key >= header->endsBy)
             continue;
+#ifdef DTRACE_SDT
+        RIOT_BTREE_PUT();
+#endif
         putHelper(puts[i].key, puts[i].datum, cursor, pool);
     }
     return AC_OK;
@@ -455,6 +458,9 @@ int BTree::batchPut(std::vector<Entry> &v)
     for (int i=0; i<size; ++i) {
         if (v[i].key >= header->endsBy)
             continue;
+#ifdef DTRACE_SDT
+        RIOT_BTREE_PUT();
+#endif
         putHelper(v[i].key, v[i].datum, cursor, pool);
     }
     return AC_OK;
@@ -516,13 +522,16 @@ void BTree::switchFormat(Block **orig_, BlockPool &pool)
 	Key_t *keys = new Key_t[num];
 	Datum_t *vals = new Datum_t[num];
 	(orig)->getRangeWithOverflow(0,num,keys,vals);
+    PageHandle ph = orig->pageHandle;
+    Key_t l = orig->lower, u = orig->upper;
+    Block::Type t = orig->type();
+    orig->~Block();
+
 	Block *block;
-    if ((orig)->type() == Block::kDenseLeaf)
-        block = pool.create(Block::kSparseLeaf,
-                (orig)->pageHandle, (orig)->lower, (orig)->upper);
-    else if ((orig)->type() == Block::kSparseLeaf)
-        block = pool.create(Block::kDenseLeaf,
-                (orig)->pageHandle, (orig)->lower, (orig)->upper);
+    if (t == Block::kDenseLeaf)
+        block = pool.create(Block::kSparseLeaf, ph, l, u);
+    else if (t == Block::kSparseLeaf)
+        block = pool.create(Block::kDenseLeaf, ph, l, u);
     else {
         Error("unknown format");
         exit(1);
@@ -532,7 +541,6 @@ void BTree::switchFormat(Block **orig_, BlockPool &pool)
 	assert(num==numPut);
 	delete[] keys;
 	delete[] vals;
-    (orig)->~Block();
 	*orig_ = block;
 }
 

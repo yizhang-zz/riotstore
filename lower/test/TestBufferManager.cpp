@@ -20,7 +20,7 @@ TEST(BufferManager, Allocate)
 	BufferManager bm(&bpf, BUFFER_SIZE);
 	for (int i=0; i<3; i++) {
 		PageHandle ph;
-        ASSERT_EQ(RC_OK, bm.allocatePageWithPID(i, ph));
+        ASSERT_TRUE(RC_OK & bm.allocatePageWithPID(i, ph));
 		ph->getImage()[0] = i;
 		ph->markDirty();
 	}
@@ -31,7 +31,7 @@ TEST(BufferManager, AllocateRead) {
 	BufferManager bm(&bpf, BUFFER_SIZE);
 	for (int i=0; i<3; i++) {
 		PageHandle ph;
-        ASSERT_EQ(RC_OK, bm.readPage(i, ph));
+        ASSERT_TRUE(RC_OK & bm.readPage(i, ph));
 		ASSERT_EQ(i, ph->getImage()[0]);
 	}
 }

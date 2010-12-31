@@ -6,6 +6,8 @@ provider riot {
 	probe btree__locate__end(int);
 	probe btree__flush__begin();
 	probe btree__flush__end(int);
+    probe dma__put();
+    probe dma__new__block();
 };
 #pragma D attributes Evolving/Evolving/Common provider riot provider
 #pragma D attributes Private/Private/Unknown provider riot module

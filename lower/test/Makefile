@@ -17,7 +17,7 @@ include $(objects:.o=.dd)
 
 
 test: $(objects) 
-	$(CXX) -o $@ $^ $(LDFLAGS) 
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) 
 
 clean : 
 	rm -f *.o

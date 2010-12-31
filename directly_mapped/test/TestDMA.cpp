@@ -67,7 +67,6 @@ TEST(DirectlyMappedArray, BatchPut)
 	dma->batchGet(num, z);
 	for (int i=0; i<num; i++)
 		ASSERT_DOUBLE_EQ(z[i].key, y[i]);
-
 	delete dma;
 }
 
