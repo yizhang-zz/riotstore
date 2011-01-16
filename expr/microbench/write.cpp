@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <time.h>
 #include <iostream>
 #include <fstream>
@@ -11,7 +12,8 @@ using namespace Btree;
 int main(int argc, char **argv)
 {
 	const int required = 3;
-	char fileName[] = "/riot/mb.1";
+    //const char fileTmpl[] = "/riot/%s%c";
+	char fileName[100] = "/riot/mb";
 	//srand(12874938);
 	unsigned int tm;
 	if (argc >= required+1)
@@ -24,7 +26,7 @@ int main(int argc, char **argv)
 		cerr<<"Usage: "<<argv[0]<<" <input file> <splitter type> [rand seed]"<<endl
 			//<<"insertion sequence: S(sequential), D(strided), R(random)"<<endl
 			//<<"size: #rows/cols of the square matrix"<<endl
-			<<"input file: e.g., S2000.in (sequential sequence of 2k x 2k matrix"<<endl
+			<<"input file: e.g., S2000 (sequential sequence of 2k x 2k matrix"<<endl
 			<<"splitter type: M,B,R,S,T"<<endl
 			<<"rand seed: seed, unsigned int"<<endl;
 			//<<"sparsity: e.g., .4 means 40% of the elements are non-zero"<<endl;
@@ -33,10 +35,10 @@ int main(int argc, char **argv)
 
 	//char seqType = argv[1][0];
 	//int size = atoi(argv[2]);
-	char *filename = argv[1];
+	char *infilename = argv[1];
 	char splitterType = argv[2][0];
 
-	int infile = open(filename, O_RDONLY);
+	int infile = open(infilename, O_RDONLY);
 
     /*
 	InternalSplitter *isp = new MSplitter<PID_t>();
@@ -59,8 +61,9 @@ int main(int argc, char **argv)
 		break;
 	}
     */
-	Key_t size = atoi(filename+1);
-	Key_t total = size*size;
+	int size = atoi(infilename+1);
+	Key_t total = Key_t(size) * size;
+    //sprintf(fileName, fileTmpl, infilename, splitterType);
 	BTree *tree = new BTree(fileName, total, splitterType, 'M', config->useDenseLeaf);
 
 	/*
@@ -77,16 +80,20 @@ int main(int argc, char **argv)
 	*/
 	const int batchSize = 1000;
 	Key_t keys[batchSize];
+    //for (int j=0; j<1002; ++j) {
 	while (true) {
 		ssize_t c = read(infile, keys, sizeof(keys));
 		int count = c/sizeof(Key_t);
 		for (int i=0; i<count; ++i) {
 			tree->put(keys[i], 1.0);
+            //tree->print(LSP_FULL|LSP_STAT|LSP_BM);
+            //getc(stdin);
 		}
 		if (count < batchSize)
 			break;
 	}
 	close(infile);
+    //tree->print(true);
 	delete tree;
 	//delete isp;
 	//delete lsp;

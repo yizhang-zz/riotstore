@@ -12,7 +12,7 @@ int main(int argc, char **argv)
 {
 	if (argc < 3) {
 		cerr<<"Usage: "<<argv[0]<<" <file> <read order> [rand seed]"<<endl
-			<<"read order: S(sequential), D(strided), R(random)"<<endl;
+			<<"read order: S(sequential), D(strided), R(random), I(interleaved)"<<endl;
 		return 0;
 	}
 	unsigned int tm;
@@ -31,7 +31,7 @@ int main(int argc, char **argv)
 
 	BTree *tree = new BTree(fileName);
 	Key_t total = tree->upperBound();
-	Key_t i,j;
+	Key_t i,j,k,l;
 	Key_t size =  (Key_t) sqrt(total);
 	Key_t *keys = new Key_t[total];
 
@@ -52,6 +52,19 @@ int main(int argc, char **argv)
 			keys[i] = i;
 		permute(keys, total);
 		break;
+    case 'I':
+		// row 0
+		for (l=0; l<size; ++l)
+			keys[l] = l;
+		for (k=1; k<size; ++k) {
+			// column k-1 and then row k
+			for (i=k; i<size; ++i)
+				// (i,k-1)
+				keys[l++] = i*size+k-1;
+			for (i=k; i<size; ++i)
+				// (k, i)
+				keys[l++] = k*size+i;
+		}
 	}
 
 	Datum_t datum;

@@ -330,6 +330,7 @@ void DenseLeafBlock::print() const
 {
 	using namespace std;
 	cout<<"D";
+    cout<<this->pageHandle->getPid();
 	cout<<"{"<<size()<<"}";
 	cout<<"["<<lower<<","<<upper<<"] ";
 	SparseIterator it(this, 0), end(this, size());

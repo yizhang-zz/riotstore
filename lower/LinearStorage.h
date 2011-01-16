@@ -12,6 +12,12 @@ enum StorageType {
     BTREE
 };
 
+enum LSPrintFlag {
+    LSP_STAT = 0x1,
+    LSP_BM = 0x2,
+    LSP_FULL = 0x4
+};
+
 /**
  * A storage device for linear (1-D) arrays. Used as the underlying
  * storage for multi-dimensional arrays.  This class cannot be
@@ -102,6 +108,8 @@ public:
     virtual StorageType type() const = 0;
 
     virtual Key_t upperBound() const = 0;
+
+    virtual void print(int flag) const {}
 
     /**
      * Returns the number of nonzero entries.

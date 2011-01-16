@@ -99,7 +99,7 @@ extern int		NA_INT;
 bool isNA(double x);
 
 /// Size of a disk block/page in bytes.
-const size_t BLOCK_SIZE = 4096;
+const size_t BLOCK_SIZE = 4096*2;
 /// Size of a disk block/page in bytes.
 const size_t PAGE_SIZE = BLOCK_SIZE;
 
@@ -197,17 +197,15 @@ const int CAPACITY_SPARSE = ((BLOCK_SIZE - sizeof(BlockHeader))/(sizeof(Datum_t)
 
 
 /// Return code type.
-//typedef int RC_t;
-//#define RC_SUCCESS 0
-//#define RC_FAILURE 1
-enum RC_t {
-    RC_OK = 0,
-    RC_Failure,
-    RC_OutOfSpace,
-    RC_NotAllocated,
-    RC_AlreadyAllocated,
-    RC_OutOfRange
-};
+typedef int RC_t;
+#define RC_OK               0x8000
+#define RC_READ             0x8001
+#define RC_ALLOC            0x8002
+#define RC_FAIL             0x4000
+#define RC_OutOfSpace       0x4001   
+#define RC_NotAllocated     0x4002
+#define RC_AlreadyAllocated 0x4003
+#define RC_OutOfRange       0x4004
 
 
 //////////////////////////////////////////////////////////////////////

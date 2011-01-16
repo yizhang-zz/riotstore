@@ -6,7 +6,7 @@ uint64_t wcount;
 uint64_t rtime;
 uint64_t wtime;
 uint64_t begintime;
-uint64_t leafcount;
+uint64_t nodecount;
 
 BEGIN
 {
@@ -39,22 +39,23 @@ riot$target:::btree-put
 / self->timer == 0 /
 {
 	self->timer = freq;
-	printf("%d %d %d %d %d %d\n", leafcount, rcount, wcount, rtime, wtime, timestamp-begintime);
+	printf("%d %d %d %d %d %d\n", nodecount, rcount, wcount, rtime, wtime, timestamp-begintime);
 }
 
+riot$target:::btree-new-internal,
 riot$target:::btree-split-leaf
 {
-	leafcount++;
+    nodecount++;
 }
 
 syscall::pread*:entry
-/pid==$target && fds[arg0].fi_pathname=="/riot/mb.1"/
+/pid==$target && dirname(fds[arg0].fi_pathname)=="/riot"/
 {
 	self->ts = timestamp;
 }
 
 syscall::pwrite*:entry
-/pid==$target && fds[arg0].fi_pathname=="/riot/mb.1"/
+/pid==$target && dirname(fds[arg0].fi_pathname)=="/riot"/
 {
 	self->ts = timestamp;
 }
@@ -118,6 +119,6 @@ io:::done
 
 END
 {
-	printf("%d %d %d %d %d %d\n", leafcount, rcount, wcount, rtime, wtime, timestamp-begintime);
+	printf("%d %d %d %d %d %d\n", nodecount, rcount, wcount, rtime, wtime, timestamp-begintime);
 }
 

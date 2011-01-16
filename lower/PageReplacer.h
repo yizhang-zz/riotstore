@@ -43,8 +43,12 @@ public:
     virtual void add(PageRec *bh) = 0;
 	virtual void remove(PageRec *bh) = 0;
 
+    virtual void print() = 0;
+
     // Called by BufferManager to reset statistics about a page.
     // indexOfPage is the index into BufferManager::images.
+
+    virtual size_t size() const = 0;
 };
 
 #endif

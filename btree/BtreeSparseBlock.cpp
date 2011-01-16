@@ -330,6 +330,7 @@ void SparseBlock<T>::print() const
 {
 	using namespace std;
 	cout<<(this->type()==Block::kInternal?"I":"S");
+    cout<<this->pageHandle->getPid();
 	cout<<"{"<<this->sizeWithOverflow()<<"}";
 	cout<<"["<<this->lower<<","<<this->upper<<"] ";
 	SparseIterator it(this,0), end(this,this->size());

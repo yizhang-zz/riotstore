@@ -13,12 +13,15 @@ private:
       least recently accessed.
 	*/
 	PageRec *head, *tail;
+    size_t count;
 public:
     LRUPageReplacer();
     ~LRUPageReplacer();
     RC_t selectToReplace(PageRec *&bh);
     void add(PageRec *bh);
     void remove(PageRec *bh);
+    void print();
+    size_t size() const { return count; }
 };
 
 #endif

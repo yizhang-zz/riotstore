@@ -1,3 +1,4 @@
+#include "riot.h"
 #include "BufferManager.h"
 #include <sys/time.h>
 #include "PageReplacer.h"
@@ -12,7 +13,10 @@ double BufferManager::accessTime = 0.0;
 
 void BufferManager::printStat()
 {
-    cout<<"total pin count="<<totalPinCount<<endl;
+    cout<<"total pin count="<<totalPinCount<<endl
+        <<"unmapped count="<<pageReplacer->size()<<endl
+        <<"mapped count="<<numSlots-pageReplacer->size()<<endl;
+    pageReplacer->print();
 }
 
 // Constructs a BufferManager for a paged storage container with a
@@ -92,6 +96,9 @@ RC_t BufferManager::allocatePage(PageHandle &ph) {
 	}
     //Debug("with page %10d\n", pid);
 
+#ifdef DTRACE_SDT
+    RIOT_BM_ALLOC(pid);
+#endif
 	rec->pid = pid;
     rec->dirty = true;
     ph = make_ph(rec);
@@ -131,6 +138,9 @@ RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
     }
     //Debug("with page %10d\n", pid);
     
+#ifdef DTRACE_SDT
+    RIOT_BM_ALLOC(pid);
+#endif
     rec->pid = pid;
     rec->dirty = true;
 	ph = make_ph(rec);
@@ -181,12 +191,18 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
     // first check if already buffered
     PageHashMap::iterator it = pageHash->find(pid);
     if (it != pageHash->end()) {
+#ifdef DTRACE_SDT
+        RIOT_BM_READ(pid,0);
+#endif
         rec = it->second;
         if (rec->pinCount == 0)
             pageReplacer->remove(rec);
 		ph = make_ph(rec);
     }
     else {
+#ifdef DTRACE_SDT
+        RIOT_BM_READ(pid,1);
+#endif
         if ((ret=replacePage(rec)) & RC_FAIL) {
             return ret;
         }
@@ -217,6 +233,9 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
             pageReplacer->remove(rec);
 		ph = make_ph(rec);
         ret = RC_READ;
+#ifdef DTRACE_SDT
+        RIOT_BM_READ(pid,0);
+#endif
     }
     else {
         if ((ret=replacePage(rec)) & RC_FAIL) {
@@ -227,6 +246,9 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
         rec->pid = pid;
         ret = storage->readPage(rec);
         if (ret & RC_FAIL) {
+#ifdef DTRACE_SDT
+            RIOT_BM_ALLOC(pid);
+#endif
             ret = storage->allocatePageWithPID(pid);
             if (ret & RC_FAIL) {
                 rec->pid = INVALID_PID;
@@ -239,6 +261,9 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
             ret = RC_ALLOC;
         }
         else {
+#ifdef DTRACE_SDT
+            RIOT_BM_READ(pid,1);
+#endif
             ret = RC_READ;
         }
 		ph = make_ph(rec);
@@ -355,6 +380,7 @@ RC_t BufferManager::replacePage(PageRec *&bh)
             return ret;
         }
         bh->dirty = false;
+        //Debug("Evicted dirty page %d", bh->pid);
     }
     // remove old mapping in hash table
     pageHash->erase(bh->pid);

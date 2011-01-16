@@ -6,6 +6,7 @@ LRUPageReplacer::LRUPageReplacer()
 {
 	head = NULL;
 	tail = NULL;
+    count = 0;
 }
 
 LRUPageReplacer::~LRUPageReplacer()
@@ -33,6 +34,7 @@ void LRUPageReplacer::add(PageRec *bh)
 		bh->next = NULL;
 		tail = bh;
 	}
+    count++;
 }
 
 void LRUPageReplacer::remove(PageRec *bh)
@@ -48,4 +50,18 @@ void LRUPageReplacer::remove(PageRec *bh)
 		bh->next->prev = bh->prev;
 
 	bh->prev = bh->next = NULL;
+
+    count--;
+}
+
+void LRUPageReplacer::print()
+{
+    using namespace std;
+    cout<<"free pages: ";
+    PageRec *p = head;
+    while (p) {
+        cout<<*p;
+        p = p->next;
+    }
+    cout<<endl;
 }

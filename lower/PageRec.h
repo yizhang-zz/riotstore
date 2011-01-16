@@ -2,6 +2,7 @@
 #define PAGEREC_H
 
 #include "../common/common.h"
+#include <iostream>
 #include <boost/pool/pool.hpp>
 
 class BufferManager;
@@ -10,6 +11,8 @@ class PageRec
 {
 public:
 	friend class BufferManager;
+    friend std::ostream & operator<< (std::ostream &, const PageRec &);
+
     char *image;
     PageRec *prev;
     PageRec *next;

@@ -15,15 +15,15 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	char type = argv[1][0];
-	Key_t scale = atoi(argv[2]);
+	int scale = atoi(argv[2]);
 	//char genVal = argv[3][0];
 	int seed = time(NULL);
 
 	char filename[100];
-	sprintf(filename, "%c%d.in", type, scale);
+	sprintf(filename, "%c%d", type, scale);
 	int file = open(filename, O_WRONLY|O_CREAT, 0660);
 
-	Key_t total = scale*scale;
+	Key_t total = int(scale)*scale;
 	Key_t *keys = new Key_t[total];
 	Key_t i,j,k,l;
 	switch (type) {

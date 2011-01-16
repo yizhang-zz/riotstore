@@ -350,7 +350,7 @@ void BTree::split(Cursor &cursor, BlockPool &pool)
             switchFormat(&cursor[cur].block, pool);
         }
 #ifdef DTRACE_SDT
-        RIOT_BTREE_SPLIT_INTERNAL();
+        RIOT_BTREE_NEW_INTERNAL();
 #endif
         newBlock = newSibling;
         tempBlock = newSibling;
@@ -362,6 +362,9 @@ void BTree::split(Cursor &cursor, BlockPool &pool)
     }
     if (ret == kOverflow) {
         // overflow has propagated to the root
+#ifdef DTRACE_SDT
+        RIOT_BTREE_NEW_INTERNAL();
+#endif
         PageHandle rootPh;
         buffer->allocatePage(rootPh);
         InternalBlock *newRoot = static_cast<InternalBlock*>(
@@ -387,13 +390,13 @@ void BTree::split(Cursor &cursor, BlockPool &pool)
 }
 
 void BTree::print(PID_t pid, Key_t beginsAt, Key_t endsBy, int depth, 
-        PrintStat *ps, bool statOnly)
+        PrintStat *ps, int flag) const
 {
     PageHandle ph;
     buffer->readPage(pid, ph);
     Block *block = Block::create(ph, beginsAt, endsBy);
 
-    if (!statOnly) {
+    if (flag & LSP_FULL) {
         int indent = 2*depth;
         char *buf =  new char[indent+1];
         memset(buf, ' ', indent);
@@ -407,8 +410,8 @@ void BTree::print(PID_t pid, Key_t beginsAt, Key_t endsBy, int depth,
         int num = iblock->size();
         int i;
         for (i=0; i<num-1; ++i)
-            print(iblock->value(i), iblock->key(i), iblock->key(i+1), depth+1, ps, statOnly);
-        print(iblock->value(i), iblock->key(i), iblock->getUpperBound(), depth+1, ps, statOnly);
+            print(iblock->value(i), iblock->key(i), iblock->key(i+1), depth+1, ps, flag);
+        print(iblock->value(i), iblock->key(i), iblock->getUpperBound(), depth+1, ps, flag);
         ps->internalCount++;
     }
     else {
@@ -416,22 +419,37 @@ void BTree::print(PID_t pid, Key_t beginsAt, Key_t endsBy, int depth,
             ps->denseCount++;
         else if (block->type() == Block::kSparseLeaf)
             ps->sparseCount++;
+        int size = block->size();
+        ps->hist[size/ps->bin]++;
     }
     delete block;
 }
 
-void BTree::print(bool statOnly)
+void BTree::print(int flag) const
 {
     using namespace std;
     PrintStat ps = {0,0,0};
+    if (header->useDenseLeaf)
+        ps.bin = (config->denseLeafCapacity + 9) / 10;
+    else 
+        ps.bin = (config->sparseLeafCapacity + 9)/ 10;
+    for (int i=0; i<10; ++i)
+        ps.hist[i] = 0;
+
     cout<<"BEGIN--------------------------------------"<<endl;
     cout<<"BTree with depth "<<header->depth<<endl;
-    //if (header->depth > 0)
-    print(header->root, 0, header->endsBy, 0, &ps, statOnly);
-    cout<<"Dense leaves: "<<ps.denseCount<<endl
-        <<"Sparse leaves: "<<ps.sparseCount<<endl
-        <<"Internal nodes: "<<ps.internalCount<<endl
-        <<"Total nodes: "<<ps.denseCount+ps.sparseCount+ps.internalCount<<endl;
+    print(header->root, 0, header->endsBy, 0, &ps, flag);
+    if (flag & LSP_STAT) {
+        cout<<"Dense leaves: "<<ps.denseCount<<endl
+            <<"Sparse leaves: "<<ps.sparseCount<<endl
+            <<"Internal nodes: "<<ps.internalCount<<endl
+            <<"Total nodes: "<<ps.denseCount+ps.sparseCount+ps.internalCount<<endl
+            <<"Histogram: "<<endl;
+        for (int i=0; i<10; ++i)
+            cout<<"  ["<<i*ps.bin<<","<<(i+1)*ps.bin-1<<")\t"<<ps.hist[i]<<endl;
+    }
+    if (flag & LSP_BM)
+        buffer->print();
     cout<<"END----------------------------------------"<<endl;
 }
 
