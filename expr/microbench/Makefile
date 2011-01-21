@@ -1,13 +1,13 @@
 LD_RUN_PATH = ../..
 include ../../flags.mk
-CXXFLAGS += -I../.. -I../../common -I../../btree -I../../lower
+CXXFLAGS += -I../.. -I../../common -I../../btree -I../../lower -I../../directly_mapped
 LDFLAGS += $(shell pkg-config --libs gsl)
 LDFLAGS += -L../.. -lriot_store
 
 .PHONY: all clean lower
 
-SRC :=  write.cpp gen.cpp read.cpp
-OBJ := $(patsubst %.cpp, %.o, $(SRC))
+SRC :=  write.cpp gen.cpp read.cpp write1.cpp
+OBJ := $(SRC:.cpp=.o)
 EXE := $(SRC:.cpp=)
 
 all: $(EXE)

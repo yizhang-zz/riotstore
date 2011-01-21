@@ -185,7 +185,7 @@ private:
             leafHist->onNewLeaf(leaf->getLowerBound(), leaf->getUpperBound());
 #endif
 #ifdef DTRACE_SDT
-        RIOT_BTREE_SPLIT_LEAF();
+        RIOT_BTREE_SPLIT_LEAF(leaf->size());
 #endif
     }
 };

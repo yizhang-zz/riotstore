@@ -115,6 +115,17 @@ int BSplitter<Value>::split(BlockT<Value> *orig, BlockT<Value> **newBlock,
     Key_t spKey;
     Block::Type types[2];
     while(true) {
+        if (keys[left-1]/boundary 
+			< keys[left]/boundary) {
+            sp = left;
+            spKey = (keys[sp]/boundary)*boundary; // closest to median
+            //if (size-sp <= config->sparseLeafCapacity || keys[size-1]-keys[sp]+1 <= config->denseLeafCapacity)
+            //    break;
+            if (splitTypes(orig, keys, size, sp, spKey, types) == 0)
+                break;
+        }
+        left--;
+
         // test if can split in front of left/right position
         // loop is terminated once a split point is found
         if (keys[right-1]/boundary
@@ -127,17 +138,6 @@ int BSplitter<Value>::split(BlockT<Value> *orig, BlockT<Value> **newBlock,
                 break;
         }
         right++;
-
-        if (keys[left-1]/boundary 
-			< keys[left]/boundary) {
-            sp = left;
-            spKey = (keys[sp]/boundary)*boundary; // closest to median
-            //if (size-sp <= config->sparseLeafCapacity || keys[size-1]-keys[sp]+1 <= config->denseLeafCapacity)
-            //    break;
-            if (splitTypes(orig, keys, size, sp, spKey, types) == 0)
-                break;
-        }
-        left--;
     }
 	int ret = this->splitHelper(orig, newBlock, newPh, pool, sp, spKey,
 							 keys+sp, values+sp, types);

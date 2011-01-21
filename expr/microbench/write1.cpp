@@ -5,6 +5,7 @@
 #include "common.h"
 #include "Config.h"
 #include "Btree.h"
+#include "DirectlyMappedArray.h"
 
 using namespace std;
 using namespace Btree;
@@ -63,7 +64,19 @@ int main(int argc, char **argv)
     */
 	int size = atoi(infilename+1);
 	Key_t total = Key_t(size) * size;
-    BTree *tree = new BTree(fileName, total, splitterType, 'M', config->useDenseLeaf);
+    LinearStorage *ls;
+    if (splitterType == 'D') {
+        // dma
+        ls = new DirectlyMappedArray(fileName, total);
+    }
+    else if (splitterType == 'M') 
+        ls = new BTree(fileName, total, splitterType, 'M', 0);
+    else if (splitterType == 'B')
+        ls = new BTree(fileName, total, splitterType, 'M', 1);
+    else {
+        cerr<<"wrong splitter type"<<endl;
+        exit(1);
+    }
 
 	const int batchSize = 1000;
 	Key_t keys[batchSize];
@@ -72,11 +85,11 @@ int main(int argc, char **argv)
 		ssize_t c = read(infile, keys, sizeof(keys));
 		int count = c/sizeof(Key_t);
 		for (int i=0; i<count; ++i) {
-			tree->put(keys[i], 1.0);
+			ls->put(keys[i], 1.0);
 		}
 		if (count < batchSize)
 			break;
 	}
 	close(infile);
-	delete tree;
+	delete ls;
 }

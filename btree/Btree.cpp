@@ -350,7 +350,7 @@ void BTree::split(Cursor &cursor, BlockPool &pool)
             switchFormat(&cursor[cur].block, pool);
         }
 #ifdef DTRACE_SDT
-        RIOT_BTREE_NEW_INTERNAL();
+        RIOT_BTREE_NEW_INTERNAL(newSibling->size());
 #endif
         newBlock = newSibling;
         tempBlock = newSibling;
@@ -363,7 +363,7 @@ void BTree::split(Cursor &cursor, BlockPool &pool)
     if (ret == kOverflow) {
         // overflow has propagated to the root
 #ifdef DTRACE_SDT
-        RIOT_BTREE_NEW_INTERNAL();
+        RIOT_BTREE_NEW_INTERNAL(2);
 #endif
         PageHandle rootPh;
         buffer->allocatePage(rootPh);

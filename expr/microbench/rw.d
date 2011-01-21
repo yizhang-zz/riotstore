@@ -43,9 +43,11 @@ riot$target:::btree-put
 }
 
 riot$target:::btree-new-internal,
-riot$target:::btree-split-leaf
+riot$target:::btree-split-leaf,
+riot$target:::dma-new-block
 {
     nodecount++;
+    /*@ = lquantize(arg0, 128, 300, 10);*/
 }
 
 syscall::pread*:entry

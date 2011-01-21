@@ -312,8 +312,8 @@ void DenseLeafBlock::truncate(int pos, Key_t end)
 	}
 	else { // must be that overflow.index < 0
 		header->nEntries = --pos; // pos includes the overflow entry
-        // set [end .. tailKey) to 0
-        for (Key_t k = end; k < tailKey; k++)
+        // set [max(headKey,end) .. tailKey) to 0
+        for (Key_t k = std::max(header->headKey,end); k < tailKey; k++)
             value_(k-header->headKey) = kDefaultValue;
         // update tailIndex and tailKey
 		header->tailIndex -= tailKey - end;
