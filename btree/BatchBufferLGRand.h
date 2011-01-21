@@ -7,18 +7,27 @@ namespace Btree
 	template<class PageId>
 	class BatchBufferLGRand: public BatchBuffer
 	{
+    private:
+        gsl_rng *rng;
+
 	public:
 
 		BatchBufferLGRand(u32 cap_, BTree *tree_): BatchBuffer(cap_ , tree_)
 		{
+            rng = gsl_rng_alloc(gsl_rng_taus2);
 		}
+
+        ~BatchBufferLGRand()
+        {
+            gsl_rng_free(rng);
+        }
 
 		void put(const Key_t &key, const Datum_t &datum)
 		{
 			using namespace std;
 			typename EntrySet::const_iterator it;
 			if (size == capacity) {
-				int selected = rand() % size;
+				int selected = gsl_rng_uniform_int(rng, size);
 				int i;
 				for (it = entries.begin(), i = 0; i < selected; ++it, ++i)
 					;

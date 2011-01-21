@@ -27,6 +27,7 @@
 #include <typeinfo>
 #include <iterator>
 #include <boost/shared_ptr.hpp>
+#include <gsl/gsl_rng.h>
 
 
 /* Direct I/O, no caching by the OS */
@@ -271,14 +272,16 @@ enum AccessCode {
 template<class T>
 void permute(T* array, const int size)
 {
+    gsl_rng *r = gsl_rng_alloc(gsl_rng_taus2);
     for (int i=0; i<size-1; i++) {
 		// choose target from [i, size) randomly,
 		// and swap i and target
-        int target = rand() % (size-i) + i;
+        int target = gsl_rng_uniform_int(r, size-i) + i;
         T temp = array[target];
         array[target] = array[i];
         array[i] = temp;
     }
+    gsl_rng_free(r);
 }
 
 template<class Iterator>
@@ -309,10 +312,11 @@ bool binarySearch(Iterator begin, Iterator end,
 template<class T>
 void kPermute(T *array, T begin, T end, int k)
 {
+    gsl_rng *r = gsl_rng_alloc(gsl_rng_taus2);
 	std::map<T,T> htable;
 	T size = end-begin+1;
 	for (int i=0; i<k; i++) {
-		int target = rand() % (size-i) + i;
+		int target = gsl_rng_uniform_int(r, size-i) + i;
 		if (i==target)
 			continue;
 		if (htable.find(begin+i) == htable.end())
