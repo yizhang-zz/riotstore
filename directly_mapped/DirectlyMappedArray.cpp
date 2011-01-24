@@ -22,7 +22,6 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, Key_t numElements
 {
    if (numElements > 0)		// new array to be created
    {
-      remove(fileName);
       file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
       buffer = new BufferManager(file, config->dmaBufferSize); 
 	  RC_t rc = buffer->allocatePageWithPID(0, headerPage);
