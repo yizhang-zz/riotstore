@@ -115,8 +115,8 @@ public:
         int put(Iterator begin, Iterator end)
         {
             using namespace std;
-            Cursor cursor(buffer);
             BlockPool pool;
+            Cursor cursor(buffer);
             int ret = 0;
             for (; begin != end; ++begin) {
                 putHelper(begin->key, begin->datum, cursor, pool);
