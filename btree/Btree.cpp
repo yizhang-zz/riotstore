@@ -122,7 +122,6 @@ BTree::BTree(const char *fileName)
 
 BTree::~BTree()
 {
-    headerPage.reset();
 #ifdef USE_BATCH_BUFFER
     if (leafHist) {
         //leafHist->print();
@@ -131,6 +130,7 @@ BTree::~BTree()
     if (batbuf)
         delete batbuf;
 #endif
+    headerPage.reset();
     delete buffer;
     delete file;
     delete leafSplitter;

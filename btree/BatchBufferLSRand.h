@@ -9,6 +9,7 @@ namespace Btree
 	{
     private:
         gsl_rng *rng;
+        Key_t selected;
 
 	public:
 		BatchBufferLSRand(u32 cap_, BTree *tree_): BatchBuffer(cap_, tree_)
@@ -25,6 +26,7 @@ namespace Btree
 		{
 			using namespace std;
 			if (size == capacity) {
+                /* sampling by walking through the set is too expensive!
 				int index = gsl_rng_uniform_int(rng, size);
 				EntrySet::iterator it = entries.begin(),
 					it_end = entries.end();
@@ -32,6 +34,9 @@ namespace Btree
 					;
 				PageId pid;
 				tree->locate(it->key, pid);
+                */
+				PageId pid;
+				tree->locate(selected, pid);
 				EntrySet::iterator begin = entries.lower_bound(pid.lower, compEntry);
 				EntrySet::iterator end = entries.lower_bound(pid.upper, compEntry);
 				int ret = tree->put(begin, end);
@@ -42,6 +47,9 @@ namespace Btree
 
 			entries.insert(Entry(key, datum));
 			++size;
+            // reservoir sampling
+            if (gsl_rng_uniform(rng) < 1.0/size)
+                selected = key;
 		}
 	};
 }

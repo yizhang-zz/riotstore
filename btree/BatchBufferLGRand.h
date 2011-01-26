@@ -9,6 +9,7 @@ namespace Btree
 	{
     private:
         gsl_rng *rng;
+        Key_t selected;
 
 	public:
 
@@ -27,20 +28,15 @@ namespace Btree
 			using namespace std;
 			typename EntrySet::const_iterator it;
 			if (size == capacity) {
-				int selected = gsl_rng_uniform_int(rng, size);
-				int i;
-				for (it = entries.begin(), i = 0; i < selected; ++it, ++i)
-					;
 				PageId spid;
-				tree->locate(it->key, spid);
-				it = entries.lower_bound(spid.lower, compEntry);
+				tree->locate(selected, spid);
 				// use a sentinel to bound the search
 				typename EntrySet::const_iterator sentinel =
 					entries.insert(entries.end(), Entry(MAX_KEY, 0));
-				while (it->key < spid.upper) {
+				typename EntrySet::iterator it =
+                    entries.lower_bound(spid.lower, compEntry);
+				for (; it->key < spid.upper; ++it)
 					++spid.count;
-					++it;
-				}
 				entries.erase(sentinel);
 
 				int group_lb = floorLog2(spid.count);  // group's size lower bound
@@ -63,6 +59,9 @@ namespace Btree
 
 			entries.insert(Entry(key, datum));
 			++size;
+            // reservoir sampling
+            if (gsl_rng_uniform(rng) < 1.0/size)
+                selected = key;
 		}
 
 	};

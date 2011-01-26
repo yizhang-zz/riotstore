@@ -31,7 +31,7 @@ useDense=`sed -n "s/useDenseLeaf=\([01]\)/\1/p" $HOME/.riot`
 echo "useDense=$useDense"
 echo
 
-for x in LP ALL LPP LG LGP 
+for x in LPP LP ALL LG LGP 
 do
 	sed "s/\(batchMethod=\)\(.*\)/\1$x/g" $HOME/.riot > /tmp/.riot.tmp
 	mv /tmp/.riot.tmp $HOME/.riot
@@ -53,8 +53,6 @@ do
             output=$a$b$c-$useDense-$x
             echo "output will be named $output"
 			./rw.d -c "./write $a$b $c" > /tmp/writerun.log
-			RET=$?
-			[ $RET -ne 0 ] && exit
 			# use awk to calc sec from nanosec and drop the timestamp field
 			# sed removes any blank line
 			sort -n +5 /tmp/writerun.log | sed '/^$/d' | awk '{print $1,$2,$3,$4/1e9,$5/1e9,$6/1e9}' > $1/$output.log

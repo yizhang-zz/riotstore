@@ -6,7 +6,7 @@ LDFLAGS += -L../.. -lriot_store
 
 .PHONY: all clean lower
 
-SRC :=  write.cpp gen.cpp
+SRC :=  write.cpp gen.cpp testequal.cpp
 OBJ := $(SRC:.cpp=.o)
 EXE := $(SRC:.cpp=)
 
