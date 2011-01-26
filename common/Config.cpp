@@ -9,6 +9,14 @@ Config *config = Config::getGlobalConfig();
 
 Config::Config(const char *path)
 {
+    bmm["NONE"] = Btree::kNone;
+    bmm["ALL"] = Btree::kFWF;
+    bmm["LRU"] = Btree::kLRU;
+    bmm["LP"] = Btree::kLS;
+    bmm["LPP"] = Btree::kLS_RAND;
+    bmm["LG"] = Btree::kLG;
+    bmm["LGP"] = Btree::kLG_RAND;
+
 	denseLeafCapacity = (PAGE_SIZE-sizeof(Btree::DenseLeafBlock::Header))
 		/ sizeof(Datum_t);
 	sparseLeafCapacity = (PAGE_SIZE-sizeof(Btree::SparseLeafBlock::Header))
@@ -61,22 +69,7 @@ Config::Config(const char *path)
 			} else if (strcmp(a, "batchKeepPidCount") == 0) {
 				batchKeepPidCount = atoi(b);
 			} else if (strcmp(a, "batchMethod") == 0) {
-				if (strcmp(b, "NONE") == 0)
-					batchMethod = Btree::kNone;
-				else if(strcmp(b, "FWF") == 0)
-					batchMethod = Btree::kFWF;
-				else if(strcmp(b, "LRU") == 0)
-					batchMethod = Btree::kLRU;
-				else if(strcmp(b, "LS") == 0)
-					batchMethod = Btree::kLS;
-				else if(strcmp(b, "LS_RAND") == 0)
-					batchMethod = Btree::kLS_RAND;
-				else if(strcmp(b, "LS_RANDCUT") == 0)
-					batchMethod = Btree::kLS_RANDCUT;
-				else if(strcmp(b, "LG") == 0)
-					batchMethod = Btree::kLG;
-				else if(strcmp(b, "LG_RAND") == 0)
-					batchMethod = Btree::kLG_RAND;
+                batchMethod = bmm.at(b);
 			} else if (strcmp(a, "batchUseHistogram") == 0) {
 				batchUseHistogram = atoi(b);
 			} else if (strcmp(a, "batchHistogramNum") == 0) {

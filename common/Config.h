@@ -1,9 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
-#pragma once
 
 #include <string>
-#include <map>
+#include <boost/unordered_map.hpp>
 #include "common.h"
 #include "btree/BatchBuffer.h"
 
@@ -14,6 +13,8 @@ class Config
 public:
     static Config* getGlobalConfig();
     
+    typedef boost::unordered_map<std::string, Btree::BatchMethod> BatchMethodMap;
+    BatchMethodMap bmm;
     //const static int denseLeafHeaderSize = 16;
     //const static int sparseLeafHeaderSize = 12;
     //const static int internalHeaderSize = 8;

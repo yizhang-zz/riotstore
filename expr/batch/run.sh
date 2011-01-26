@@ -31,7 +31,7 @@ useDense=`sed -n "s/useDenseLeaf=\([01]\)/\1/p" $HOME/.riot`
 echo "useDense=$useDense"
 echo
 
-for x in NONE #FWF LS LS_RAND LRU LG LG_RAND
+for x in LP ALL LPP LG LGP 
 do
 	sed "s/\(batchMethod=\)\(.*\)/\1$x/g" $HOME/.riot > /tmp/.riot.tmp
 	mv /tmp/.riot.tmp $HOME/.riot
@@ -47,19 +47,19 @@ do
 	for b in 4000
 	do
         # splitting strategy
-		for c in B M R T
+		for c in B 
 		do
 			echo "Running with input $a$b , splitting strategy $c"
             output=$a$b$c-$useDense-$x
             echo "output will be named $output"
 			./rw.d -c "./write $a$b $c" > /tmp/writerun.log
-            cp /riot/mb /riot/$output.bin
 			RET=$?
 			[ $RET -ne 0 ] && exit
 			# use awk to calc sec from nanosec and drop the timestamp field
 			# sed removes any blank line
 			sort -n +5 /tmp/writerun.log | sed '/^$/d' | awk '{print $1,$2,$3,$4/1e9,$5/1e9,$6/1e9}' > $1/$output.log
 			rm /tmp/writerun.log
+            cp /riot/mb /riot/$output.bin
 		done
 	done
 done

@@ -25,7 +25,7 @@ namespace Btree
 
 		BatchBufferLS(u32 cap_, BTree *tree_): BatchBuffer(
 				cap_-sizeof(PageId)*config->batchKeepPidCount/sizeof(Entry)
-				, tree_), knownCount(0)
+				, tree_), lastFlushCount(0), knownCount(0)
 		{
 			nKeep = 1+config->batchKeepPidCount;
 			pids.reserve(nKeep);
@@ -37,12 +37,22 @@ namespace Btree
 		{
 			using namespace std;
 
+            // shortcut: if max among known pids >= last flushed page, then
+            // directly flush that page and skip computing the unknown pids
+			typename PidSet::iterator it = max_element(pids.begin(), pids.end(), compCount);
+            if (it->count >= lastFlushCount && it->count > 0) {
+                PageId ret = *it;
+                pids.erase(it);
+                return ret;
+            }
+
 			// lst will contain the running top K+1 pids as we combine the
 			// existing pids and newly computed pids. We start by copying
 			// everything in pids into lst.
 			lst = pids;
 			assert(lst.rbegin()->lower == MAX_KEY);
 			lst.pop_back();  // the last one is the sentinel
+            // make a min-heap
 			make_heap(lst.begin(), lst.end(), compCountR);
 
 			EntrySet::const_iterator eit = entries.begin(),
@@ -78,7 +88,7 @@ namespace Btree
 				}
 			}
 
-			typename PidSet::iterator it = max_element(lst.begin(), lst.end(), compCount);
+			it = max_element(lst.begin(), lst.end(), compCount);
 			PageId ret = *it;
 			pids.clear();
 			if (it != lst.begin())
@@ -118,6 +128,7 @@ namespace Btree
 				entries.erase(start, stop);
 				size -= longest.count;
 				knownCount -= longest.count;
+                lastFlushCount = longest.count;
 			}
 
 			entries.insert(Entry(key, datum));
@@ -136,6 +147,7 @@ namespace Btree
 		{
 			BatchBuffer::flushAll();
 			knownCount = 0;
+            lastFlushCount = 0;
 			pids.clear();
 			pids.push_back(maxPid);  // serve as sentinel
 		}
@@ -152,8 +164,9 @@ namespace Btree
 private:
 		PidSet pids;
 		PidSet lst;
-		int knownCount;
+		unsigned knownCount;
 		unsigned nKeep;
+        unsigned lastFlushCount;
 		static CompPidCount<PageId> compCount;
 		static CompPidCountR<PageId> compCountR;
 		static CompPid<PageId> comp;

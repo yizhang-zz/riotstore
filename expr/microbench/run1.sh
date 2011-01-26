@@ -41,13 +41,13 @@ do
     echo
 
 # workload
-for a in D I
+for a in S
 do
     # matrix size
 	for b in 4000
 	do
         # splitting strategy
-		for c in D
+		for c in D M B
 		do
 			echo "Running with input $a$b , splitting strategy $c"
             output=$a$b$c-$useDense-$x

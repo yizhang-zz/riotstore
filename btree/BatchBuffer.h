@@ -44,7 +44,7 @@ public:
 	friend std::ostream & operator<<(std::ostream &out, const BoundPageId &page);
 
 	Key_t lower, upper;
-	u16 count; // how many records to go into this page
+	unsigned int count; // how many records to go into this page
 };
 
 inline std::ostream & operator<<(std::ostream &out, const Btree::BoundPageId &page)

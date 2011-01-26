@@ -114,6 +114,7 @@ public:
     template<class Iterator>
         int put(Iterator begin, Iterator end)
         {
+            using namespace std;
             Cursor cursor(buffer);
             BlockPool pool;
             int ret = 0;
@@ -121,6 +122,7 @@ public:
                 putHelper(begin->key, begin->datum, cursor, pool);
                 ++ret;
             }
+            //cerr<<ret<<endl;
             return ret;
         }
 

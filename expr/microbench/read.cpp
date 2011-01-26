@@ -1,9 +1,11 @@
+#include <libgen.h>
 #include <time.h>
 #include <iostream>
 #include <fstream>
 #include "common.h"
 #include "Config.h"
 #include "Btree.h"
+#include "DirectlyMappedArray.h"
 
 using namespace std;
 using namespace Btree;
@@ -12,7 +14,7 @@ int main(int argc, char **argv)
 {
 	if (argc < 3) {
 		cerr<<"Usage: "<<argv[0]<<" <file> <read order> [rand seed]"<<endl
-			<<"read order: S(sequential), D(strided), R(random), I(interleaved)"<<endl;
+			<<"read order: S(sequential), D(strided), R(random row), I(interleaved)"<<endl;
 		return 0;
 	}
 	unsigned int tm;
@@ -23,20 +25,25 @@ int main(int argc, char **argv)
 	srand(tm);
 	cerr<<"seed = "<<tm<<endl;
 
-	const char *fileName = argv[1];
+	char *fileName = argv[1];
 	char readOrder = argv[2][0];
 
-	//InternalSplitter *isp = new MSplitter<PID_t>();
-	//LeafSplitter *lsp = new MSplitter<Datum_t>();
-
-	BTree *tree = new BTree(fileName);
-	Key_t total = tree->upperBound();
+    // fileName = [insert order][scale][splitter type]-...
+    // splitter type of 'D' means DMA, others B-tree
+    char *p = basename(fileName)+1;
+    while (*p && isdigit(*p)) ++p;
+    LinearStorage *ls = NULL;
+    if (*p == 'D')
+        ls = new DirectlyMappedArray(fileName, 0);
+    else
+        ls = new BTree(fileName);
+	Key_t total = ls->upperBound();
 	Key_t i,j,k,l;
 	Key_t size =  (Key_t) sqrt(total);
 	Key_t *keys = new Key_t[total];
+    int *rowIndices = new int[size];
 
 	switch(readOrder) {
-		// CONTINUE
 	case 'S':
 		for (i=0; i<total; ++i) {
 			keys[i] = i;
@@ -48,9 +55,12 @@ int main(int argc, char **argv)
 				keys[i*size+j] = j*size+i;
 		break;
 	case 'R':
-		for (i=0; i<total; ++i) 
-			keys[i] = i;
-		permute(keys, total);
+		for (i=0; i<size; ++i) 
+			rowIndices[i] = i;
+		permute(rowIndices, size); // permute row indices
+		for (i=0; i<size; ++i) 
+			for (j=0; j<size; ++j) 
+				keys[i*size+j] = rowIndices[i]*size+j;
 		break;
     case 'I':
 		// row 0
@@ -69,8 +79,9 @@ int main(int argc, char **argv)
 
 	Datum_t datum;
 	for (i=0; i<total; ++i) {
-		tree->get(keys[i], datum);
+		ls->get(keys[i], datum);
 	}
-	delete tree;
+	delete ls;
 	delete keys;
+    delete rowIndices;
 }

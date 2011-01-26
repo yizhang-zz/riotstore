@@ -1,4 +1,4 @@
-set term postscript enhanced eps color ;
+set term postscript enhanced eps color solid;
 set key right;
 set size .5,.5
 #set xlabel  "Storage format"

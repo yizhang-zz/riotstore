@@ -192,8 +192,17 @@ void BTree::locate(Key_t key, HistPageId &pageId)
 void BTree::locate(Key_t key, BoundPageId &pageId)
 {
 #ifdef DTRACE_SDT
-    RIOT_BTREE_LOCATE_BEGIN();
+    //RIOT_BTREE_LOCATE_BEGIN();
 #endif
+
+    // If almost all leaves are present, we can calculate pid instead of
+    // accessing the disk
+    // Assumptions: the B split strategy is used
+    if (header->nLeaves > header->endsBy / config->denseLeafCapacity / 1.5) {
+        pageId.lower = key / config->denseLeafCapacity * config->denseLeafCapacity;
+        pageId.upper = pageId.lower + config->denseLeafCapacity;
+        return;
+    }
 
     PID_t pid = header->root;
     Key_t l=0, u=header->endsBy;
@@ -219,7 +228,7 @@ void BTree::locate(Key_t key, BoundPageId &pageId)
     pageId.lower = l;
     pageId.upper = u;
 #ifdef DTRACE_SDT
-    RIOT_BTREE_LOCATE_END(header->depth);
+    //RIOT_BTREE_LOCATE_END(header->depth);
 #endif
 }
 #endif
