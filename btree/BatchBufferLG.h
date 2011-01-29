@@ -104,23 +104,33 @@ namespace Btree
 				// evict the group with largest count
 				int maxIndex = computeGroups();
 				typename PidSet::iterator it_end = groups[maxIndex].pids.end();
+                int totalflushed = 0;
 				for (typename PidSet::iterator it = groups[maxIndex].pids.begin();
 						it != it_end; ++it) {
 					EntrySet::iterator start = entries.lower_bound(it->lower, compEntry);
 					EntrySet::iterator stop  = entries.lower_bound(it->upper, compEntry);
-					tree->put(start, stop);
+					totalflushed += tree->put(start, stop);
 					entries.erase(start, stop);
-					size -= it->count;
 				}
-				// After evicting the largest group, cache pids from the second largest
-				// group
-				groups[maxIndex].count = 0;
-				Group *secondLargest = max_element(groups, groups+nGroups);
-				int n = config->batchKeepPidCount;
-				if (n > (int)secondLargest->pids.size())
-				   n = secondLargest->pids.size(); 	
-				// group's pids are already sorted in the order of their lower bounds
-				pids.assign(secondLargest->pids.begin(), secondLargest->pids.begin()+n);
+                size -= totalflushed;
+                //cerr<<"flushed "<<totalflushed<<" records"<<endl;
+				// After evicting the largest group, 
+                // cache pids from the second largest group
+                pids.clear();
+                Group *largest = groups+maxIndex;
+                int left = config->batchKeepPidCount;
+                while (left > 0) {
+                    largest->count = 0;
+                    largest = max_element(groups, groups+nGroups);
+                    int x = (int) largest->pids.size();
+                    if (x == 0)
+                        break;
+                    int toinsert = left >= x ? x : left;
+                    // group's pids are already sorted in the order of 
+                    // their lower bounds
+                    pids.insert(pids.end(), largest->pids.begin(), largest->pids.begin()+toinsert);
+                    left -= toinsert;
+                }
 				pids.push_back(maxPid);
 				clearGroups();
 			}

@@ -170,7 +170,7 @@ namespace Btree
 		static Splitter<Value> *createSplitter(char type, bool useDenseLeaf)
 		{
 			switch(type) {
-			case 'B':
+			case 'A':
                 return new BSplitter<Value>(useDenseLeaf);
 			case 'M':
 				return new MSplitter<Value>(useDenseLeaf);

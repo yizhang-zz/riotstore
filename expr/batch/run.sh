@@ -31,7 +31,7 @@ useDense=`sed -n "s/useDenseLeaf=\([01]\)/\1/p" $HOME/.riot`
 echo "useDense=$useDense"
 echo
 
-for x in LPP LP ALL LG LGP 
+for x in ALL
 do
 	sed "s/\(batchMethod=\)\(.*\)/\1$x/g" $HOME/.riot > /tmp/.riot.tmp
 	mv /tmp/.riot.tmp $HOME/.riot
@@ -41,13 +41,13 @@ do
     echo
 
 # workload
-for a in R
+for a in D
 do
     # matrix size
 	for b in 4000
 	do
         # splitting strategy
-		for c in B 
+		for c in A 
 		do
 			echo "Running with input $a$b , splitting strategy $c"
             output=$a$b$c-$useDense-$x

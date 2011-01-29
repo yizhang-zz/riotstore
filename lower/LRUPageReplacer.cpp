@@ -22,6 +22,17 @@ RC_t LRUPageReplacer::selectToReplace(PageRec *&bh)
 	return RC_OK;
 }
 
+int LRUPageReplacer::select(int n, PageRec **pages)
+{
+    PageRec *p = head;
+    int ret = 0;
+    while (p && ret < n) {
+        pages[ret++] = p;
+        p = p->next;
+    }
+    return ret;
+}
+
 void LRUPageReplacer::add(PageRec *bh)
 {
 	if (tail == NULL) {

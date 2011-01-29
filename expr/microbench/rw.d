@@ -47,17 +47,16 @@ riot$target:::btree-split-leaf,
 riot$target:::dma-new-block
 {
     nodecount++;
-    /*@ = lquantize(arg0, 128, 300, 10);*/
 }
 
 syscall::pread*:entry
-/pid==$target && dirname(fds[arg0].fi_pathname)=="/riot"/
+/pid==$target && basename(fds[arg0].fi_pathname)=="mb"/
 {
 	self->ts = timestamp;
 }
 
 syscall::pwrite*:entry
-/pid==$target && dirname(fds[arg0].fi_pathname)=="/riot"/
+/pid==$target && basename(fds[arg0].fi_pathname)=="mb"/
 {
 	self->ts = timestamp;
 }

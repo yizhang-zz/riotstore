@@ -388,6 +388,26 @@ RC_t BufferManager::replacePage(PageRec *&bh)
     //if (packer && bh->unpacked)
     //    packer->destroyUnpacked(bh->unpacked);
     bh->reset();
+
+    // write a bunch of pages to achieve better I/O performance?
+    /*
+    int towrite = numSlots/100;
+    PageRec **pages = new PageRec*[towrite];
+    int count = pageReplacer->select(towrite, pages);
+    for (int i=0; i<count; ++i) {
+        if (pages[i]->dirty) {
+            //if (packer && bh->unpacked)
+            //    packer->pack(bh->unpacked, bh->image);
+            if ((ret=storage->writePage(pages[i])) & RC_FAIL) {
+                Error("Physical storage cannot write pid %d, error %d",pages[i]->pid,ret);
+                return ret;
+            }
+            pages[i]->dirty = false;
+            //Debug("Evicted dirty page %d", bh->pid);
+        }
+    }
+    delete[] pages;
+    */
     return RC_OK;
 }
 

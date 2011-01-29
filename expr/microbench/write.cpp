@@ -12,7 +12,7 @@ using namespace Btree;
 int main(int argc, char **argv)
 {
 	const int required = 3;
-    //const char fileTmpl[] = "/riot/%s%c";
+	//char fileName[100] = "/export/home/yizhang/mb";
 	char fileName[100] = "/riot/mb";
 	//srand(12874938);
 	unsigned int tm;
@@ -65,7 +65,7 @@ int main(int argc, char **argv)
 	Key_t total = Key_t(size) * size;
     BTree *tree = new BTree(fileName, total, splitterType, 'M', config->useDenseLeaf);
 
-	const int batchSize = 1000;
+	const int batchSize = 1000000;
 	Key_t keys[batchSize];
     //for (int j=0; j<1002; ++j) {
 	while (true) {

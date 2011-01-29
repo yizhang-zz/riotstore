@@ -46,10 +46,10 @@ int open_direct(const char *pathname, int flags)
 int open_direct(const char *pathname, int flags)
 {
 	int fd = open(pathname, flags, 0660);
-    return fd;
 	if (fd < 0)
 		return fd;
-	return directio(fd, DIRECTIO_ON);
+	directio(fd, DIRECTIO_ON);
+    return fd;
 }
 
 PageImage allocPageImage(size_t num)

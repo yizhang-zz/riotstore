@@ -29,13 +29,13 @@ riot$target:::btree-locate-end
 
 
 syscall::pread*:entry
-/pid==$target && dirname(fds[arg0].fi_pathname)=="/riot"/
+/pid==$target && dirname(fds[arg0].fi_pathname)=="/export/home/yizhang"/
 {
 	self->ts = timestamp;
 }
 
 syscall::pwrite*:entry
-/pid==$target && dirname(fds[arg0].fi_pathname)=="/riot"/
+/pid==$target && dirname(fds[arg0].fi_pathname)=="/export/home/yizhang"/
 {
 	self->ts = timestamp;
 }

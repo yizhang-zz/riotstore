@@ -51,13 +51,13 @@ riot$target:::dma-new-block
 }
 
 syscall::pread*:entry
-/pid==$target && dirname(fds[arg0].fi_pathname)=="/riot"/
+/pid==$target && basename(fds[arg0].fi_pathname)=="mb"/
 {
 	self->ts = timestamp;
 }
 
 syscall::pwrite*:entry
-/pid==$target && dirname(fds[arg0].fi_pathname)=="/riot"/
+/pid==$target && basename(fds[arg0].fi_pathname)=="mb"/
 {
 	self->ts = timestamp;
 }

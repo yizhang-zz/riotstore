@@ -37,7 +37,7 @@ int main(int argc, char **argv)
 	case 'D':
 		for (i=0; i<total; ++i) 
             if (i % period == 0)
-                keys[i/period] = period * (i % period) + i / period;
+                keys[i/period] = scale * (i % scale) + i / scale;
 		break;
 	case 'R':
 		if (argc >= required+1) 

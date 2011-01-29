@@ -18,6 +18,7 @@ public:
     LRUPageReplacer();
     ~LRUPageReplacer();
     RC_t selectToReplace(PageRec *&bh);
+    int select(int n, PageRec **pages);
     void add(PageRec *bh);
     void remove(PageRec *bh);
     void print();

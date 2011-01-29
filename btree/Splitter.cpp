@@ -100,45 +100,49 @@ int BSplitter<Value>::split(BlockT<Value> *orig, BlockT<Value> **newBlock,
     // start from the median and find the boundary closest to the median key
     int left, right, sp;
     int size = orig->sizeWithOverflow();
-    if (size % 2) {
-        left = size / 2;
-        right = left + 1;
-    }
-    else {
-        left = right = size / 2;
-    }
-
 	Key_t *keys = new Key_t[size];
 	Value *values = new Value[size];
 	orig->getRangeWithOverflow(0, size, keys, values);
+
+    Key_t median;
+    if (size % 2) {
+        left = size / 2;
+        right = left + 1;
+        median = keys[left];
+    }
+    else {
+        left = right = size / 2;
+        median = keys[right]; // same as B splitter
+    }
 	
     Key_t spKey;
     Block::Type types[2];
-    while(true) {
-        if (keys[left-1]/boundary 
-			< keys[left]/boundary) {
-            sp = left;
-            spKey = (keys[sp]/boundary)*boundary; // closest to median
-            //if (size-sp <= config->sparseLeafCapacity || keys[size-1]-keys[sp]+1 <= config->denseLeafCapacity)
-            //    break;
-            if (splitTypes(orig, keys, size, sp, spKey, types) == 0)
-                break;
+    bool found = false;
+    // try split in front of left or right
+    while(!found) {
+        if (keys[left-1]/boundary < keys[left]/boundary) {
+            Key_t tk = (keys[left]/boundary)*boundary; // closest to median
+            if (!splitTypes(orig, keys, size, left, tk, types) // valid sp
+                    && (!found || abs(tk-median) < abs(spKey-median))) {
+                found = true;
+                sp = left;
+                spKey = tk;
+            }
         }
         left--;
 
-        // test if can split in front of left/right position
-        // loop is terminated once a split point is found
-        if (keys[right-1]/boundary
-			< keys[right]/boundary) { // integer comparison
-            sp = right;
-            spKey = (keys[sp-1]/boundary+1)*boundary; // closest to median
-            //if (sp <= config->sparseLeafCapacity || keys[sp-1]-keys[0]+1 <= config->denseLeafCapacity) // left node can be either sparse or dense
-            //    break;
-            if (splitTypes(orig, keys, size, sp, spKey, types) == 0)
-                break;
+        if (keys[right-1]/boundary < keys[right]/boundary) {
+            Key_t tk = (keys[right-1]/boundary+1)*boundary; // closest to median
+            if (!splitTypes(orig, keys, size, right, tk, types) // valid sp
+                    && (!found || abs(tk-median) < abs(spKey-median))) {
+                found = true;
+                sp = right;
+                spKey = tk;
+            }
         }
         right++;
     }
+    splitTypes(orig, keys, size, sp, spKey, types);
 	int ret = this->splitHelper(orig, newBlock, newPh, pool, sp, spKey,
 							 keys+sp, values+sp, types);
 	delete[] keys;

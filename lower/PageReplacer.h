@@ -34,6 +34,8 @@ public:
     // actual replacement.
     virtual RC_t selectToReplace(PageRec *&bh) = 0;
 
+    virtual int select(int n, PageRec **pages) = 0;
+
     // Called by BufferManager when unpinning a page.  indexOfPage is
     // the index into BufferManager::images.
     // When a page is accessed, it must have been pinned already. On the

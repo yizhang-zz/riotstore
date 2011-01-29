@@ -13,8 +13,8 @@ using namespace Btree;
 int main(int argc, char **argv)
 {
 	const int required = 3;
-    //const char fileTmpl[] = "/riot/%s%c";
-	char fileName[100] = "/riot/mb";
+	//char fileName[100] = "/riot/mb";
+	char fileName[100] = "/export/home/yizhang/mb";
 	//srand(12874938);
 	unsigned int tm;
 	if (argc >= required+1)
@@ -78,7 +78,7 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-	const int batchSize = 1000;
+	const int batchSize = 1000000;
 	Key_t keys[batchSize];
     //for (int j=0; j<1002; ++j) {
 	while (true) {
