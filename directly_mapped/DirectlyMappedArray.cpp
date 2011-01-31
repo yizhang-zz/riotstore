@@ -151,7 +151,7 @@ int DirectlyMappedArray::batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entr
 {
 	PID_t pid = findPage(beginsAt);
 	DMABlock *block = NULL;
-	while ((pid-1)*DMABlock::CAPACITY < endsBy) {
+	while ((pid-1)*config->dmaBlockCapacity < endsBy) {
 		if (readBlock(pid, &block) & RC_OK) {
 			block->batchGet(beginsAt, endsBy, v);
 			//buffer->unpinPage(dab->getPageHandle());
@@ -288,7 +288,7 @@ RC_t DirectlyMappedArray::readBlock(PID_t pid, DMABlock** block)
    *block = NULL;
    if ((ret=buffer->readPage(pid, ph)) & RC_FAIL)
       return ret;
-   Key_t CAPACITY = DMABlock::CAPACITY;
+   Key_t CAPACITY = config->dmaBlockCapacity;
    *block = new DMABlock(ph, CAPACITY*(pid-1), CAPACITY*pid, false);
    return RC_OK;
 }
@@ -300,7 +300,7 @@ RC_t DirectlyMappedArray::readOrAllocBlock(PID_t pid, DMABlock** block)
    *block = NULL;
    if ((ret=buffer->readOrAllocatePage(pid, ph)) & RC_FAIL)
       return ret;
-   Key_t CAPACITY = DMABlock::CAPACITY;
+   Key_t CAPACITY = config->dmaBlockCapacity;
    if ((ret & RC_READ) == RC_READ)
        *block = new DMABlock(ph, CAPACITY*(pid-1), CAPACITY*pid, false);
    else if ((ret & RC_ALLOC) == RC_ALLOC) {
@@ -317,12 +317,12 @@ RC_t DirectlyMappedArray::readNextBlock(PageHandle ph, DMABlock** block)
     //PID_t pid = buffer->getPID(ph);
     *block = NULL;
 	PID_t pid = ph->getPid();
-    if (DMABlock::CAPACITY*pid >= header->endsBy)
+    if (config->dmaBlockCapacity*pid >= header->endsBy)
         return RC_OutOfRange;
     RC_t ret;
     if ((ret=buffer->readPage(pid+1, ph)) & RC_FAIL)
         return ret;
-   Key_t CAPACITY = DMABlock::CAPACITY;
+   Key_t CAPACITY = config->dmaBlockCapacity;
    *block = new DMABlock(ph, CAPACITY*(pid), CAPACITY*(pid+1), false);
    return RC_OK;
 }
@@ -334,7 +334,7 @@ RC_t DirectlyMappedArray::newBlock(PID_t pid, DMABlock** block)
    *block = NULL;
    if ((ret=buffer->allocatePageWithPID(pid, ph)) & RC_FAIL)
       return ret;
-   Key_t CAPACITY = DMABlock::CAPACITY;
+   Key_t CAPACITY = config->dmaBlockCapacity;
    *block = new DMABlock(ph, CAPACITY*(pid-1), CAPACITY*pid, true);
 #ifdef DTRACE_SDT
    RIOT_DMA_NEW_BLOCK();
@@ -344,12 +344,12 @@ RC_t DirectlyMappedArray::newBlock(PID_t pid, DMABlock** block)
 
 Key_t DirectlyMappedArray::getPageLowerBound(PID_t pid) 
 {
-    return DMABlock::CAPACITY*(pid-1);
+    return config->dmaBlockCapacity*(pid-1);
 }
 
 Key_t DirectlyMappedArray::getPageUpperBound(PID_t pid) 
 {
-    return DMABlock::CAPACITY*(pid);
+    return config->dmaBlockCapacity*(pid);
 }
 
 /*

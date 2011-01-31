@@ -13,8 +13,7 @@ using namespace Btree;
 int main(int argc, char **argv)
 {
 	const int required = 3;
-	//char fileName[100] = "/riot/mb";
-	char fileName[100] = "/export/home/yizhang/mb";
+	char fileName[100] = "/riot/mb";
 	//srand(12874938);
 	unsigned int tm;
 	if (argc >= required+1)
@@ -71,7 +70,7 @@ int main(int argc, char **argv)
     }
     else if (splitterType == 'M') 
         ls = new BTree(fileName, total, splitterType, 'M', 0);
-    else if (splitterType == 'B')
+    else if (splitterType == 'A')
         ls = new BTree(fileName, total, splitterType, 'M', 1);
     else {
         cerr<<"wrong splitter type"<<endl;

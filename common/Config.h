@@ -22,6 +22,7 @@ public:
     u16 denseLeafCapacity;
     u16 sparseLeafCapacity;
     u16 internalCapacity;
+    u16 dmaBlockCapacity;
 
     int useDenseLeaf;
     //int BSplitterBoundary; // boundary for the B splitter

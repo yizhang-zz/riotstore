@@ -1,6 +1,7 @@
 #include "Config.h"
 #include "btree/BtreeDenseLeafBlock.h"
 #include "btree/BtreeSparseBlock.h"
+#include "directly_mapped/DMABlock.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,6 +24,7 @@ Config::Config(const char *path)
 		/ (sizeof(Datum_t) + sizeof(Key_t));
 	internalCapacity = (PAGE_SIZE-sizeof(Btree::InternalBlock::Header))
 		/ (sizeof(PID_t)+sizeof(Key_t));
+    dmaBlockCapacity = (PAGE_SIZE-sizeof(DMABlock::Header))/sizeof(Datum_t);
 
     useDenseLeaf = 1;
 	//BSplitterBoundary = denseLeafCapacity;
@@ -54,6 +56,8 @@ Config::Config(const char *path)
 				sparseLeafCapacity = atoi(b);
 			} else if (strcmp(a, "internalCapacity") == 0) {
 				internalCapacity = atoi(b);
+			} else if (strcmp(a, "dmaBlockCapacity") == 0) {
+				dmaBlockCapacity = atoi(b);
 			} else if (strcmp(a, "btreeBufferSize") == 0) {
 				btreeBufferSize = atoi(b);
 			} else if (strcmp(a, "dmaBufferSize") == 0) {

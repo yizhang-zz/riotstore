@@ -2,6 +2,7 @@
 #define DIRECTLY_MAPPED_ARRAY_H
 
 #include "../common/common.h"
+#include "../common/Config.h"
 #include "../lower/LinearStorage.h"
 #include "DMABlock.h"
 
@@ -36,8 +37,7 @@ public:
 
     PID_t findPage(Key_t key)
     {
-        Key_t CAPACITY = DMABlock::CAPACITY;
-        return key/CAPACITY + 1;
+        return key/config->dmaBlockCapacity + 1;
     }
 
     RC_t readBlock(PID_t pid, DMABlock** block);

@@ -7,7 +7,7 @@
 #endif
 
 const Datum_t DMABlock::DefaultValue = 0.0;
-const size_t DMABlock::CAPACITY = (PAGE_SIZE-sizeof(Header))/sizeof(Datum_t);
+//const size_t DMABlock::CAPACITY = (PAGE_SIZE-sizeof(Header))/sizeof(Datum_t);
 
 DMABlock::DMABlock(PageHandle ph_, Key_t lower, Key_t upper, bool create)
     : ph(ph_), lowerBound(lower), upperBound(upper)
@@ -25,7 +25,7 @@ void DMABlock::init()
 {
 	//for (size_t i=0; i<CAPACITY; ++i)
 	//	data[i] = DefaultValue;
-    memset(data, 0, sizeof(Datum_t) * CAPACITY);
+    memset(data, 0, sizeof(Datum_t) * config->dmaBlockCapacity);
     header->nnz = 0;
 }
 

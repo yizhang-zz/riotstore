@@ -13,12 +13,13 @@ class DirectlyMappedArray;
  */
 class DMABlock
 {
-protected:
+public:
     // header is placed at the end of the block
     struct Header {
         size_t nnz;
     } *header;
 
+private:
     PageHandle ph;
     Key_t lowerBound;
     Key_t upperBound;
@@ -29,7 +30,7 @@ protected:
 
 public:
     const static Datum_t DefaultValue;
-    const static size_t CAPACITY;
+    //const static size_t CAPACITY;
 
     /// Initializes the block by reading from a page image.  The index
     /// range and the default data value will be passed in---the caller,

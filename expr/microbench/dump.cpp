@@ -11,6 +11,7 @@ int main(int argc, char **argv)
     cout<<config->sparseLeafCapacity<<endl;
     cout<<config->denseLeafCapacity<<endl;
     cout<<config->internalCapacity<<endl;
+    cout<<config->dmaBlockCapacity<<endl;
     BTree bt(argv[1]);
     bt.print(LSP_FULL);
 }
