@@ -1,5 +1,6 @@
 #include "../common/common.h"
 #include "LRUPageReplacer.h"
+#include "PageRec.h"
 #include "BufferManager.h"
 
 LRUPageReplacer::LRUPageReplacer()

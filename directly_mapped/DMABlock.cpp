@@ -1,4 +1,5 @@
 #include <string.h>
+#include "lower/PageRec.h"
 #include "DMABlock.h"
 #include "DirectlyMappedArray.h"
 #include "DABIterator.h"

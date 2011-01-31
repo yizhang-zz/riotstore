@@ -7,6 +7,7 @@
 #include "../common/Iterator.h"
 #include "../lower/BufferManager.h"
 #include "../lower/PageReplacer.h"
+#include "lower/PageRec.h"
 #include <boost/pool/pool.hpp>
 
 namespace Btree

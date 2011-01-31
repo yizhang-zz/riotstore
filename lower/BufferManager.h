@@ -10,15 +10,6 @@
 class PageReplacer;
 class PageRec;
 
-/*
-class PagePacker
-{
-public:
-    virtual void pack(void *unpacked, void *packed) = 0;
-    virtual void unpack(void *packed, void *&unpacked) = 0;
-    virtual void destroyUnpacked(void *&unpacked) = 0;
-};
-*/
 
 //////////////////////////////////////////////////////////////////////
 // Provides memory-buffered access to a PagedStorageContainer.  This
@@ -46,7 +37,7 @@ public:
 #endif
 
 private:
-	friend class Page;
+	friend class PageRec;
 
     //typedef std::map<PID_t, PageRec*> PageHashMap;
 	typedef boost::unordered_map<PID_t, PageRec*> PageHashMap;
@@ -88,13 +79,12 @@ private:
     //friend class PageReplacer;
     PageReplacer *pageReplacer;
 
-    boost::pool<> ppool;
-    PageDealloc pageDealloc;
-    
+    /*
     PageHandle make_ph(PageRec *p)
     {
-        return PageHandle(new (ppool.malloc()) Page(p, this), pageDealloc);
+        return PageHandle(p, pageDealloc);
     }
+    */
 
 public:
 

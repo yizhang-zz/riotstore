@@ -220,8 +220,8 @@ void freePageImage(PageImage p);
 // A handle for a page buffered in memory.
 
 //typedef void *PageHandle;
-struct Page;
-typedef boost::shared_ptr<Page> PageHandle;
+struct PageRec;
+typedef boost::shared_ptr<PageRec> PageHandle;
 
 /* Coding style: inline small functions (<= 10 lines of code) */
 

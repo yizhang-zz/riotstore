@@ -2,7 +2,8 @@
 #define PAGED_STORAGE_CONTAINER_H
 
 #include "../common/common.h"
-#include "PageRec.h"
+
+class PageRec;
 
 /**
  * Provides a paged disk-based storage container, which allows allocation of

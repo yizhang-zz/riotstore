@@ -2,10 +2,11 @@
 #define PAGEREC_H
 
 #include "../common/common.h"
-#include <iostream>
-#include <boost/pool/pool.hpp>
+#include "lower/BufferManager.h"
+//#include <iostream>
+//#include <boost/pool/pool.hpp>
 
-class BufferManager;
+//class BufferManager;
 
 class PageRec
 {
@@ -13,12 +14,14 @@ public:
 	friend class BufferManager;
     friend std::ostream & operator<< (std::ostream &, const PageRec &);
 
+	BufferManager *buffer;
     char *image;
     PageRec *prev;
     PageRec *next;
     PID_t pid;
 	int pinCount;
     bool dirty;
+
     PageRec()
     {
         reset();
@@ -31,8 +34,39 @@ public:
         pinCount = 0;
         prev = next = NULL;
     }
+
+    void markDirty()
+    {
+        buffer->markPageDirty(this);
+    }
+
+    void flush()
+    {
+        buffer->flushPage(this);
+    }
+
+    void unpin()
+    {
+        buffer->unpinPage(this);
+    }
+
+    void pin()
+    {
+        buffer->pinPage(this);
+    }
+
+	PID_t getPid() const
+    {
+        return pid;
+    }
+
+	char* getImage() const
+    {
+        return image;
+    }
 };
 
+/*
 class Page
 {
 private:
@@ -46,14 +80,15 @@ public:
 	PID_t getPid() const;
 	char* getImage() const;
 };
+*/
 
 struct PageDealloc
 {
-    PageDealloc(boost::pool<> &p) : pool(p) { }
-    PageDealloc(const PageDealloc &other) : pool(other.pool) { }
-    void operator() (Page *p) { p->~Page(); pool.free(p); }
+    //PageDealloc(boost::pool<> &p) : pool(p) { }
+    //PageDealloc(const PageDealloc &other) : pool(other.pool) { }
+    void operator() (PageRec *p) { p->unpin(); }
 private:
-    boost::pool<> &pool;
+    //boost::pool<> &pool;
 };
 
 #endif

@@ -10,6 +10,7 @@ std::ostream & operator<< (std::ostream &out, const PageRec &pr)
     return out;
 }
 
+/*
 Page::Page(PageRec *p, BufferManager *b): prec(p), buffer(b)
 {
 	buffer->pinPage(prec);
@@ -39,4 +40,4 @@ char* Page::getImage() const
 {
 	return prec->image;
 }
-
+*/

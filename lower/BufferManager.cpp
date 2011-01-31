@@ -11,6 +11,8 @@ using namespace std;
 double BufferManager::accessTime = 0.0;
 #endif
 
+static PageDealloc pageDealloc;
+
 void BufferManager::printStat()
 {
     cout<<"total pin count="<<totalPinCount<<endl
@@ -23,7 +25,7 @@ void BufferManager::printStat()
 // memory buffer that holds a given number of pages.
 BufferManager::BufferManager(PagedStorageContainer *s, size_t n,
         PageReplacer *pr)
-: storage(s), numSlots(n), ppool(sizeof(Page)), pageDealloc(ppool) {
+: storage(s), numSlots(n){
     totalPinCount = 0;
     //packer = NULL;
     if (pr)
@@ -43,6 +45,7 @@ BufferManager::BufferManager(PagedStorageContainer *s, size_t n,
     headers = new PageRec[numSlots];
     //freelist = headers;
     for (size_t i=0; i<numSlots; i++) {
+        headers[i].buffer = this;
         headers[i].image = (char*)pool+i*PAGE_SIZE;
         pageReplacer->add(headers+i);
     }
@@ -101,7 +104,8 @@ RC_t BufferManager::allocatePage(PageHandle &ph) {
 #endif
 	rec->pid = pid;
     rec->dirty = true;
-    ph = make_ph(rec);
+    pinPage(rec);
+    ph = PageHandle(rec, pageDealloc);
     pageHash->insert(PageHashMap::value_type(pid, rec));
 #ifdef PROFILE_BUFMAN
 	TIMESTAMP(t2);
@@ -143,7 +147,8 @@ RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
 #endif
     rec->pid = pid;
     rec->dirty = true;
-	ph = make_ph(rec);
+    pinPage(rec);
+    ph = PageHandle(rec, pageDealloc);
     pageHash->insert(PageHashMap::value_type(pid, rec));
 #ifdef PROFILE_BUFMAN
 	TIMESTAMP(t2);
@@ -197,7 +202,8 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
         rec = it->second;
         if (rec->pinCount == 0)
             pageReplacer->remove(rec);
-		ph = make_ph(rec);
+        pinPage(rec);
+        ph = PageHandle(rec, pageDealloc);
     }
     else {
 #ifdef DTRACE_SDT
@@ -216,7 +222,8 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
             return ret;
         }
         rec->dirty = false;
-		ph = make_ph(rec);
+        pinPage(rec);
+        ph = PageHandle(rec, pageDealloc);
         pageHash->insert(PageHashMap::value_type(pid, rec));
     }
     return RC_READ;
@@ -231,7 +238,8 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
         rec = it->second;
         if (rec->pinCount == 0)
             pageReplacer->remove(rec);
-		ph = make_ph(rec);
+        pinPage(rec);
+        ph = PageHandle(rec, pageDealloc);
         ret = RC_READ;
 #ifdef DTRACE_SDT
         RIOT_BM_READ(pid,0);
@@ -266,7 +274,8 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
 #endif
             ret = RC_READ;
         }
-		ph = make_ph(rec);
+        pinPage(rec);
+        ph = PageHandle(rec, pageDealloc);
         pageHash->insert(PageHashMap::value_type(pid, rec));
     }
     return ret;
