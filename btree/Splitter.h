@@ -35,14 +35,14 @@ namespace Btree
 		 * @return 0 if orig's format should change, nonzero otherwise.
 		 */
 		virtual int split(BlockT<Value> *orig, BlockT<Value> **newBlock,
-						  PageHandle newPh, BlockPool &pool) = 0;
+						  PageHandle newPh, BlockPool *pool) = 0;
 		virtual Splitter<Value> *clone() = 0;
     protected:
         int splitTypes(BlockT<Value> *block, Key_t *keys, int size, int sp, Key_t spKey, Block::Type types[2]);
         //void splitTypes(BlockT<Value> *block, int sp, Key_t spKey,
         //        Block::Type &left, Block::Type &right);
 		int splitHelper(BlockT<Value> *orig, BlockT<Value> **newBlock,
-						PageHandle newPh, BlockPool &pool,
+						PageHandle newPh, BlockPool *pool,
 						int sp,	Key_t spKey, Key_t *keys, Value *values,
                         Block::Type types[2]);
         bool useDenseLeaf;
@@ -63,7 +63,7 @@ namespace Btree
         }
 
 		int split(BlockT<Value> *orig, BlockT<Value> **newBlock,
-                PageHandle newPh, BlockPool &pool);
+                PageHandle newPh, BlockPool *pool);
 
 		Splitter<Value> *clone()
 		{
@@ -93,7 +93,7 @@ namespace Btree
         }
 
 		int split(BlockT<Value> *orig, BlockT<Value> **newBlock,
-                PageHandle newPh, BlockPool &pool);
+                PageHandle newPh, BlockPool *pool);
 
 		Splitter<Value> *clone()
 		{
@@ -111,7 +111,7 @@ namespace Btree
     public:
         RSplitter(bool useDenseLeaf) : Splitter<Value>(useDenseLeaf) {}
 		int split(BlockT<Value> *orig, BlockT<Value> **newBlock,
-                PageHandle newPh, BlockPool &pool);
+                PageHandle newPh, BlockPool *pool);
 		Splitter<Value> *clone()
 		{
 			return new RSplitter<Value>(this->useDenseLeaf);
@@ -133,7 +133,7 @@ namespace Btree
 		}
 
 		int split(BlockT<Value> *orig, BlockT<Value> **newBlock,
-                PageHandle newPh, BlockPool &pool);
+                PageHandle newPh, BlockPool *pool);
     private:
 		double sValue(int b1, int b2, int d1, int d2);
     };
@@ -148,7 +148,7 @@ namespace Btree
 		 * density; otherwise fallback to the M scheme.
 		 */
 		int split(BlockT<Value> *orig, BlockT<Value> **newBlock,
-                PageHandle newPh, BlockPool &pool);
+                PageHandle newPh, BlockPool *pool);
 
         TSplitter(double th, bool useDenseLeaf) : Splitter<Value>(useDenseLeaf)
                                                   ,threshold(th)

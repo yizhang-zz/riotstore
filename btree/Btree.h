@@ -44,6 +44,7 @@ private:
         bool useDenseLeaf;
     } *header;
 
+    BlockPool *pool;
     LeafSplitter *leafSplitter;
     InternalSplitter *internalSplitter;
     // the header block(page) is kept in mem during lifetime of the tree
@@ -51,7 +52,7 @@ private:
     PageHandle headerPage;
     static const PID_t headerPID = 0;
 
-    void split(Cursor &cursor, BlockPool &pool);
+    void split(Cursor &cursor);
 
     PID_t lastPageInBatch; // for batch insertion
     int   lastPageCapacity;
@@ -92,7 +93,7 @@ public:
 
     // cursor can be a valid path, in which case the search is
     // incremental (first up the tree and then down)
-    int search(Key_t key, Cursor &cursor, BlockPool &pool);
+    int search(Key_t key, Cursor &cursor);
 
 #ifdef USE_BATCH_BUFFER
     // finds the PID of the leaf block where key should go into
@@ -115,11 +116,10 @@ public:
         int put(Iterator begin, Iterator end)
         {
             using namespace std;
-            BlockPool pool;
             Cursor cursor(buffer);
             int ret = 0;
             for (; begin != end; ++begin) {
-                putHelper(begin->key, begin->datum, cursor, pool);
+                putHelper(begin->key, begin->datum, cursor);
                 ++ret;
             }
             //cerr<<ret<<endl;
@@ -175,9 +175,9 @@ private:
     void initBatching();
 #endif
     void print(PID_t pid, Key_t beginsAt, Key_t endsBy, int depth, PrintStat*, int flag) const;
-    int putHelper(Key_t key, Datum_t datum, Cursor &cursor, BlockPool &pool);
-    int getHelper(Key_t key, Datum_t &datum, Cursor &cursor, BlockPool &pool);
-    void switchFormat(Block **orig, BlockPool &pool);
+    int putHelper(Key_t key, Datum_t datum, Cursor &cursor);
+    int getHelper(Key_t key, Datum_t &datum, Cursor &cursor);
+    void switchFormat(Block **orig);
 
     void onNewLeaf(Block *leaf)
     {

@@ -2,8 +2,9 @@ provider riot {
 	probe btree__put();
 	probe btree__split__leaf(int); /* param: #entries in new (right) node */
 	probe btree__new__internal(int); /* param: #entries in new (right) node */
-	/* probe btree__locate__begin();
-	probe btree__locate__end(int);
+	probe btree__locate__begin();
+	probe btree__locate__end();
+/*
 	probe btree__flush__begin();
 	probe btree__flush__end(int); */
     probe dma__put();

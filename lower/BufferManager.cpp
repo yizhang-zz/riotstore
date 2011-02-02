@@ -45,6 +45,7 @@ BufferManager::BufferManager(PagedStorageContainer *s, size_t n,
     headers = new PageRec[numSlots];
     //freelist = headers;
     for (size_t i=0; i<numSlots; i++) {
+        headers[i].index = i;
         headers[i].buffer = this;
         headers[i].image = (char*)pool+i*PAGE_SIZE;
         pageReplacer->add(headers+i);

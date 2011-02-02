@@ -50,7 +50,7 @@ int Splitter<Value>::splitTypes(BlockT<Value> *block, Key_t *keys, int size,
 
 template<class Value>
 int Splitter<Value>::splitHelper(BlockT<Value> *orig, BlockT<Value> **newBlock,
-								 PageHandle newPh, BlockPool &pool,
+								 PageHandle newPh, BlockPool *pool,
 								 int sp, Key_t spKey, Key_t *keys, Value *values, Block::Type types[2])
 								 
 {
@@ -59,7 +59,7 @@ int Splitter<Value>::splitHelper(BlockT<Value> *orig, BlockT<Value> **newBlock,
 	//Block::Type leftType, rightType;
 	//splitTypes(*orig, sp, spKey, leftType, rightType);
 	*newBlock = static_cast<BlockT<Value>*>(
-            pool.create(types[1], newPh, spKey,
+            pool->create(types[1], newPh, spKey,
                 orig->getUpperBound()));
 	(*newBlock)->putRangeSorted(keys, values, newSize, &numPut);
 	orig->truncate(sp, spKey);
@@ -68,7 +68,7 @@ int Splitter<Value>::splitHelper(BlockT<Value> *orig, BlockT<Value> **newBlock,
 
 template<class Value>
 int MSplitter<Value>::split(BlockT<Value> *orig, BlockT<Value> **newBlock,
-							PageHandle newPh, BlockPool &pool)
+							PageHandle newPh, BlockPool *pool)
 {
     /*
      * orig's dense/sparse format will not be changed for efficiency
@@ -95,7 +95,7 @@ int MSplitter<Value>::split(BlockT<Value> *orig, BlockT<Value> **newBlock,
 
 template<class Value>
 int BSplitter<Value>::split(BlockT<Value> *orig, BlockT<Value> **newBlock,
-							PageHandle newPh, BlockPool &pool)
+							PageHandle newPh, BlockPool *pool)
 {
     // start from the median and find the boundary closest to the median key
     int left, right, sp;
@@ -152,7 +152,7 @@ int BSplitter<Value>::split(BlockT<Value> *orig, BlockT<Value> **newBlock,
 
 template<class Value>
 int RSplitter<Value>::split(BlockT<Value> *orig, BlockT<Value> **newBlock,
-							PageHandle newPh, BlockPool &pool)
+							PageHandle newPh, BlockPool *pool)
 {
 	static double capacities[] = {config->internalCapacity,
 								  config->sparseLeafCapacity,
@@ -206,7 +206,7 @@ void riot_handler(const char *reason, const char *file, int line, int gsl_errno)
 
 template<class Value>
 int SSplitter<Value>::split(BlockT<Value> *orig, BlockT<Value> **newBlock,
-							PageHandle newPh, BlockPool &pool)
+							PageHandle newPh, BlockPool *pool)
 {
 	static double capacities[] = {config->internalCapacity,
 								  config->sparseLeafCapacity,
@@ -277,7 +277,7 @@ double SSplitter<Value>::sValue(int b1, int b2, int d1, int d2)
 
 template<class Value>
 int TSplitter<Value>::split(BlockT<Value> *orig, BlockT<Value> **newBlock,
-							PageHandle newPh, BlockPool &pool)
+							PageHandle newPh, BlockPool *pool)
 {
 	int size = orig->sizeWithOverflow();
 	Key_t lower = orig->getLowerBound();
