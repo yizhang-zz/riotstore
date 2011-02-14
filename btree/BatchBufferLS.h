@@ -25,18 +25,24 @@ namespace Btree
 
 		BatchBufferLS(u32 cap_, BTree *tree_): BatchBuffer(
 				cap_-sizeof(PageId)*config->batchKeepPidCount/sizeof(Entry)
-				, tree_), lastFlushCount(0), knownCount(0)
+				, tree_)
 		{
 			nKeep = 1+config->batchKeepPidCount;
-			pids.reserve(nKeep);
-			pids.push_back(maxPid);  // serve as sentinel
-			lst.reserve(nKeep);
+			pids = new PidSet(1, maxPid); // sentinel
+            entries.insert(Entry(MAX_KEY, 0)); // sentinel
 		}
+
+        ~BatchBufferLS()
+        {
+            // remove the sentinel
+            entries.erase(MAX_KEY);
+            tree->put(entries.begin(), entries.end());
+        }
 
 		PageId computePids()
 		{
 			using namespace std;
-
+#if 0
             // shortcut: if max among known pids >= last flushed page, then
             // directly flush that page and skip computing the unknown pids
 			typename PidSet::iterator it = max_element(pids.begin(), pids.end(), compCount);
@@ -45,128 +51,138 @@ namespace Btree
                 pids.erase(it);
                 return ret;
             }
+#endif
 
 			// lst will contain the running top K+1 pids as we combine the
 			// existing pids and newly computed pids. We start by copying
-			// everything in pids into lst.
-			lst = pids;
-			assert(lst.rbegin()->lower == MAX_KEY);
-			lst.pop_back();  // the last one is the sentinel
-            // make a min-heap
-			make_heap(lst.begin(), lst.end(), compCountR);
+			// everything in pids into lst, and then make a min-heap.
+			PidSet *lst = new PidSet(*pids); // lst contains a maxPid
+			make_heap(lst->begin(), lst->end(), compCountR);
+            unsigned maxKnownPidSize = max_element(lst->begin(),
+                    lst->end(), compCount)->count;
 
-			EntrySet::const_iterator eit = entries.begin(),
-				eit_end = entries.end();
-			typename PidSet::const_iterator rit = pids.begin();
-			while (eit != eit_end) {
+            unsigned knownCount = 0;
+			EntrySet::const_iterator eit = entries.begin();
+			typename PidSet::const_iterator rit = pids->begin();
+			//while (eit->key < MAX_KEY) {
+			while (maxKnownPidSize < size - knownCount) {
+                assert(eit->key != MAX_KEY);
 				if (eit->key < rit->lower) {
-					//if (!needsComputePids())
-					//	break;
 					PageId npid;
 					tree->locate(eit->key, npid);
 					// find all records going into npid
-					while (eit != eit_end && eit->key < npid.upper) {
+					while (eit->key < npid.upper) {
 						++eit;
 						++npid.count;
 					}
+                    knownCount += npid.count;
+                    if (npid.count > maxKnownPidSize)
+                        maxKnownPidSize = npid.count;
+
 					// insert the new pid
-					if (lst.size() < nKeep) {
-						lst.push_back(npid);
-						push_heap(lst.begin(), lst.end(), compCountR);
-					}
-					else if (npid.count > lst.begin()->count) {
-						pop_heap(lst.begin(), lst.end(), compCountR);
-						*lst.rbegin() = npid;
-						push_heap(lst.begin(), lst.end(), compCountR);
+                    if (lst->size() < nKeep) {
+                        lst->push_back(npid);
+						push_heap(lst->begin(), lst->end(), compCountR);
+                    }
+                    else if (npid.count > lst->begin()->count) {
+                        // replace the heap top
+						pop_heap(lst->begin(), lst->end(), compCountR);
+						lst->back() = npid;
+						push_heap(lst->begin(), lst->end(), compCountR);
 					}
 				}
 				else {
 					// Since *rit is up to date, we can safely advance eit
 					// to the end of *rit's range, and rit to the next
-					eit = entries.lower_bound(rit->upper, compEntry);
+					eit = entries.lower_bound(rit->upper);
 					++rit; // safe because of the sentinel
+                    knownCount += rit->count;
 				}
 			}
 
-			it = max_element(lst.begin(), lst.end(), compCount);
+            // Largest page, to be flushed
+			typename PidSet::iterator it = max_element(lst->begin(), lst->end(), compCount);
 			PageId ret = *it;
-			pids.clear();
-			if (it != lst.begin())
-				pids.insert(pids.end(), lst.begin(), it);
-			pids.insert(pids.end(), ++it, lst.end());
-			pids.push_back(maxPid);
-			sort(pids.begin(), pids.end(), comp);
+            *it = lst->back(); // move last element to the empty slot
+            if (lst->begin()->count)
+                // top of min-heap is non-zero, so no maxPid in lst
+                // replace it with a maxPid
+                lst->back() = maxPid;
+            else
+                // top of min-heap is maxPid, just remove the last element
+                lst->pop_back();
+			sort(lst->begin(), lst->end());
+
+            delete pids;
+            pids = lst;
+            lst = NULL;
+            
 			return ret;
 		}
-
-		/*
-		bool needsComputePids()
-		{
-			PidSetByCount &byCount = pids->get<1>();
-			typename PidSetByCount::iterator it = byCount.begin();
-			u16 x = it->count;
-			return !(byCount.size() != 0 && x >= (++it)->count + (size-knownCount)); 
-		}
-		*/
 
 		void put(const Key_t &key, const Datum_t &datum)
 		{
 			using namespace std;
-			// TODO: implement random tie breaking
 			if (size == capacity) {
-				// try shortcut first: if first.count-second.count >= #records whose membership is unknown yet, 
-				// then the first will be chosen no matter what. If random tie breaking is required, then the
-				// above condition should be changed to >
-				//if (needsComputePids())
-				//	computePids();
-
+                unsigned temp = 0;
+                for (typename PidSet::iterator it=pids->begin(); it != pids->end();++it)
+                    temp += it->count;
 				// evict the pid with largest count
 				PageId longest = computePids();
-				EntrySet::iterator start = entries.lower_bound(longest.lower, compEntry);
-				EntrySet::iterator stop  = entries.lower_bound(longest.upper, compEntry);
-				tree->put(start, stop);
+				EntrySet::iterator start = entries.lower_bound(longest.lower);
+				EntrySet::iterator stop  = entries.lower_bound(longest.upper);
+                tree->put(start, stop);
 				entries.erase(start, stop);
 				size -= longest.count;
-				knownCount -= longest.count;
-                lastFlushCount = longest.count;
 			}
 
 			entries.insert(Entry(key, datum));
 			++size;
-			// look up the current pid set
+			// Look up the current pid set for key's pid. Because of the
+            // sentinel, it won't be pids->end().
 			typename PidSet::iterator it = 
-				upper_bound(pids.begin(), pids.end(), key, comp);
-			if (it != pids.begin() && --it != pids.end() &&
-					(it->lower <= key && it->upper > key)) {
+				upper_bound(pids->begin(), pids->end(), key, comp);
+			if (it != pids->begin() && (--it)->contains(key)) {
 				it->count++;
-				++knownCount;
 			}
 		}
 
 		void flushAll()
 		{
+            entries.erase(MAX_KEY); // remove sentinel
 			BatchBuffer::flushAll();
-			knownCount = 0;
-            lastFlushCount = 0;
-			pids.clear();
-			pids.push_back(maxPid);  // serve as sentinel
+            entries.insert(Entry(MAX_KEY, 0));
+			pids->clear();
+			pids->push_back(maxPid);  // serve as sentinel
 		}
 
 		void print()
 		{
 			// first print all records and then the pid table
 			using namespace std;
-			BatchBuffer::print();
+			//BatchBuffer::print();
 			ostream_iterator<PageId> output(cout, "\n");
-			copy(pids.begin(), pids.end(), output);
+			copy(pids->begin(), pids->end(), output);
 			cout<<endl;
 		}
-private:
-		PidSet pids;
-		PidSet lst;
-		unsigned knownCount;
+
+        void printRange(Key_t b, Key_t e)
+        {
+            using namespace std;
+            int n = 0;
+            EntrySet::iterator it = entries.lower_bound(b);
+            while (it->key < e) {
+                cerr<<it->key<<" ";
+                ++n;
+                ++it;
+            }
+            cerr<<"total="<<n<<endl;
+        }
+
+protected:
+		PidSet *pids;
+		PidSet *lst;
 		unsigned nKeep;
-        unsigned lastFlushCount;
 		static CompPidCount<PageId> compCount;
 		static CompPidCountR<PageId> compCountR;
 		static CompPid<PageId> comp;

@@ -60,8 +60,6 @@ int open_direct(const char *pathname, int flags);
 #include <fcntl.h>
 int open_direct(const char *pathname, int flags);
 
-#define DTRACE_SDT	// enable application probes
-
 #else
 #error "Platform not supported"
 #endif
@@ -378,6 +376,11 @@ inline int floorLog2(unsigned int n) {
 	if (n >= 1<< 2) { n >>=  2; pos +=  2; }
 	if (n >= 1<< 1) {           pos +=  1; }
 	return pos;
+}
+
+inline int ceilingLog2(unsigned int n) {
+    int pos = floorLog2(n);
+    return n==1U<<pos ? pos : pos+1;
 }
 
 #define TIMESTAMP(t1) \

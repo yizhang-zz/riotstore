@@ -122,13 +122,13 @@ XERBLA =
 # The path is relative to where it is used, in CHOLMOD/Lib, CHOLMOD/MATLAB, etc.
 # You may wish to use an absolute path.  METIS is optional.  Compile
 # CHOLMOD with -DNPARTITION if you do not wish to use METIS.
-METIS_PATH = ../../metis-4.0
-METIS = ../../metis-4.0/libmetis.a
+# METIS_PATH = ../../metis-4.0
+# METIS = ../../metis-4.0/libmetis.a
 
 # If you use CHOLMOD_CONFIG = -DNPARTITION then you must use the following
 # options:
-# METIS_PATH =
-# METIS =
+METIS_PATH =
+METIS =
 
 #------------------------------------------------------------------------------
 # UMFPACK configuration:
@@ -184,7 +184,7 @@ UMFPACK_CONFIG =
 # -DNSUNPERF	    for Solaris only.  If defined, do not use the Sun
 #			Performance Library
 
-CHOLMOD_CONFIG =
+CHOLMOD_CONFIG = -DNPARTITION
 
 #------------------------------------------------------------------------------
 # SuiteSparseQR configuration:
@@ -224,7 +224,7 @@ ifeq ($(OS),Linux)
 # Using default compilers:
 CC = gcc
 CFLAGS = -O3 -fPIC -fexceptions
-BLAS = -lcblas
+BLAS = -lblas
 LAPACK = -llapack
 endif
 

@@ -9,6 +9,8 @@
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/identity.hpp>
+#include <boost/multi_index/member.hpp>
+#include <boost/multi_index/global_fun.hpp>
 
 namespace Btree
 {
@@ -22,7 +24,8 @@ enum BatchMethod {
 	kLS_RAND,
 	kLS_RANDCUT,
 	kLG,
-	kLG_RAND
+	kLG_RAND,
+    kLPALL
 };
 
 class BoundPageId
@@ -40,6 +43,11 @@ public:
 	{
 		return (lower<=key && upper>key);
 	}
+
+    bool operator< (const BoundPageId &other) const
+    {
+        return lower < other.lower;
+    }
 
 	friend std::ostream & operator<<(std::ostream &out, const BoundPageId &page);
 
@@ -85,14 +93,33 @@ private:
 	u16 count;
 };
 
+inline Key_t entryKey(Entry *p) { return p->key; }
+
 class BatchBuffer
 {
 public:
 	typedef boost::multi_index::multi_index_container<Entry,
 			boost::multi_index::indexed_by<
 				boost::multi_index::ordered_unique<
-				boost::multi_index::identity<Entry> > > > EntrySet;
+				boost::multi_index::member<Entry, Key_t, &Entry::key> > > > EntrySet;
 
+    typedef boost::multi_index::multi_index_container<Entry*,
+            boost::multi_index::indexed_by<
+                boost::multi_index::ordered_unique<
+                boost::multi_index::global_fun<Entry*, Key_t, &entryKey> > > > EntryPtrSet;
+
+    class Iterator
+    {
+    public:
+        Iterator(EntryPtrSet::iterator it_) : it(it_) { }
+        bool operator!= (const Iterator &other) const { return it != other.it; }
+        Iterator & operator++() { ++it; return *this; }
+        Entry * operator->() { return *it; }
+    private:
+        EntryPtrSet::iterator it;
+    };
+
+    /*
 	struct CompEntry
 	{
 		bool operator()(Key_t k, const Entry &e) const {return k<e.key;}
@@ -100,23 +127,22 @@ public:
 	};
 
 	const static CompEntry compEntry;
-
+    */
 	BatchBuffer(u32 cap_, BTree *tree_):capacity(cap_), size(0), tree(tree_)
 	{
 	}
 
 	virtual ~BatchBuffer()
 	{
-		flushAll();
 	}
 
-	bool find(const Key_t &key, Datum_t &datum);
+	virtual bool find(const Key_t &key, Datum_t &datum);
 
 	virtual void flushAll();
 
 	virtual void put(const Key_t &key, const Datum_t &datum) = 0;
 
-	virtual void print();
+	//virtual void print();
 
 protected:
 	u32 capacity;

@@ -1,6 +1,6 @@
 LD_RUN_PATH = ../..
 include ../../flags.mk
-CXXFLAGS += -I../.. -I../../common -I../../btree -I../../lower -I../../directly_mapped
+CXXFLAGS += -I../.. -I../../common -I../../btree -I../../lower -I../../directly_mapped -I/usr/local/include
 LDFLAGS += $(shell pkg-config --libs gsl)
 LDFLAGS += -L../.. -lriot_store
 

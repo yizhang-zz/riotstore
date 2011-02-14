@@ -58,6 +58,7 @@ private:
         //enum DataType dataType;
         //char ch;
     } *header;
+    unsigned short putcount;
 };
 
 #endif

@@ -32,7 +32,7 @@ class Parser
     size_t size() { return nElem; }
 
  protected:
-    i64 nElem;
+    size_t nElem;
     MDCoord<nDim> dim_;
 };
 

@@ -15,18 +15,6 @@ BEGIN
 	self->timer = 0;
 }
 
-/*
-riot$target:::btree-locate-begin
-{
-	self->locater = 0;
-	self->locatew = 0;
-}
-
-riot$target:::btree-locate-end
-{
-}
-*/
-
 riot$target:::dma-put,
 riot$target:::btree-put
 / self->timer > 0 /
@@ -47,17 +35,11 @@ riot$target:::btree-split-leaf,
 riot$target:::dma-new-block
 {
     nodecount++;
-    /*@ = lquantize(arg0, 128, 300, 10);*/
 }
 
-syscall::pread*:entry
-/pid==$target && basename(fds[arg0].fi_pathname)=="mb"/
-{
-	self->ts = timestamp;
-}
-
-syscall::pwrite*:entry
-/pid==$target && basename(fds[arg0].fi_pathname)=="mb"/
+syscall::pread:entry,
+syscall::pwrite:entry
+/ pid==$target /
 {
 	self->ts = timestamp;
 }
@@ -77,47 +59,6 @@ syscall::pwrite*:return
 	wtime += timestamp - self->ts;
 	self->ts = 0;
 }
-
-/* exit with the same code if segfault happens */
-/*
-proc:::signal-send
-/args[2]==SIGSEGV && pid==$target/
-{
-	exit(arg0);
-}
-*/
-
-/*
-io:::start
-/ args[2]->fi_name=="mb.1" && args[0]->b_flags & B_READ /
-{
-*/
-	/*
-	@io[args[0]->b_flags & B_READ, args[0]->b_bcount] = count();
-	@iob[args[0]->b_flags & B_READ] = quantize(args[0]->b_lblkno);
-	*/
-/*
-	rcount++;
-	self->ts = timestamp;
-}
-*/
-
-/*
-io:::start
-/ args[2]->fi_name=="mb.1" && args[0]->b_flags & B_WRITE /
-{
-	wcount++;
-	self->ts = timestamp;
-	printf("start %d\n", timestamp);
-}
-
-io:::done
-{
-	printf("done %d\n", timestamp);
-	rwtime += timestamp - self->ts;
-	self->ts = 0;
-}
-*/
 
 END
 {

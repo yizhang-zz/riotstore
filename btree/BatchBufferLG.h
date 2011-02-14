@@ -49,6 +49,7 @@ namespace Btree
 
 		~BatchBufferLG()
 		{
+            tree->put(entries.begin(), entries.end());
 			delete[] groups;
 		}
 
@@ -89,7 +90,7 @@ namespace Btree
 					}
 					// Since *rit is up to date, we can safely advance eit
 					// to the end of *rit's range, and rit to the next
-					eit = entries.lower_bound(rit->upper, compEntry);
+					eit = entries.lower_bound(rit->upper);
 					++rit; // safe because of the sentinel
 				}
 			}
@@ -107,8 +108,8 @@ namespace Btree
                 int totalflushed = 0;
 				for (typename PidSet::iterator it = groups[maxIndex].pids.begin();
 						it != it_end; ++it) {
-					EntrySet::iterator start = entries.lower_bound(it->lower, compEntry);
-					EntrySet::iterator stop  = entries.lower_bound(it->upper, compEntry);
+					EntrySet::iterator start = entries.lower_bound(it->lower);
+					EntrySet::iterator stop  = entries.lower_bound(it->upper);
 					totalflushed += tree->put(start, stop);
 					entries.erase(start, stop);
 				}

@@ -1,61 +1,112 @@
-#pragma once
+#ifndef BATCHBUFFER_LSRAND_H
+#define BATCHBUFFER_LSRAND_H
 
 #include "BatchBuffer.h"
+#include <vector>
 
 namespace Btree
 {
 	template<class PageId>
 	class BatchBufferLSRand: public BatchBuffer
-	{
+    {
     private:
         gsl_rng *rng;
-        //Key_t selected;
+        Entry *entriesArray;
+        int freehead;
 
-	public:
-		BatchBufferLSRand(u32 cap_, BTree *tree_): BatchBuffer(cap_, tree_)
-		{
+        EntryPtrSet entries;
+
+        void remove(EntryPtrSet::iterator begin, EntryPtrSet::iterator end)
+        {
+            using namespace std;
+            for (EntryPtrSet::iterator it = begin; it != end; ++it) {
+                *((int*) *it) =  freehead;
+                freehead = *it - entriesArray;
+            }
+            entries.erase(begin, end);
+        }
+
+        void add(Entry e)
+        {
+            assert(freehead != -1);
+            int next = *(int*)(entriesArray+freehead);
+            entriesArray[freehead] = e;
+            entries.insert(entriesArray+freehead);
+            freehead = next;
+        }
+
+        void initFreeList()
+        {
+            freehead = 0;
+            int *backptr = &freehead;
+            for (u32 i=0; i<capacity; ++i) {
+                *backptr = i;
+                backptr = (int*) (entriesArray+i);
+            }
+            *backptr = -1;
+        }
+
+    public:
+
+        BatchBufferLSRand(u32 cap_, BTree *tree_):
+            BatchBuffer(cap_/(1.0+ceilingLog2(cap_)/8/sizeof(Entry)), tree_)
+        {
             rng = gsl_rng_alloc(gsl_rng_taus2);
-		}
+            entriesArray = new Entry[capacity];
+            initFreeList();
+        }
 
         ~BatchBufferLSRand()
         {
+            tree->put(Iterator(entries.begin()), Iterator(entries.end()));
+            delete[] entriesArray;
             gsl_rng_free(rng);
         }
 
-		void put(const Key_t &key, const Datum_t &datum)
-		{
-			using namespace std;
-			if (size == capacity) {
-                /* sampling by walking through the set is too expensive!
-				int index = gsl_rng_uniform_int(rng, size);
-				EntrySet::iterator it = entries.begin(),
-					it_end = entries.end();
-				for (int i=0; i<index; ++i,++it)
-					;
-				PageId pid;
-				tree->locate(it->key, pid);
-                */
-				//PageId pid;
-                //cout<<"selected="<<selected<<endl;
-				//tree->locate(selected, pid);
-				Key_t selected = gsl_rng_uniform_int(rng, entries.rbegin()->key-entries.begin()->key+1) + entries.begin()->key;
-                selected = entries.lower_bound(selected, compEntry)->key;
-                //cout<<"selected="<<selected<<endl;
-				PageId pid;
-				tree->locate(selected, pid);
-				EntrySet::iterator begin = entries.lower_bound(pid.lower, compEntry);
-				EntrySet::iterator end = entries.lower_bound(pid.upper, compEntry);
-				int ret = tree->put(begin, end);
-				//cout<<"put "<<ret<<" records into pid ["<<pid.lower<<","<<pid.upper<<")"<<endl;
-				size -= ret;
-				entries.erase(begin, end);
-			}
+        void print()
+        {
+            using namespace std;
+            for(EntryPtrSet::iterator it=entries.begin();
+                    it != entries.end(); ++it) {
+                cerr<<(*it)->key<<" ";
+            }
+            cerr<<endl;
+        }
 
-			entries.insert(Entry(key, datum));
-			++size;
-            // reservoir sampling
-            //if (gsl_rng_uniform(rng) < 1.0/size)
-            //    selected = key;
-		}
-	};
+        void put(const Key_t &key, const Datum_t &datum)
+        {
+            using namespace std;
+            if (size == capacity) {
+                int index = gsl_rng_uniform_int(rng, size);
+                PageId pid;
+                tree->locate(entriesArray[index].key, pid);
+                EntryPtrSet::iterator begin = entries.lower_bound(pid.lower);
+                EntryPtrSet::iterator end = entries.lower_bound(pid.upper);
+                int ret = tree->put(Iterator(begin), Iterator(end));
+                size -= ret;
+                remove(begin, end);
+            }
+
+            add(Entry(key, datum));
+            ++size;
+        }
+
+        bool find(const Key_t &key, Datum_t &datum)
+        {
+            EntryPtrSet::iterator it = entries.find(key);
+            if (it == entries.end())
+                return false;
+            datum = (*it)->datum;
+            return true;
+        }
+
+        void flushAll()
+        {
+            tree->put(Iterator(entries.begin()), Iterator(entries.end()));
+            entries.clear();
+            initFreeList();
+            size = 0;
+        }
+    };
 }
+#endif

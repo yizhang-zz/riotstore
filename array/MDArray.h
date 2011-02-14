@@ -205,7 +205,6 @@ public:
 	// math methods
 	MDArray<nDim> & operator+=(const MDArray<nDim> &other);
 
-    LinearStorage *storage;
 protected:
     void createStorage(const StorageParam *sp);
 
@@ -215,6 +214,7 @@ protected:
     /// The Linearization tied to the underlying 1-D storage.
     Linearization<nDim> *linearization;
     std::string fileName;
+    LinearStorage *storage;
 
     //bool allocatedSp;
     //Btree::LeafSplitter *leafsp;

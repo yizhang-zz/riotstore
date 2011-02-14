@@ -11,12 +11,19 @@ ifeq ($(debug), 1)
 	CXXFLAGS += -g -DDEBUG
 	SOFLAG += -g
 else
-	CXXFLAGS += -O3 -DNDEBUG
-	SOFLAG += -O3
+	CXXFLAGS += -g -O3 -DNDEBUG
+	SOFLAG += -g -O3
 endif
 
+# check if dtrace is present
+ifneq ($(shell dtrace -v),)
+	CXXFLAGS += -DDTRACE_SDT
+endif
+
+# check OS
 ifeq ($(OS), SunOS)
-	CXX = g++
+	CXX = /usr/local/bin/g++
+	#CXX = /opt/csw/gcc4/bin/g++
 	CXXFLAGS += -m64 -msse3 -fPIC -Wall
 	DEPFLAGS = -MM -MG
 	SOFLAG += -m64 -msse3 -shared 
@@ -39,7 +46,7 @@ else
 	ifeq ($(OS), Darwin)
 		LDFLAGS += -framework vecLib
 	else
-		LDFLAGS += -lcblas -llapack
+		LDFLAGS += -lblas -llapack
 	endif
 endif
 

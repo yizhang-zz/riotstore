@@ -30,8 +30,18 @@ int main(int argc, char **argv)
 
     // fileName = [insert order][scale][splitter type]-...
     // splitter type of 'D' means DMA, others B-tree
-    char *p = basename(fileName)+1;
-    while (*p && isdigit(*p)) ++p;
+    char *p = basename(fileName);
+    char *q = p;
+    p++; // advance to first digit
+    if (strstr(fileName, "x")) {
+        while (*p && (isdigit(*p)||*p=='x')) ++p; // p points to the char after last digit
+    }
+    else {
+        while (*p && isdigit(*p)) ++p; // p points to the char after last digit
+    }
+    char srcfile[100] = {0};
+    strncpy(srcfile, q, p-q);
+    cerr<<"src="<<srcfile<<endl;
     LinearStorage *ls = NULL;
     if (*p == 'D')
         ls = new DirectlyMappedArray(fileName, 0);
@@ -55,12 +65,31 @@ int main(int argc, char **argv)
 				keys[i*size+j] = j*size+i;
 		break;
 	case 'R':
+        {
+	const int batchSize = 1000000;
+    int infile = open(srcfile, O_RDONLY);
+    int readcount=0;
+	while (true) {
+		ssize_t c = read(infile, keys+readcount, batchSize*sizeof(Key_t));
+		int count = c/sizeof(Key_t);
+        readcount += count;
+		if (count < batchSize)
+			break;
+	}
+	close(infile);
+    cerr<<"read count="<<readcount<<endl;
+    permute(keys, readcount);
+    total = readcount/100;
+        }
+
+        /*
 		for (i=0; i<size; ++i) 
 			rowIndices[i] = i;
 		permute(rowIndices, size); // permute row indices
 		for (i=0; i<size; ++i) 
 			for (j=0; j<size; ++j) 
 				keys[i*size+j] = rowIndices[i]*size+j;
+                */
 		break;
     case 'I':
 		// row 0

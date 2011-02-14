@@ -7,18 +7,18 @@ int main(int argc, char **argv)
 {
 	const int required = 4;
 	if (argc < required) {
-		cerr<<"Usage: "<<argv[0]<<" <type> <scale> <density> [seed]"<<endl
+		cerr<<"Usage: "<<argv[0]<<" <type> <scale> <period> [seed]"<<endl
 			<<"  <type>: S, D, R, I"<<endl
 			<<"  <scale>: the matrix will be scale x scale"<<endl
-            <<"  <density>: %% of nonzeros, e.g. 50 means 50/100"<<endl
+            <<"  <period>: a nonzero every period elements, e.g. 5 means density=1/5"<<endl
 			//<<"  <genVal>: if 1, value 1.0 will be written for each key"<<endl
 			<<"  [seed]: random seed, optional for debugging purposes"<<endl;
 		return 0;
 	}
 	char type = argv[1][0];
 	Key_t scale = atoi(argv[2]);
-    int density = atoi(argv[3]);
-    int period = 100/density; 
+    int period = atoi(argv[3]);
+    //int period = 100/density; 
 	int seed = time(NULL);
 
 	char filename[100];
@@ -27,26 +27,23 @@ int main(int argc, char **argv)
 
 	Key_t total = scale*scale;
 	Key_t *keys = new Key_t[total];
-	Key_t i,k,l;
+	Key_t i,j,k,l;
 	switch (type) {
 	case 'S':
+    case 'R':
+        k = 0;
 		for (i=0; i<total; ++i) 
             if (i % period == 0)
-                keys[i/period] = i;
+                keys[k++] = i;
+        if (type=='R')
+            permute(keys, k);
 		break;
 	case 'D':
-		for (i=0; i<total; ++i) 
-            if (i % period == 0)
-                keys[i/period] = period * (i % period) + i / period;
-		break;
-	case 'R':
-		if (argc >= required+1) 
-			seed = atoi(argv[required]);
-		srand(seed);
-		cerr<<"seed="<<seed<<endl;
-		for (i=0; i<total; ++i) 
-			keys[i] = i;
-		permute(keys, total);
+        k = 0;
+        for (j=0; j<scale; ++j) 
+            for (i=0; i<scale; ++i) 
+                if ((i*scale+j) % period == 0)
+                    keys[k++] = i*scale+j;
 		break;
 	case 'I':
 		// interleaved pattern:
@@ -58,33 +55,33 @@ int main(int argc, char **argv)
 		// row 0
         l = 0;
 		for (k=0; k<scale; ++k) {
-            if (l % period == 0)
-                keys[l/period] = k;
-            ++l;
+            if (k % period == 0)
+                keys[l++] = k;
         }
 		for (k=1; k<scale; ++k) {
 			// column k-1 and then row k
 			for (i=k; i<scale; ++i) {
 				// (i,k-1)
-                if (l % period == 0)
-                    keys[l/period] = i*scale+k-1;
-                ++l;
+                Key_t t = i*scale+k-1;
+                if (t % period == 0)
+                    keys[l++] = i*scale+k-1;
             }
+            // row k
 			for (i=k; i<scale; ++i) {
 				// (k, i)
-                if (l % period == 0)
-                    keys[l/period] = k*scale+i;
-                ++l;
+                Key_t t = k*scale+i;
+                if (t % period == 0)
+                    keys[l++] = t;
             }
 		}
-        assert(l==total);
 		break;
 	default:
 		cerr<<"type not recognized"<<endl;
 		return 1;
 	}
 
-	write(file, keys, sizeof(Key_t)*total*density/100);
+    size_t size = (total+period-1)/period;
+	write(file, keys, sizeof(Key_t)*size);
 	close(file);
     delete[] keys;
 	return 0;

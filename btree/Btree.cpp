@@ -9,6 +9,7 @@
 #include "BatchBufferFWF.h"
 #include "BatchBufferLRU.h"
 #include "BatchBufferLS.h"
+#include "BatchBufferLPALL.h"
 #include "BatchBufferLSRand.h"
 #include "BatchBufferLG.h"
 #include "BatchBufferLGRand.h"
@@ -27,48 +28,34 @@ void BTree::init(const char *fileName, int fileFlag)
     else
         buffer->readPage(0, headerPage);
     header = (Header*) headerPage->getImage();
+
+    putcount = 0;
 }
 
 #ifdef USE_BATCH_BUFFER
 void BTree::initBatching()
 {
-    if (config->batchUseHistogram)
-        leafHist = new LeafHist(config->batchHistogramNum, header->endsBy);
-    else
-        leafHist = NULL;
     switch (config->batchMethod) {
     case kFWF:
         batbuf = new BatchBufferFWF(config->batchBufferSize, this);
         break;
     case kLRU:
-        if (config->batchUseHistogram) 
-            batbuf = new BatchBufferLRU<HistPageId>(config->batchBufferSize, this);
-        else 
-            batbuf = new BatchBufferLRU<BoundPageId>(config->batchBufferSize, this);
+        batbuf = new BatchBufferLRU<BoundPageId>(config->batchBufferSize, this);
         break;
     case kLS:
-        if (config->batchUseHistogram)
-            batbuf = new BatchBufferLS<HistPageId>(config->batchBufferSize, this);
-        else
-            batbuf = new BatchBufferLS<BoundPageId>(config->batchBufferSize, this);
+        batbuf = new BatchBufferLS<BoundPageId>(config->batchBufferSize, this);
         break;
     case kLS_RAND:
-        if (config->batchUseHistogram)
-            batbuf = new BatchBufferLSRand<HistPageId>(config->batchBufferSize, this);
-        else
-            batbuf = new BatchBufferLSRand<BoundPageId>(config->batchBufferSize, this);
+        batbuf = new BatchBufferLSRand<BoundPageId>(config->batchBufferSize, this);
         break;
     case kLG:
-        if (config->batchUseHistogram)
-            batbuf = new BatchBufferLG<HistPageId>(config->batchBufferSize, this);
-        else
-            batbuf = new BatchBufferLG<BoundPageId>(config->batchBufferSize, this);
+        batbuf = new BatchBufferLG<BoundPageId>(config->batchBufferSize, this);
         break;
     case kLG_RAND:
-        if (config->batchUseHistogram)
-            batbuf = new BatchBufferLGRand<HistPageId>(config->batchBufferSize, this);
-        else
-            batbuf = new BatchBufferLGRand<BoundPageId>(config->batchBufferSize, this);
+        batbuf = new BatchBufferLGRand<BoundPageId>(config->batchBufferSize, this);
+        break;
+    case kLPALL:
+        batbuf = new BatchBufferLPALL<BoundPageId>(config->batchBufferSize, this);
         break;
     default:
         batbuf = NULL;
@@ -124,10 +111,6 @@ BTree::BTree(const char *fileName)
 BTree::~BTree()
 {
 #ifdef USE_BATCH_BUFFER
-    if (leafHist) {
-        //leafHist->print();
-        delete leafHist;
-    }
     if (batbuf)
         delete batbuf;
 #endif
@@ -186,11 +169,6 @@ int BTree::search(Key_t key, Cursor &cursor)
 }
 
 #ifdef USE_BATCH_BUFFER
-void BTree::locate(Key_t key, HistPageId &pageId)
-{
-    leafHist->locate(key, pageId);
-}
-
 void BTree::locate(Key_t key, BoundPageId &pageId)
 {
 #ifdef DTRACE_SDT
@@ -214,8 +192,9 @@ void BTree::locate(Key_t key, BoundPageId &pageId)
 
     for (int i=1; i<header->depth; i++) {
         buffer->readPage(pid, ph);
-        // read, do not creat!
-        block = new InternalBlock(ph, l, u, false);
+        // read, do not create!
+        //block = new InternalBlock(ph, l, u, false);
+        block = static_cast<InternalBlock*>(pool->get(ph, l, u));
         int idx;
         // idx is the position where the key should be inserted at.
         // To follow the child pointer, the position should be
@@ -226,7 +205,8 @@ void BTree::locate(Key_t key, BoundPageId &pageId)
         ++idx;
         u = block->size()==idx ? block->getUpperBound() : block->key(idx);
         //u = block->key(idx+1);
-        delete block;
+        //delete block;
+        block->~Block();
     }
 #ifdef DTRACE_SDT
     RIOT_BTREE_LOCATE_END();
@@ -268,7 +248,10 @@ int BTree::put(const Key_t &key, const Datum_t &datum)
         return kOutOfBound;
 
 #ifdef DTRACE_SDT
-    RIOT_BTREE_PUT();
+    if (++putcount == 1000) {
+        RIOT_BTREE_PUT();
+        putcount = 0;
+    }
 #endif
 #ifdef USE_BATCH_BUFFER
     if (batbuf) {
@@ -470,7 +453,10 @@ int BTree::batchPut(i64 putCount, const Entry *puts)
         if (puts[i].key >= header->endsBy)
             continue;
 #ifdef DTRACE_SDT
-        RIOT_BTREE_PUT();
+        if (++putcount == 1000) {
+            RIOT_BTREE_PUT();
+            putcount = 0;
+        }
 #endif
         putHelper(puts[i].key, puts[i].datum, cursor);
     }
@@ -485,7 +471,10 @@ int BTree::batchPut(std::vector<Entry> &v)
         if (v[i].key >= header->endsBy)
             continue;
 #ifdef DTRACE_SDT
-        RIOT_BTREE_PUT();
+        if (++putcount == 1000) {
+            RIOT_BTREE_PUT();
+            putcount = 0;
+        }
 #endif
         putHelper(v[i].key, v[i].datum, cursor);
     }

@@ -48,6 +48,7 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, Key_t numElements
       //Datum_t x;
       //assert(IsSameDataType(x, header->dataType));
    }
+   putcount = 0;
 }
 
 DirectlyMappedArray::~DirectlyMappedArray() 
@@ -170,7 +171,17 @@ int DirectlyMappedArray::batchPut(std::vector<Entry> &v)
     while (begin != end) {
         PID_t pid = findPage(begin->key);
         readOrAllocBlock(pid, &block);
+#ifdef DTRACE_SDT
+        std::vector<Entry>::const_iterator temp = begin;
+#endif
         header->nnz += block->batchPut(begin, end); // begin is updated
+#ifdef DTRACE_SDT
+        putcount += begin - temp;
+        if (putcount >= 1000) {
+            RIOT_DMA_PUT();
+            putcount -= 1000;
+        }
+#endif
         delete block;
     }
     return AC_OK;
@@ -194,6 +205,12 @@ int DirectlyMappedArray::put(const Key_t &key, const Datum_t &datum)
 	}   
 
 	header->nnz += dab->put(key, datum);
+#ifdef DTRACE_SDT
+    if (++putcount >= 1000) {
+        RIOT_DMA_PUT();
+        putcount -= 1000;
+    }
+#endif
 	//buffer->markPageDirty(dab->getPageHandle());
 	//buffer->unpinPage(dab->getPageHandle());
 	delete dab;
@@ -233,6 +250,12 @@ int DirectlyMappedArray::batchPut(i64 putCount, const Entry *puts)
                 if ((ret=readOrAllocBlock(lastPid, &dab)) & RC_FAIL)
                     Error("Cannot read or allocate block %d", lastPid);
                 header->nnz += dab->batchPut(nPuts, puts + i - nPuts);
+#ifdef DTRACE_SDT
+                if ((putcount += nPuts) >= 1000) {
+                    RIOT_DMA_PUT();
+                    putcount -= 1000;
+                }
+#endif
                 //buffer->markPageDirty(dab->getPageHandle());
                 //buffer->unpinPage(dab->getPageHandle());
                 delete dab;
@@ -252,6 +275,12 @@ int DirectlyMappedArray::batchPut(i64 putCount, const Entry *puts)
         if ((ret=readOrAllocBlock(lastPid, &dab)) & RC_FAIL)
             Error("Cannot read or allocate block %d", lastPid);
         header->nnz += dab->batchPut(nPuts, puts + i - nPuts);
+#ifdef DTRACE_SDT
+        if ((putcount += nPuts) >= 1000) {
+            RIOT_DMA_PUT();
+            putcount -= 1000;
+        }
+#endif
         //buffer->markPageDirty(dab->getPageHandle());
         //buffer->unpinPage(dab->getPageHandle());
         delete dab;

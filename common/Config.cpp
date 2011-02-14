@@ -17,6 +17,7 @@ Config::Config(const char *path)
     bmm["LPP"] = Btree::kLS_RAND;
     bmm["LG"] = Btree::kLG;
     bmm["LGP"] = Btree::kLG_RAND;
+    bmm["LPALL"] = Btree::kLPALL;
 
 	denseLeafCapacity = (PAGE_SIZE-sizeof(Btree::DenseLeafBlock::Header))
 		/ sizeof(Datum_t);
@@ -84,6 +85,8 @@ Config::Config(const char *path)
                 useDenseLeaf = atoi(b);
                 //if (disableDenseLeaf)
                 //    BSplitterBoundary = sparseLeafCapacity;
+            } else if (strcmp(a, "flushPageMinSize") == 0) {
+                flushPageMinSize = atoi(b);
             }
 		}
 		fclose(f);

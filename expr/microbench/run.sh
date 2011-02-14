@@ -41,13 +41,13 @@ do
     echo
 
 # workload
-for a in S D I
+for a in S I
 do
     # matrix size
 	for b in 4000
 	do
         # splitting strategy
-		for c in A
+		for c in M
 		do
 			echo "write test: $a$b , splitting strategy $c"
             output=$a$b$c-$useDense-$x
@@ -58,7 +58,6 @@ do
 			sort -n +5 /tmp/writerun.log | sed '/^$/d' | awk '{print $1,$2,$3,$4/1e9,$5/1e9,$6/1e9}' > $1/$output.log
 			rm /tmp/writerun.log
             cp /riot/mb /riot/$output.bin
-            #cp /export/home/yizhang/mb /export/home/yizhang/$output.bin
 		done
 	done
 done

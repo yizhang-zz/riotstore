@@ -7,18 +7,18 @@ CXXFLAGS += -Ilib/SuiteSparse/CHOLMOD/Include
 CXXFLAGS += -Ilib/SuiteSparse/UFconfig
 LDFLAGS += -Llib/SuiteSparse/CHOLMOD/Lib -lcholmod
 LDFLAGS += $(shell pkg-config --libs-only-L gsl) -lgsl
+include flags.mk
 include $(patsubst %, %/module.mk,$(DIRS))
 OBJ := $(patsubst %.cpp,%.o,$(filter %.cpp,$(SRC))) 
 DEPS := $(OBJ:.o=.dd)
 DTRACE_SRC := riot.dtrace
 DTRACE_OBJ := riot.o
 SO_OBJ = $(OBJ)
-ifeq ($(OS),SunOS)
+ifneq ($(findstring DTRACE_SDT,$(CXXFLAGS)),)
 	SO_OBJ += $(DTRACE_OBJ)
 endif
 TARGET = libriot_store
 
-include flags.mk
 
 .PHONY: all suitesparse clean
 

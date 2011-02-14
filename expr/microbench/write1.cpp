@@ -61,8 +61,18 @@ int main(int argc, char **argv)
 		break;
 	}
     */
-	int size = atoi(infilename+1);
-	Key_t total = Key_t(size) * size;
+    // if infilename contains 'x', then it contains both dimensions of the
+    // matrix; otherwise the two dims are equanl and only one is provided
+    char x[] = "x";
+    int total;
+    if (strstr(infilename, x)) {
+        int d1,d2;
+        sscanf(infilename+1, "%dx%d", &d1, &d2);
+        total = d1*d2;
+    }
+    else {
+        total = atoi(infilename+1);
+    }
     LinearStorage *ls;
     if (splitterType == 'D') {
         // dma

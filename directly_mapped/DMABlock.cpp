@@ -3,9 +3,6 @@
 #include "DMABlock.h"
 #include "DirectlyMappedArray.h"
 #include "DABIterator.h"
-#ifdef DTRACE_SDT
-#include "riot.h"
-#endif
 
 const Datum_t DMABlock::DefaultValue = 0.0;
 //const size_t DMABlock::CAPACITY = (PAGE_SIZE-sizeof(Header))/sizeof(Datum_t);
@@ -56,9 +53,6 @@ void DMABlock::batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &v)
 /// assume key is within range
 int DMABlock::put(Key_t key, Datum_t datum)  
 {
-#ifdef DTRACE_SDT
-    RIOT_DMA_PUT();
-#endif
     int index = key-lowerBound;
     if (datum == data[index])
         return 0;
@@ -79,9 +73,6 @@ int DMABlock::batchPut(i64 putCount, const Entry *puts)
     int ret = 0;
     for (i64 i = 0; i < putCount; i++)
     {
-#ifdef DTRACE_SDT
-        RIOT_DMA_PUT();
-#endif
         index = puts[i].key-lowerBound;
         if (puts[i].datum == data[index])
             continue;
@@ -102,9 +93,6 @@ int DMABlock::batchPut(std::vector<Entry>::const_iterator &begin,
     int nPut = 0;
     int index;
     for (; begin != end && begin->key < upperBound; ++begin) {
-#ifdef DTRACE_SDT
-        RIOT_DMA_PUT();
-#endif
         index = begin->key - lowerBound;
         if (begin->datum == data[index])
             continue;

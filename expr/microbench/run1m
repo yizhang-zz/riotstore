@@ -20,10 +20,8 @@ then
 	exit
 fi
 
-if [[ ! -d "$1" ]]
-then
-	mkdir $1
-fi
+mkdir $1
+mkdir /riot/$1
 
 # whether to use dense leaf format
 # read from $HOME/.riot conf file
@@ -44,20 +42,20 @@ do
 for a in S D I
 do
     # matrix size
-	for b in 4000
+	for b in 4562x5761
 	do
         # splitting strategy
-		for c in D
+		for c in M
 		do
 			echo "Running with input $a$b , splitting strategy $c"
             output=$a$b$c-$useDense-$x
             echo "output will be named $output"
 			./rw.d -c "./write1 $a$b $c" > /tmp/writerun.log
-            cp /export/home/yizhang/mb /export/home/yizhang/$output.bin
 			# use awk to calc sec from nanosec and drop the timestamp field
 			# sed removes any blank line
 			sort -n +5 /tmp/writerun.log | sed '/^$/d' | awk '{print $1,$2,$3,$4/1e9,$5/1e9,$6/1e9}' > $1/$output.log
 			rm /tmp/writerun.log
+            cp /riot/mb /riot/$1/$output.bin
 		done
 	done
 done

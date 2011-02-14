@@ -3,6 +3,7 @@
 
 #include <string>
 #include <sstream>
+#include "Parser.h"
 
 class MMParser : public Parser<2>
 {
@@ -18,7 +19,9 @@ public:
 		in>>s;
 		assert(s.compare("coordinate")==0);
 		in>>s;
-		if (s.compare("real")==0)
+        if (s.compare("integer")==0)
+            type = INTEGER;
+        else if (s.compare("real")==0)
             type = REAL;
         else if (s.compare("pattern")==0)
             type = PATTERN;
@@ -37,6 +40,7 @@ public:
         stringstream ss(buf);
 		ss>>dim_[0]>>dim_[1];
 		ss>>nnz; 
+        nElem = nnz;
     }
 
     ~MMParser()
@@ -48,7 +52,7 @@ public:
     {
 		int limit = std::min(size, nnz-cur);
 		int i;
-        if (type == REAL) {
+        if (type == REAL || type == INTEGER) {
             for (i = 0; i < limit; ++i) {
                 in >> coords[i][0] >> coords[i][1] >> data[i];
                 coords[i][0]--;
@@ -71,6 +75,7 @@ public:
 
 private:
     enum Type {
+        INTEGER,
         REAL,
         PATTERN
     };

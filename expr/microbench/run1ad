@@ -21,6 +21,7 @@ then
 fi
 
 mkdir -p $1
+mkdir -p /riot/$1
 
 # whether to use dense leaf format
 # read from $HOME/.riot conf file
@@ -37,8 +38,6 @@ do
     echo "<<"
     echo
 
-dir=/riot/c8/
-
 # workload
 for a in S D I
 do
@@ -46,19 +45,18 @@ do
 	for b in 4562x5761
 	do
         # splitting strategy
-		#for c in D M B
-		#do
-
-        input=$a${b}D-1-$x
-        echo "Running with input $input read order R"
-        ./read.d -c "./read $dir$input.bin R" > $1/$input-R.log
-        input=$a${b}M-0-$x
-        echo "Running with input $input read order R"
-        ./read.d -c "./read $dir$input.bin R" > $1/$input-R.log
-        input=$a${b}A-1-$x
-        echo "Running with input $input read order R"
-        ./read.d -c "./read $dir$input.bin R" > $1/$input-R.log
-		#done
+		for c in A D
+		do
+			echo "Running with input $a$b , splitting strategy $c"
+            output=$a$b$c-$useDense-$x
+            echo "output will be named $output"
+			./rw.d -c "./write1 $a$b $c" > /tmp/writerun.log
+			# use awk to calc sec from nanosec and drop the timestamp field
+			# sed removes any blank line
+			sort -n +5 /tmp/writerun.log | sed '/^$/d' | awk '{print $1,$2,$3,$4/1e9,$5/1e9,$6/1e9}' > $1/$output.log
+			rm /tmp/writerun.log
+            cp /riot/mb /riot/$1/$output.bin
+		done
 	done
 done
 done

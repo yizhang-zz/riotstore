@@ -4,11 +4,11 @@
 using namespace Btree;
 using namespace std;
 
-const BatchBuffer::CompEntry BatchBuffer::compEntry = BatchBuffer::CompEntry();
+//const BatchBuffer::CompEntry BatchBuffer::compEntry = BatchBuffer::CompEntry();
 
 bool BatchBuffer::find(const Key_t &key, Datum_t &datum) 
 {
-	EntrySet::iterator it = entries.find(Entry(key,0));
+	EntrySet::iterator it = entries.find(key);
 	if (it == entries.end())
 		return false;
 	datum = it->datum;
@@ -22,9 +22,11 @@ void BatchBuffer::flushAll()
 	size = 0;
 }
 
+/*
 void BatchBuffer::print()
 {
 	ostream_iterator<Entry> output(cout, " ");
 	copy(entries.begin(), entries.end(), output);
 	cout<<endl;
 }
+*/

@@ -35,6 +35,7 @@ public:
 
     Btree::BatchMethod batchMethod;
     u32 batchBufferSize;
+    u32 flushPageMinSize;
     int batchUseHistogram;
     int batchHistogramNum;
     u16 batchKeepPidCount;

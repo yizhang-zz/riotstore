@@ -7,7 +7,6 @@
 #include "BlockPool.h"
 #include "Splitter.h"
 #include "BatchBuffer.h"
-#include "LeafHist.h"
 #include <vector>
 #ifdef DTRACE_SDT
 #include "riot.h"
@@ -19,8 +18,6 @@ namespace Btree
 #ifdef USE_BATCH_BUFFER
 class BatchBuffer;
 class BoundPageId;
-class HistPageId;
-class LeafHist;
 #endif
 
 /*
@@ -61,7 +58,6 @@ private:
 public:
 #ifdef USE_BATCH_BUFFER
     BatchBuffer *batbuf;
-    LeafHist *leafHist;
 #endif
 
     /**
@@ -98,7 +94,6 @@ public:
 #ifdef USE_BATCH_BUFFER
     // finds the PID of the leaf block where key should go into
     void locate(Key_t key, BoundPageId &pageId);
-    void locate(Key_t key, HistPageId &pageId);
 #endif
     //void locate(Key_t key, PID_t &pid, Key_t &lower, Key_t &upper);
 
@@ -182,14 +177,13 @@ private:
     void onNewLeaf(Block *leaf)
     {
         header->nLeaves++;
-#ifdef USE_BATCH_BUFFER
-        if (leafHist)
-            leafHist->onNewLeaf(leaf->getLowerBound(), leaf->getUpperBound());
-#endif
 #ifdef DTRACE_SDT
         RIOT_BTREE_SPLIT_LEAF(leaf->size());
 #endif
     }
+
+    // for instrumentation
+    unsigned short putcount;
 };
 }
 #endif

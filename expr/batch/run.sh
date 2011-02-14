@@ -31,7 +31,11 @@ useDense=`sed -n "s/useDenseLeaf=\([01]\)/\1/p" $HOME/.riot`
 echo "useDense=$useDense"
 echo
 
-for x in ALL
+# workload
+for a in S I D R
+do
+
+for x in ALL LP LPP LGP LG
 do
 	sed "s/\(batchMethod=\)\(.*\)/\1$x/g" $HOME/.riot > /tmp/.riot.tmp
 	mv /tmp/.riot.tmp $HOME/.riot
@@ -40,9 +44,6 @@ do
     echo "<<"
     echo
 
-# workload
-for a in D
-do
     # matrix size
 	for b in 4000
 	do
@@ -52,12 +53,12 @@ do
 			echo "Running with input $a$b , splitting strategy $c"
             output=$a$b$c-$useDense-$x
             echo "output will be named $output"
-			./rw.d -c "./write $a$b $c" > /tmp/writerun.log
+			./rw.stp -c "./write $a$b $c /research" > /tmp/writerun.log
 			# use awk to calc sec from nanosec and drop the timestamp field
 			# sed removes any blank line
-			sort -n +5 /tmp/writerun.log | sed '/^$/d' | awk '{print $1,$2,$3,$4/1e9,$5/1e9,$6/1e9}' > $1/$output.log
+			sort -n -k 6,6 /tmp/writerun.log | sed '/^$/d' | awk '{print $1,$2,$3,$4/1e9,$5/1e9,$6/1e9}' > $1/$output.log
 			rm /tmp/writerun.log
-            cp /riot/mb /riot/$output.bin
+            #cp /riot/mb /riot/$output.bin
 		done
 	done
 done
