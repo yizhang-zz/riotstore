@@ -9,7 +9,6 @@
 #include "BatchBufferFWF.h"
 #include "BatchBufferLRU.h"
 #include "BatchBufferLS.h"
-#include "BatchBufferLPALL.h"
 #include "BatchBufferLSRand.h"
 #include "BatchBufferLG.h"
 #include "BatchBufferLGRand.h"
@@ -53,9 +52,6 @@ void BTree::initBatching()
         break;
     case kLG_RAND:
         batbuf = new BatchBufferLGRand<BoundPageId>(config->batchBufferSize, this);
-        break;
-    case kLPALL:
-        batbuf = new BatchBufferLPALL<BoundPageId>(config->batchBufferSize, this);
         break;
     default:
         batbuf = NULL;
