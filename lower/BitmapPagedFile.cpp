@@ -7,6 +7,9 @@
 #include "BitmapPagedFile.h"
 #include "PageRec.h"
 
+#define _XOPEN_SOURCE 600
+#include <fcntl.h>
+
 #ifdef PROFILING
 int PagedStorageContainer::readCount = 0;
 int PagedStorageContainer::writeCount = 0;
@@ -48,6 +51,7 @@ BitmapPagedFile::BitmapPagedFile(const char *pathname, int flag) {
             fprintf(stderr, "error %d\n", errno);
             exit(1);
         }
+        posix_fadvise(fd, 0, 0, POSIX_FADV_RANDOM);
 		assert(fd >= 0);
         numContentPages = 0;
         memset(header, 0, HEADER_SIZE);
@@ -59,6 +63,7 @@ BitmapPagedFile::BitmapPagedFile(const char *pathname, int flag) {
             fprintf(stderr, "error %d\n", errno);
             exit(1);
         }
+        posix_fadvise(fd, 0, 0, POSIX_FADV_RANDOM);
 
 		assert(fd >= 0);
 		struct stat s;
@@ -71,6 +76,7 @@ BitmapPagedFile::BitmapPagedFile(const char *pathname, int flag) {
 // Remember to write the header back!
 BitmapPagedFile::~BitmapPagedFile() {
     flush();
+    fsync(fd);
     close(fd);
     freePageImage(header);
 }

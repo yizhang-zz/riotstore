@@ -51,6 +51,11 @@ namespace Btree
         BatchBufferLSRand(u32 cap_, BTree *tree_):
             BatchBuffer(cap_/(1.0+ceilingLog2(cap_)/8/sizeof(Entry)), tree_)
         {
+            using namespace std;
+            gsl_rng_env_setup();
+            if (gsl_rng_default_seed == 0) {
+                gsl_rng_default_seed = time(NULL);
+            }
             rng = gsl_rng_alloc(gsl_rng_taus2);
             entriesArray = new Entry[capacity];
             initFreeList();

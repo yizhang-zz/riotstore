@@ -21,14 +21,16 @@ namespace Btree
 	{
 	public:
 
-		typedef std::vector<PageId> PidSet;
+		typedef std::vector<PageId> PidList;
 
 		BatchBufferLS(u32 cap_, BTree *tree_): BatchBuffer(
 				cap_-sizeof(PageId)*config->batchKeepPidCount/sizeof(Entry)
 				, tree_)
 		{
 			nKeep = 1+config->batchKeepPidCount;
-			pids = new PidSet(1, maxPid); // sentinel
+			pids = new PidList;
+            pids->reserve(nKeep);
+            pids->push_back(maxPid); // sentinel
             entries.insert(Entry(MAX_KEY, 0)); // sentinel
 		}
 
@@ -37,35 +39,18 @@ namespace Btree
             // remove the sentinel
             entries.erase(MAX_KEY);
             tree->put(entries.begin(), entries.end());
+            delete pids;
         }
 
 		PageId computePids()
 		{
 			using namespace std;
-#if 0
-            // shortcut: if max among known pids >= last flushed page, then
-            // directly flush that page and skip computing the unknown pids
-			typename PidSet::iterator it = max_element(pids.begin(), pids.end(), compCount);
-            if (it->count >= lastFlushCount && it->count > 0) {
-                PageId ret = *it;
-                pids.erase(it);
-                return ret;
-            }
-#endif
-
-			// lst will contain the running top K+1 pids as we combine the
-			// existing pids and newly computed pids. We start by copying
-			// everything in pids into lst, and then make a min-heap.
-			PidSet *lst = new PidSet(*pids); // lst contains a maxPid
-			make_heap(lst->begin(), lst->end(), compCountR);
-            unsigned maxKnownPidSize = max_element(lst->begin(),
-                    lst->end(), compCount)->count;
-
+            PageId ret;
             unsigned knownCount = 0;
-			EntrySet::const_iterator eit = entries.begin();
-			typename PidSet::const_iterator rit = pids->begin();
-			//while (eit->key < MAX_KEY) {
-			while (maxKnownPidSize < size - knownCount) {
+			EntrySet::iterator eit = entries.begin();
+			typename PidList::iterator rit = pids->begin(),
+                     lit=pids->end();
+			while ((ret.count) < size - knownCount) {
                 assert(eit->key != MAX_KEY);
 				if (eit->key < rit->lower) {
 					PageId npid;
@@ -76,71 +61,83 @@ namespace Btree
 						++npid.count;
 					}
                     knownCount += npid.count;
-                    if (npid.count > maxKnownPidSize)
-                        maxKnownPidSize = npid.count;
-
-					// insert the new pid
-                    if (lst->size() < nKeep) {
-                        lst->push_back(npid);
-						push_heap(lst->begin(), lst->end(), compCountR);
+                    if (npid.count > ret.count) {
+                        ret = npid;
+                        if (pids->size() < nKeep) {
+                            lit = pids->insert(rit, npid);
+                            ++(rit=lit);
+                        }
                     }
-                    else if (npid.count > lst->begin()->count) {
-                        // replace the heap top
-						pop_heap(lst->begin(), lst->end(), compCountR);
-						lst->back() = npid;
-						push_heap(lst->begin(), lst->end(), compCountR);
-					}
+                    else if (pids->size() < nKeep) {
+                        rit = pids->insert(rit, npid);
+                        ++rit;
+                    }
 				}
 				else {
+                    if (rit->count > ret.count) {
+                        ret = *rit;
+                        lit = rit;
+                    }
+                    knownCount += rit->count;
 					// Since *rit is up to date, we can safely advance eit
 					// to the end of *rit's range, and rit to the next
 					eit = entries.lower_bound(rit->upper);
 					++rit; // safe because of the sentinel
-                    knownCount += rit->count;
 				}
 			}
 
-            // Largest page, to be flushed
-			typename PidSet::iterator it = max_element(lst->begin(), lst->end(), compCount);
-			PageId ret = *it;
-            *it = lst->back(); // move last element to the empty slot
-            if (lst->begin()->count)
-                // top of min-heap is non-zero, so no maxPid in lst
-                // replace it with a maxPid
-                lst->back() = maxPid;
-            else
-                // top of min-heap is maxPid, just remove the last element
-                lst->pop_back();
-			sort(lst->begin(), lst->end());
-
-            delete pids;
-            pids = lst;
-            lst = NULL;
-            
-			return ret;
+            if (lit != pids->end()) {
+                pids->erase(lit);
+                // strictly speaking we need to cache one more pid to make
+                // sure the total number of pids is nKeep
+            }
+            return ret;
 		}
+
+        // don't cache pids
+		PageId computePids1()
+        {
+            unsigned knownCount = 0;
+			EntrySet::const_iterator eit = entries.begin();
+            PageId ret;
+            while (ret.count < size - knownCount) {
+                assert(eit->key != MAX_KEY);
+                PageId npid;
+                tree->locate(eit->key, npid);
+                // find all records going into npid
+                while (eit->key < npid.upper) {
+                    ++eit;
+                    ++npid.count;
+                }
+                knownCount += npid.count;
+                if (npid.count > ret.count) {
+                    ret = npid;
+                }
+            }
+            return ret;
+        }
 
 		void put(const Key_t &key, const Datum_t &datum)
 		{
 			using namespace std;
 			if (size == capacity) {
-                unsigned temp = 0;
-                for (typename PidSet::iterator it=pids->begin(); it != pids->end();++it)
-                    temp += it->count;
 				// evict the pid with largest count
 				PageId longest = computePids();
 				EntrySet::iterator start = entries.lower_bound(longest.lower);
 				EntrySet::iterator stop  = entries.lower_bound(longest.upper);
-                tree->put(start, stop);
+                int c = tree->put(start, stop);
+                //cerr<<c<<endl;
+                assert(c == longest.count);
 				entries.erase(start, stop);
 				size -= longest.count;
 			}
 
 			entries.insert(Entry(key, datum));
 			++size;
+            //return;
 			// Look up the current pid set for key's pid. Because of the
             // sentinel, it won't be pids->end().
-			typename PidSet::iterator it = 
+			typename PidList::iterator it = 
 				upper_bound(pids->begin(), pids->end(), key, comp);
 			if (it != pids->begin() && (--it)->contains(key)) {
 				it->count++;
@@ -180,8 +177,7 @@ namespace Btree
         }
 
 protected:
-		PidSet *pids;
-		PidSet *lst;
+		PidList *pids;
 		unsigned nKeep;
 		static CompPidCount<PageId> compCount;
 		static CompPidCountR<PageId> compCountR;
