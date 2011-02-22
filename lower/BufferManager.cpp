@@ -1,4 +1,6 @@
+#ifdef DTRACE_SDT
 #include "riot.h"
+#endif
 #include "BufferManager.h"
 #include <sys/time.h>
 #include "PageReplacer.h"
