@@ -251,8 +251,10 @@ double SSplitter<Value>::sValue(int b1, int b2, int d1, int d2)
 	int d = d1+d2;
 	double den = gsl_sf_lnchoose(d, d1);
 
-	if (d1 <= b1)
-		v1 = DBL_MAX;
+	if (d1 < b1 && d2 < b2)
+		return DBL_MAX;
+    if (d1 < b1)
+        v1 = 0;
 	else {
 		int stop = b1+GSL_MIN(b2, d2);
 		double re = 0;
@@ -262,8 +264,8 @@ double SSplitter<Value>::sValue(int b1, int b2, int d1, int d2)
 		v1 = re;
 	}
 
-	if (d2 <= b2)
-		v2 = DBL_MAX;
+	if (d2 < b2)
+		v2 = 0;
 	else { 
 		int stop = b2+GSL_MIN(b1, d1);
 		double re = 0;
@@ -272,7 +274,7 @@ double SSplitter<Value>::sValue(int b1, int b2, int d1, int d2)
 		}
 		v2 = re;
 	}
-	return GSL_MIN(v1, v2);
+	return v1+v2;
 }
 
 template<class Value>

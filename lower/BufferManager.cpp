@@ -205,6 +205,7 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
             pageReplacer->remove(rec);
         pinPage(rec);
         ph = PageHandle(rec, pageDealloc);
+        return RC_HIT;
     }
     else {
 #ifdef DTRACE_SDT
@@ -220,14 +221,15 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
             //Debug("Physical storage cannot read pid %d, error %d", rec->pid, ret);
             rec->pid = INVALID_PID;
             pageReplacer->add(rec);  //recycle
+            //TODO: should add to the LRU end instead of the MRU end
             return ret;
         }
         rec->dirty = false;
         pinPage(rec);
         ph = PageHandle(rec, pageDealloc);
         pageHash->insert(PageHashMap::value_type(pid, rec));
+        return RC_READ;
     }
-    return RC_READ;
 }
 
 RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
@@ -241,10 +243,10 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
             pageReplacer->remove(rec);
         pinPage(rec);
         ph = PageHandle(rec, pageDealloc);
-        ret = RC_READ;
 #ifdef DTRACE_SDT
         RIOT_BM_READ(pid,0);
 #endif
+        return RC_HIT;
     }
     else {
         if ((ret=replacePage(rec)) & RC_FAIL) {
@@ -278,8 +280,8 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
         pinPage(rec);
         ph = PageHandle(rec, pageDealloc);
         pageHash->insert(PageHashMap::value_type(pid, rec));
+        return ret;
     }
-    return ret;
 }
 
 // Marks a pinned page as dirty (i.e., modified).
@@ -382,6 +384,7 @@ RC_t BufferManager::replacePage(PageRec *&bh)
         return ret;
     }
     //Debug("relace page %10d ", bh->pid);
+    //cerr<<"evicted "<<bh->pid<<((bh->dirty)?"dirty":"")<<endl;
     if (bh->dirty) {
         //if (packer && bh->unpacked)
         //    packer->pack(bh->unpacked, bh->image);

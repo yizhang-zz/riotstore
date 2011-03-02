@@ -37,27 +37,28 @@ do
     echo "<<"
     echo
 
-dir=/riot/c8/
+dir=/riot/10k.10/
 
 # workload
 for a in S D I
 do
     # matrix size
-	for b in 4562x5761
+	for b in 10000
 	do
         # splitting strategy
 		#for c in D M B
 		#do
 
+        #input=$a${b}A-1-$x
+        #echo "Running with input $input read order R"
+        #./read.stp -c "./read $dir$input.bin R" > $1/$input-R.log
+        #input=$a${b}M-0-$x
+        #echo "Running with input $input read order R"
+        #./read.stp -c "./read $dir$input.bin R" > $1/$input-R.log
         input=$a${b}D-1-$x
         echo "Running with input $input read order R"
-        ./read.d -c "./read $dir$input.bin R" > $1/$input-R.log
-        input=$a${b}M-0-$x
-        echo "Running with input $input read order R"
-        ./read.d -c "./read $dir$input.bin R" > $1/$input-R.log
-        input=$a${b}A-1-$x
-        echo "Running with input $input read order R"
-        ./read.d -c "./read $dir$input.bin R" > $1/$input-R.log
+        ./read.stp -c "./read $dir$input.bin R" > $1/$input-R.log
+
 		#done
 	done
 done

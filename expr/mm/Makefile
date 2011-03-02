@@ -7,7 +7,7 @@ LDFLAGS += -L../.. -lriot_store
 all: $(EXE)
 
 %:%.o
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) -Wl,-rpath,/home/yizhang/riot_store
 
 libriot_store.so:
 	@cd ../..; $(MAKE)

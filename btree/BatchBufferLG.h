@@ -38,7 +38,7 @@ namespace Btree
 		};
 
 		BatchBufferLG(u32 cap_, BTree *tree_): BatchBuffer(
-				cap_-sizeof(PageId)*config->batchKeepPidCount/sizeof(Entry)
+				cap_-(8+8+4)*config->batchKeepPidCount/(8+8)
 				, tree_)
 		{
 			pids.reserve(1+config->batchKeepPidCount);

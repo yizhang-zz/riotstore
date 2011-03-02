@@ -40,38 +40,18 @@ int main(int argc, char **argv)
 
 	int infile = open(infilename, O_RDONLY);
 
-    /*
-	InternalSplitter *isp = new MSplitter<PID_t>();
-	LeafSplitter *lsp = NULL;
-	switch(splitterType) {
-	case 'M':
-		lsp = new MSplitter<Datum_t>();
-		break;
-	case 'B':
-		lsp = new BSplitter<Datum_t>(config->BSplitterBoundary());
-		break;
-	case 'R':
-		lsp = new RSplitter<Datum_t>();
-		break;
-	case 'S':
-		lsp = new SSplitter<Datum_t>();
-		break;
-	case 'T':
-		lsp = new TSplitter<Datum_t>(config->TThreshold);
-		break;
-	}
-    */
     // if infilename contains 'x', then it contains both dimensions of the
     // matrix; otherwise the two dims are equanl and only one is provided
     char x[] = "x";
-    int total;
+    Key_t total;
     if (strstr(infilename, x)) {
-        int d1,d2;
-        sscanf(infilename+1, "%dx%d", &d1, &d2);
+        Key_t d1,d2;
+        sscanf(infilename+1, "%lux%lu", &d1, &d2);
         total = d1*d2;
     }
     else {
         total = atoi(infilename+1);
+        total *= total;
     }
     LinearStorage *ls;
     if (splitterType == 'D') {

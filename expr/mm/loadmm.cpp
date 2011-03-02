@@ -17,7 +17,7 @@ int main(int argc, char **argv)
     }
     char types[256] = {0};
     for (char *p=argv[2]; *p; ++p)
-        types[*p] = 1;
+        types[int(*p)] = 1;
 
     char *inputfile = argv[1];
     char path[256];
@@ -45,12 +45,12 @@ int main(int argc, char **argv)
         strcpy(buf, basename(path));
         strcat(buf, ".cm.lab");
         sp.type = BTREE;
-        sp.leafSp = 'B';
+        sp.leafSp = 'A';
         sp.intSp = 'M';
         sp.useDenseLeaf = true;
         if (types['L']) {
             MDArray<2> array1(&sp, &l_col, "MM", path, batchLoadBufferSize);
-            ((Btree::BTree*)array1.storage)->print(true);
+            //((Btree::BTree*)array1.storage)->print(true);
         }
 
         buf[baselen] = '\0';
@@ -59,7 +59,7 @@ int main(int argc, char **argv)
         sp.useDenseLeaf = false;
         if (types['B']) {
             MDArray<2> array2(&sp, &l_col, "MM", path, batchLoadBufferSize);
-            ((Btree::BTree*)array2.storage)->print(true);
+            //((Btree::BTree*)array2.storage)->print(true);
         }
         buf[baselen] = '\0';
         strcat(buf, ".cm.dma");
@@ -71,12 +71,12 @@ int main(int argc, char **argv)
         buf[baselen] = '\0';
         strcat(buf, ".bb.lab");
         sp.type = BTREE;
-        sp.leafSp = 'B';
+        sp.leafSp = 'A';
         sp.intSp = 'M';
         sp.useDenseLeaf = true;
         if (types['L']) {
             MDArray<2> array4(&sp, &l_bb, "MM", path, batchLoadBufferSize);
-            ((Btree::BTree*)array4.storage)->print(true);
+            //((Btree::BTree*)array4.storage)->print(true);
         }
 
         buf[baselen] = '\0';
@@ -85,7 +85,7 @@ int main(int argc, char **argv)
         sp.useDenseLeaf = false;
         if (types['B']) {
             MDArray<2> array5(&sp, &l_bb, "MM", path, batchLoadBufferSize);
-            ((Btree::BTree*)array5.storage)->print(true);
+            //((Btree::BTree*)array5.storage)->print(true);
         }
 
         buf[baselen] = '\0';

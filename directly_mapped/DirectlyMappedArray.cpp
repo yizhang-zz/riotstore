@@ -195,11 +195,11 @@ int DirectlyMappedArray::put(const Key_t &key, const Datum_t &datum)
 #endif
 	DMABlock *dab;
 	PID_t pid = findPage(key);
-	int ret = readBlock(pid, &dab);
-	if (datum == DMABlock::DefaultValue && ret & RC_FAIL)
+	int ret = readOrAllocBlock(pid, &dab);
+	if (datum == DMABlock::DefaultValue && ret == RC_ALLOC)
 		return AC_OK; // delete non-existent
 
-	if (ret & RC_FAIL && newBlock(pid, &dab) & RC_FAIL) {
+	if (ret & RC_FAIL) {
 		Error("cannot read/allocate page %d",pid);
 		exit(1);
 	}   

@@ -17,7 +17,7 @@ using namespace boost::multi_index;
 namespace Btree
 {
 	template<class PageId>
-	class BatchBufferLS: public BatchBuffer
+	class BatchBufferSP: public BatchBuffer
 	{
 	public:
 
@@ -25,7 +25,7 @@ namespace Btree
 
         // size of pageId = lower+upper+count=8+8+4
         // size of entry  = key+datum=8+8
-		BatchBufferLS(u32 cap_, BTree *tree_): BatchBuffer(
+		BatchBufferSP(u32 cap_, BTree *tree_): BatchBuffer(
 				cap_-(8+8+4)*config->batchKeepPidCount/(8+8)
 				, tree_)
 		{
@@ -38,7 +38,7 @@ namespace Btree
             entries.insert(Entry(MAX_KEY, 0)); // sentinel
 		}
 
-        ~BatchBufferLS()
+        ~BatchBufferSP()
         {
             // remove the sentinel
             entries.erase(MAX_KEY);
@@ -50,11 +50,11 @@ namespace Btree
 		{
 			using namespace std;
             PageId ret;
-            unsigned knownCount = 0;
+            ret.count = capacity+1;
 			EntrySet::iterator eit = entries.begin();
 			typename PidList::iterator rit = pids->begin(),
                      lit=pids->end();
-			while ((ret.count) < size - knownCount) {
+			while ((ret.count) > 1 && eit->key < MAX_KEY) {
                 assert(eit->key != MAX_KEY);
 				if (eit->key < rit->lower) {
 					PageId npid;
@@ -64,8 +64,7 @@ namespace Btree
 						++eit;
 						++npid.count;
 					}
-                    knownCount += npid.count;
-                    if (npid.count > ret.count) {
+                    if (ret.count > npid.count) {
                         ret = npid;
                         if (pids->size() < nKeep) {
                             lit = pids->insert(rit, npid);
@@ -78,11 +77,10 @@ namespace Btree
                     }
 				}
 				else {
-                    if (rit->count > ret.count) {
+                    if (ret.count > rit->count) {
                         ret = *rit;
                         lit = rit;
                     }
-                    knownCount += rit->count;
 					// Since *rit is up to date, we can safely advance eit
 					// to the end of *rit's range, and rit to the next
 					eit = entries.lower_bound(rit->upper);
@@ -98,42 +96,18 @@ namespace Btree
             return ret;
 		}
 
-        // don't cache pids
-		PageId computePids1()
-        {
-            unsigned knownCount = 0;
-			EntrySet::const_iterator eit = entries.begin();
-            PageId ret;
-            while (ret.count < size - knownCount) {
-                assert(eit->key != MAX_KEY);
-                PageId npid;
-                tree->locate(eit->key, npid);
-                // find all records going into npid
-                while (eit->key < npid.upper) {
-                    ++eit;
-                    ++npid.count;
-                }
-                knownCount += npid.count;
-                if (npid.count > ret.count) {
-                    ret = npid;
-                }
-            }
-            return ret;
-        }
-
 		void put(const Key_t &key, const Datum_t &datum)
 		{
 			using namespace std;
 			if (size == capacity) {
 				// evict the pid with largest count
-				PageId longest = computePids();
-				EntrySet::iterator start = entries.lower_bound(longest.lower);
-				EntrySet::iterator stop  = entries.lower_bound(longest.upper);
+				PageId smallest = computePids();
+				EntrySet::iterator start = entries.lower_bound(smallest.lower);
+				EntrySet::iterator stop  = entries.lower_bound(smallest.upper);
                 int c = tree->put(start, stop);
-                //cerr<<c<<endl;
-                assert(c == longest.count);
+                assert(c == smallest.count);
 				entries.erase(start, stop);
-				size -= longest.count;
+				size -= c;
 			}
 
 			entries.insert(Entry(key, datum));
@@ -157,29 +131,6 @@ namespace Btree
 			pids->push_back(maxPid);  // serve as sentinel
 		}
 
-		void print()
-		{
-			// first print all records and then the pid table
-			using namespace std;
-			//BatchBuffer::print();
-			ostream_iterator<PageId> output(cout, "\n");
-			copy(pids->begin(), pids->end(), output);
-			cout<<endl;
-		}
-
-        void printRange(Key_t b, Key_t e)
-        {
-            using namespace std;
-            int n = 0;
-            EntrySet::iterator it = entries.lower_bound(b);
-            while (it->key < e) {
-                cerr<<it->key<<" ";
-                ++n;
-                ++it;
-            }
-            cerr<<"total="<<n<<endl;
-        }
-
 protected:
 		PidList *pids;
 		unsigned nKeep;
@@ -190,11 +141,11 @@ protected:
 	};
 
 	template<class PageId>
-	CompPidCount<PageId> BatchBufferLS<PageId>::compCount;
+	CompPidCount<PageId> BatchBufferSP<PageId>::compCount;
 	template<class PageId>
-	CompPidCountR<PageId> BatchBufferLS<PageId>::compCountR;
+	CompPidCountR<PageId> BatchBufferSP<PageId>::compCountR;
 	template<class PageId>
-	CompPid<PageId> BatchBufferLS<PageId>::comp;
+	CompPid<PageId> BatchBufferSP<PageId>::comp;
 	template<class PageId>
-	PageId BatchBufferLS<PageId>::maxPid(MAX_KEY, MAX_KEY, 0);
+	PageId BatchBufferSP<PageId>::maxPid(MAX_KEY, MAX_KEY, 0);
 }

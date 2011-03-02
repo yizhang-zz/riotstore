@@ -31,19 +31,22 @@ int main(int argc, char **argv)
     // fileName = [insert order][scale][splitter type]-...
     // splitter type of 'D' means DMA, others B-tree
     char *p = basename(fileName);
-    char *q = p;
-    p++; // advance to first digit
+    char seq, storage;
+    Key_t rows, cols;
+    char srcfile[100] = {0};
     if (strstr(fileName, "x")) {
-        while (*p && (isdigit(*p)||*p=='x')) ++p; // p points to the char after last digit
+        sscanf(p, "%c%lux%lu%c", &seq, &rows, &cols, &storage);
+        sprintf(srcfile, "%c%lux%lu", seq, rows, cols);
     }
     else {
-        while (*p && isdigit(*p)) ++p; // p points to the char after last digit
+        sscanf(p, "%c%lu%c", &seq, &rows, &storage);
+        sprintf(srcfile, "%c%lu", seq, rows);
+        cols = rows;
     }
-    char srcfile[100] = {0};
-    strncpy(srcfile, q, p-q);
     cerr<<"src="<<srcfile<<endl;
+
     LinearStorage *ls = NULL;
-    if (*p == 'D')
+    if (storage == 'D')
         ls = new DirectlyMappedArray(fileName, 0);
     else
         ls = new BTree(fileName);
@@ -51,12 +54,13 @@ int main(int argc, char **argv)
 	Key_t i,j,k,l;
 	Key_t size =  (Key_t) sqrt(total);
 	Key_t *keys = new Key_t[total];
-    int *rowIndices = new int[size];
+    int *rowIndices = new int[rows];
+	Datum_t datum;
 
 	switch(readOrder) {
 	case 'S':
 		for (i=0; i<total; ++i) {
-			keys[i] = i;
+            ls->get(i, datum);
 		}
 		break;
 	case 'D':
@@ -65,10 +69,11 @@ int main(int argc, char **argv)
 				keys[i*size+j] = j*size+i;
 		break;
 	case 'R':
+        /*
         {
 	const int batchSize = 1000000;
     int infile = open(srcfile, O_RDONLY);
-    int readcount=0;
+    Key_t readcount=0;
 	while (true) {
 		ssize_t c = read(infile, keys+readcount, batchSize*sizeof(Key_t));
 		int count = c/sizeof(Key_t);
@@ -79,18 +84,21 @@ int main(int argc, char **argv)
 	close(infile);
     cerr<<"read count="<<readcount<<endl;
     permute(keys, readcount);
-    total = readcount/100;
+    for (i=0; i<readcount; ++i)
+        ls->get(keys[i], datum);
         }
+        */
 
-        /*
-		for (i=0; i<size; ++i) 
+		for (i=0; i<rows; ++i) 
 			rowIndices[i] = i;
-		permute(rowIndices, size); // permute row indices
-		for (i=0; i<size; ++i) 
-			for (j=0; j<size; ++j) 
-				keys[i*size+j] = rowIndices[i]*size+j;
-                */
+		permute(rowIndices, rows); // permute row indices
+		for (i=0; i<rows; ++i) 
+			for (j=0; j<cols; ++j) {
+                ls->get(rowIndices[i]*cols+j, datum);
+				//keys[i*size+j] = rowIndices[i]*size+j;
+            }
 		break;
+        /*
     case 'I':
 		// row 0
 		for (l=0; l<size; ++l)
@@ -104,12 +112,9 @@ int main(int argc, char **argv)
 				// (k, i)
 				keys[l++] = k*size+i;
 		}
+        */
 	}
 
-	Datum_t datum;
-	for (i=0; i<total; ++i) {
-		ls->get(keys[i], datum);
-	}
 	delete ls;
 	delete keys;
     delete rowIndices;

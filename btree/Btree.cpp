@@ -9,6 +9,7 @@
 #include "BatchBufferFWF.h"
 #include "BatchBufferLRU.h"
 #include "BatchBufferLS.h"
+#include "BatchBufferSP.h"
 #include "BatchBufferLSRand.h"
 #include "BatchBufferLG.h"
 #include "BatchBufferLGRand.h"
@@ -43,6 +44,9 @@ void BTree::initBatching()
         break;
     case kLS:
         batbuf = new BatchBufferLS<BoundPageId>(config->batchBufferSize, this);
+        break;
+    case kSP:
+        batbuf = new BatchBufferSP<BoundPageId>(config->batchBufferSize, this);
         break;
     case kLS_RAND:
         batbuf = new BatchBufferLSRand<BoundPageId>(config->batchBufferSize, this);
@@ -135,7 +139,9 @@ int BTree::search(Key_t key, Cursor &cursor)
     if (current < 0) {
         // start with the root page
         PageHandle ph;
-        buffer->readPage(header->root, ph);
+        RC_t x = buffer->readPage(header->root, ph);
+        //if (x == RC_READ)
+        //    cerr<<"read "<<header->root<<" level "<<0<<endl;
         cursor[0].block = pool->get(ph, 0, header->endsBy);
         current = 0;
     }
@@ -153,7 +159,9 @@ int BTree::search(Key_t key, Cursor &cursor)
         PID_t child;
         PageHandle ph;
         pidblock->get(idx, l, child);
-        buffer->readPage(child, ph);
+        RC_t x = buffer->readPage(child, ph);
+        //if (x == RC_READ) 
+        //    cerr<<"read "<<child<<" level "<<current+1<<endl;
         u = pidblock->size()==idx+1 ? pidblock->getUpperBound() : pidblock->key(idx+1);
         // load child block
         cursor[current+1].block = pool->get(ph, l, u);
@@ -187,7 +195,9 @@ void BTree::locate(Key_t key, BoundPageId &pageId)
     InternalBlock *block;
 
     for (int i=1; i<header->depth; i++) {
-        buffer->readPage(pid, ph);
+        RC_t x = buffer->readPage(pid, ph);
+        //if (x == RC_READ)
+        //    cerr<<"read "<<pid<<" level "<<i-1<<" locate"<<endl;
         // read, do not create!
         //block = new InternalBlock(ph, l, u, false);
         block = static_cast<InternalBlock*>(pool->get(ph, l, u));

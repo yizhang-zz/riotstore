@@ -27,9 +27,12 @@ fi
 
 # whether to use dense leaf format
 # read from $HOME/.riot conf file
-useDense=`sed -n "s/useDenseLeaf=\([01]\)/\1/p" $HOME/.riot`
+#useDense=`sed -n "s/useDenseLeaf=\([01]\)/\1/p" $HOME/.riot`
+
+useDense=0
+sed "s/\(useDenseLeaf=\)\(.*\)/\1$useDense/g" $HOME/.riot > /tmp/.riot.tmp
+mv /tmp/.riot.tmp $HOME/.riot
 echo "useDense=$useDense"
-echo
 
 for x in NONE #FWF LS LS_RAND LRU LG LG_RAND
 do
@@ -41,23 +44,32 @@ do
     echo
 
 # workload
-for a in S I
+for a in R
 do
     # matrix size
-	for b in 4000
+	for b in 20000
 	do
         # splitting strategy
-		for c in M
+		for c in M A R T
 		do
-			echo "write test: $a$b , splitting strategy $c"
+            echo "write test: $a$b , splitting strategy $c (D means DMA)"
             output=$a$b$c-$useDense-$x
             echo "output will be named $output"
-			./rw.d -c "./write $a$b $c" > /tmp/writerun.log
+			./rw.stp -c "./write $a$b $c /riot" > /tmp/writerun.log
 			# use awk to calc sec from nanosec and drop the timestamp field
 			# sed removes any blank line
-			sort -n +5 /tmp/writerun.log | sed '/^$/d' | awk '{print $1,$2,$3,$4/1e9,$5/1e9,$6/1e9}' > $1/$output.log
+			sort -n -k 6,6 /tmp/writerun.log | sed '/^$/d' | awk '{print $1,$2,$3,$4/1e9,$5/1e9,$6/1e9}' > $1/$output.log
 			rm /tmp/writerun.log
-            cp /riot/mb /riot/$output.bin
+            #cp /riot/mb /riot/$output.bin
+            continue
+            #do not need read results
+            case "$c$useDense" in
+                M0|A1|D1) echo "reading $output"
+                    ln -sf /riot/mb /riot/$output.bin
+                    ./read.stp -c "./read /riot/$output.bin R" > $1/$output-R.log
+                    rm /riot/$output.bin
+                    ;;
+            esac
 		done
 	done
 done

@@ -48,8 +48,9 @@ namespace Btree
 
     public:
 
+        // 8+8: size of Entry
         BatchBufferLSRand(u32 cap_, BTree *tree_):
-            BatchBuffer(cap_/(1.0+ceilingLog2(cap_)/8/sizeof(Entry)), tree_)
+            BatchBuffer(cap_/(1.0+ceilingLog2(cap_)/8.0/(8+8)), tree_)
         {
             using namespace std;
             gsl_rng_env_setup();
@@ -57,6 +58,7 @@ namespace Btree
                 gsl_rng_default_seed = time(NULL);
             }
             rng = gsl_rng_alloc(gsl_rng_taus2);
+            cerr<<"Effective capacity = "<<capacity<<endl;
             entriesArray = new Entry[capacity];
             initFreeList();
         }

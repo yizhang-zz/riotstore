@@ -46,8 +46,9 @@ namespace Btree
 
 	public:
 
+        // 8+8: sizeof Entry
 		BatchBufferLGRand(u32 cap_, BTree *tree_):
-            BatchBuffer(cap_/(1.0+ceilingLog2(cap_)/8/sizeof(Entry)), tree_)
+            BatchBuffer(cap_/(1.0+ceilingLog2(cap_)/8.0/(8+8)), tree_)
 		{
             rng = gsl_rng_alloc(gsl_rng_taus2);
             entriesArray = new Entry[capacity];

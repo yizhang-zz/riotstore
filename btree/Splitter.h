@@ -181,7 +181,7 @@ namespace Btree
 			case 'T':
 				return new TSplitter<Value>(config->TSplitterThreshold,useDenseLeaf);
 			default:
-				Error("Can't create unknown splitter");
+				Error("Can't create unknown splitter %c", type);
 				return NULL;
 			}
 		}

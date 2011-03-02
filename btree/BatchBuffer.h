@@ -21,6 +21,7 @@ enum BatchMethod {
 	kFWF,
 	kLRU,
 	kLS,
+    kSP,
 	kLS_RAND,
 	kLS_RANDCUT,
 	kLG,

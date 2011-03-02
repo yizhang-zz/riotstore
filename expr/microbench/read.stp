@@ -1,0 +1,45 @@
+#!/usr/bin/env stap
+
+global rcount;
+global rtime;
+global wcount;
+global wtime;
+global begintime;
+global ts;
+
+probe begin
+{
+	begintime = gettimeofday_ns();
+}
+
+probe vfs.read, vfs.write
+{
+    if (devname=="sdc1")
+        ts = gettimeofday_ns();
+}
+
+probe vfs.read.return
+{
+    if (ts) {
+        rcount++;
+        t = gettimeofday_ns();
+        rtime += t - ts;
+        ts = 0;
+    }
+}
+
+probe vfs.write.return
+{
+    if (ts) {
+        wcount++;
+        t = gettimeofday_ns();
+        wtime += t  - ts;
+        ts = 0;
+    }
+}
+
+probe end
+{
+	printf("%d %d %d %d %d\n", rcount, wcount, rtime, wtime, gettimeofday_ns()-begintime);
+}
+

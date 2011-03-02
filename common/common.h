@@ -6,7 +6,7 @@
 #define _in
 #define _out
 
-#define STORAGE_METADATA_PAGES 16
+#define STORAGE_METADATA_PAGES 271
 /*
 #if defined(_LP64) || defined(__LP64__)
 #define D64 "ld"
@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
@@ -145,6 +146,8 @@ struct Entry
 
 	Entry()
 	{}
+    Entry(Key_t k) : key(k)
+    {}
 	Entry(Key_t k, Datum_t d) : key(k), datum(d)
 	{}
 	bool operator<(const Entry &other) const
@@ -200,6 +203,7 @@ typedef int RC_t;
 #define RC_OK               0x8000
 #define RC_READ             0x8001
 #define RC_ALLOC            0x8002
+#define RC_HIT              0x8003
 #define RC_FAIL             0x4000
 #define RC_OutOfSpace       0x4001   
 #define RC_NotAllocated     0x4002

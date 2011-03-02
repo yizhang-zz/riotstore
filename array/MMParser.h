@@ -51,9 +51,9 @@ public:
     int parse(int size, MDCoord<2> *coords, Datum_t *data)
     {
 		int limit = std::min(size, nnz-cur);
-		int i;
+		int i = 0;
         if (type == REAL || type == INTEGER) {
-            for (i = 0; i < limit; ++i) {
+            for (; i < limit; ++i) {
                 in >> coords[i][0] >> coords[i][1] >> data[i];
                 coords[i][0]--;
                 coords[i][1]--;
@@ -61,7 +61,7 @@ public:
             }
         }
         else if (type == PATTERN) {
-            for (i = 0; i < limit; ++i) {
+            for (; i < limit; ++i) {
                 in >> coords[i][0] >> coords[i][1];
                 data[i] = 1;
                 coords[i][0]--;

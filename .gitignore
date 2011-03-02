@@ -18,3 +18,8 @@ array/test/mda*
 lib/
 SunWS_cache
 .AppleDouble
+*.pdf
+*.png
+*.eps
+*.tex
+*.zip

@@ -14,6 +14,7 @@ Config::Config(const char *path)
     bmm["ALL"] = Btree::kFWF;
     bmm["LRU"] = Btree::kLRU;
     bmm["LP"] = Btree::kLS;
+    bmm["SP"] = Btree::kSP;
     bmm["LPP"] = Btree::kLS_RAND;
     bmm["LG"] = Btree::kLG;
     bmm["LGP"] = Btree::kLG_RAND;
