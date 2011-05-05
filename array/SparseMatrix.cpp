@@ -14,11 +14,12 @@ cholmod_common *SparseMatrix::initCholmodCommon()
     return comm;
 }
 
-SparseMatrix::SparseMatrix(Element *elements, int size, const Coord &begin,
+SparseMatrix::SparseMatrix(std::vector<Element> &elements, const Coord &begin,
         const Coord &end, bool inColMajor)
 {
     if (!inColMajor)
-        std::sort(elements, elements+size);
+        std::sort(elements.begin(), elements.end());
+	int size = elements.size();
     sp = cholmod_allocate_sparse(
             end[0] - begin[0] + 1,
             end[1] - begin[1] + 1,

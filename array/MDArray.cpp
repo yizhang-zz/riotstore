@@ -359,8 +359,9 @@ int MDArray<nDim>::batchPut(const Coord &start, const Coord &end, Datum_t *data)
 }
 
 template<int nDim>
-int MDArray<nDim>::batchPut(MDArrayElement<nDim> *elements, int num)
+int MDArray<nDim>::batchPut(std::vector<MDArrayElement<nDim> > &elements)
 {
+	int num = elements.size();
     Entry *entries = new Entry[num];
     for (int i=0; i<num; ++i) {
         entries[i].key = linearization->linearize(elements[i].coord);
@@ -417,20 +418,28 @@ int MDArray<nDim>::batchGet(const Coord &start, const Coord &end, Datum_t *data)
 }
 
 template<int nDim>
-int MDArray<nDim>::batchGet(const Coord &begin, const Coord &end, std::vector<Entry> &v) const
+int MDArray<nDim>::batchGet(const Coord &begin, const Coord &end, std::vector<MDArrayElement<nDim> > &v) const
 {
-    using namespace std;
-    vector<Segment> *segments = linearization->getOverlap(begin, end);
-    for (vector<Segment>::iterator it = segments->begin();
-            it != segments->end();
-            ++it) {
-	// segment is inclusive: [it->begin, it->end]
-	// but storage->batchGet is exclusive
-        storage->batchGet(it->begin, it->end+1, v);
-    }
-    //storage->getBufferManager()->printStat();
-    delete segments;
-    return AC_OK;
+	using namespace std;
+	vector<Segment> *segments = linearization->getOverlap(begin, end);
+	for (vector<Segment>::iterator it = segments->begin();
+			it != segments->end();
+			++it) {
+		std::vector<Entry> ve;
+		// segment is inclusive: [it->begin, it->end]
+		// but storage->batchGet is exclusive
+		storage->batchGet(it->begin, it->end+1, ve);
+		for (vector<Entry>::iterator eit = ve.begin();
+				eit != ve.end(); ++eit) {
+			MDArrayElement<nDim> elem;
+			elem.coord = linearization->unlinearize(eit->key);
+			elem.datum = eit->datum;
+			v.push_back(elem);
+		}
+	}
+	//storage->getBufferManager()->printStat();
+	delete segments;
+	return AC_OK;
 }
 
 template<int nDim>
@@ -503,20 +512,9 @@ template class MDArray<2>;
 
 SparseMatrix Matrix::batchGet(const Coord &begin, const Coord &end) const
 {
-    std::vector<Entry> v;
+    std::vector<MDArrayElement<2> > v;
     MDArray<2>::batchGet(begin, end, v);  // v contains all non-zero records
-    size_t size = v.size();
-    int i = 0;
-    MDArrayElement<2> *elements = new MDArrayElement<2>[size];
-    for (std::vector<Entry>::iterator it = v.begin();
-            it != v.end();
-            ++it) {
-        elements[i].coord = linearization->unlinearize(it->key);
-        elements[i].datum = it->datum;
-        i++;
-    }
-    SparseMatrix ret(elements, size, begin, end, false);
-    delete[] elements;
+    SparseMatrix ret(v, begin, end, false);
     return ret;
 }
 

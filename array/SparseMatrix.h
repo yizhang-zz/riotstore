@@ -2,6 +2,7 @@
 #define SPARSE_MATRIX_H
 
 #include <ostream>
+#include <vector>
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/iterator/filter_iterator.hpp>
 #include "cholmod.h"
@@ -12,7 +13,7 @@ class SparseMatrix
  public:
     typedef MDArrayElement<2> Element;
     typedef MDCoord<2> Coord;
-    SparseMatrix(Element *elements, int num, const Coord &begin, const Coord
+    SparseMatrix(std::vector<Element> &elements, const Coord &begin, const Coord
 		 &end, bool inColMajor);
     SparseMatrix(cholmod_sparse *);
     SparseMatrix(int nrow, int ncol);

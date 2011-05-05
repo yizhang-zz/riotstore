@@ -190,6 +190,19 @@ public:
     int batchPut(const Coord &start, const Coord &end, Datum_t *data);
 
     /**
+     * Get all nonzero entries within the rectangle as defined by begin and
+     * end, and linearize their coordinates using this->linearization. Entries
+     * are sorted in increasing key order. v contains the result set upon return.
+     */
+	int batchGet(const Coord &begin, const Coord &end, std::vector<MDArrayElement<nDim> > &v) const;
+
+    /**
+     * Put all (nonzero) entries in v into the array. Keys are calculated using
+     * this->linearization and entries are in increasing key order.
+     */
+    int batchPut(std::vector<MDArrayElement<nDim> > &elements);
+
+    /**
      * Creates an internal iterator over the 1-D storage device.
      *
      * \param t Type of iterator.
@@ -220,17 +233,6 @@ protected:
     //Btree::LeafSplitter *leafsp;
     //Btree::InternalSplitter *intsp;
 
-    /**
-     * Get all nonzero entries within the rectangle as defined by begin and
-     * end, and linearize their coordinates using this->linearization. Entries
-     * are sorted in increasing key order. v contains the result set upon return.
-     */
-	int batchGet(const Coord &begin, const Coord &end, std::vector<Entry> &v) const;
-    /**
-     * Put all (nonzero) entries in v into the array. Keys are calculated using
-     * this->linearization and entries are in increasing key order.
-     */
-    int batchPut(MDArrayElement<nDim> *elements, int num);
 };
 
 class Matrix : public MDArray<2>
