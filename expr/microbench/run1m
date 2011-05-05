@@ -39,10 +39,10 @@ do
     echo
 
 # workload
-for a in D 
+for a in S 
 do
     # matrix size
-	for b in 10000
+	for b in 40000
 	do
         # splitting strategy
 		for c in M

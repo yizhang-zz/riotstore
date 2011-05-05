@@ -41,8 +41,10 @@ public:
 	{
 		using namespace std;
 		vector<Segment> *v = new vector<Segment>;
-		getOverlapWithBlock(MDCoord<nDim>(), this->arrayDims, this->microOrders,
-				begin, end.min(this->arrayDims), v);
+		MDCoord<nDim> e(this->arrayDims);
+		e -= MDCoord<nDim>(1);
+		getOverlapWithBlock(MDCoord<nDim>(), e, this->microOrders,
+				begin, end.min(e), v);
 		return v;
 		/*
 		int i = nDim-1; // starting from most significant dim

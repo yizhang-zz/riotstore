@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <fcntl.h>
 #include <time.h>
 #include <iostream>
 #include <fstream>
@@ -9,6 +10,9 @@
 
 using namespace std;
 using namespace Btree;
+
+const int batchSize = 10000000;
+Key_t keys[batchSize];
 
 int main(int argc, char **argv)
 {
@@ -67,8 +71,6 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-	const int batchSize = 1000000;
-	Key_t keys[batchSize];
     //for (int j=0; j<1002; ++j) {
 	while (true) {
 		ssize_t c = read(infile, keys, sizeof(keys));
@@ -76,9 +78,11 @@ int main(int argc, char **argv)
 		for (int i=0; i<count; ++i) {
 			ls->put(keys[i], 1.0);
 		}
+        cerr<<count<<" ";
 		if (count < batchSize)
 			break;
 	}
+    cerr<<endl;
 	close(infile);
 	delete ls;
 }

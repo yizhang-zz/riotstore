@@ -40,9 +40,10 @@ int main(int argc, char **argv)
         StorageParam sp;
         sp.fileName = buf;
         int baselen = strlen(basename(path));
+        strcpy(buf, basename(path));
 
         // column major
-        strcpy(buf, basename(path));
+        buf[baselen] = '\0';
         strcat(buf, ".cm.lab");
         sp.type = BTREE;
         sp.leafSp = 'A';
@@ -67,6 +68,7 @@ int main(int argc, char **argv)
         if (types['D'])
             MDArray<2> array3(&sp, &l_col, "MM", path, batchLoadBufferSize);
 
+		/*
         // block based
         buf[baselen] = '\0';
         strcat(buf, ".bb.lab");
@@ -93,5 +95,6 @@ int main(int argc, char **argv)
         sp.type = DMA;
         if (types['D'])
             MDArray<2> array6(&sp, &l_bb, "MM", path, batchLoadBufferSize);
+			*/
     }
 }

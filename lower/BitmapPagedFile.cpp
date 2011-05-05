@@ -46,7 +46,7 @@ BitmapPagedFile::BitmapPagedFile(const char *pathname, int flag) {
 	header = (u32*)allocPageImage(NUM_HEADER_PAGES);
 	// create new file
 	if (flag & CREATE) {
-		fd = open_direct(pathname, O_RDWR|O_CREAT);
+		fd = riot_open(pathname, O_RDWR|O_CREAT);
         if (fd < 0) {
             fprintf(stderr, "error %d\n", errno);
             exit(1);
@@ -58,7 +58,7 @@ BitmapPagedFile::BitmapPagedFile(const char *pathname, int flag) {
     }
 	// open existing file
     else { // at least header here
-		fd = open_direct(pathname, O_RDWR);
+		fd = riot_open(pathname, O_RDWR);
         if (fd < 0) {
             fprintf(stderr, "error %d\n", errno);
             exit(1);
@@ -160,8 +160,9 @@ RC_t BitmapPagedFile::readPage(PageRec *rec) {
         return RC_OutOfRange;
     if(!isAllocated(pid)) 
         return RC_NotAllocated;
-
-    pread(fd, rec->image, PAGE_SIZE, (NUM_HEADER_PAGES + pid)*PAGE_SIZE);
+    ssize_t rd = pread(fd, rec->image, PAGE_SIZE, (NUM_HEADER_PAGES + pid)*PAGE_SIZE);
+    if (rd != PAGE_SIZE)
+        perror("BitmapPagedFile::readPage ");
 #ifdef PROFILING
     gettimeofday(&time2, NULL);
     accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
@@ -198,7 +199,8 @@ RC_t BitmapPagedFile::writePage(PageRec *rec) {
     }
     */
     ssize_t wc = pwrite(fd, rec->image, PAGE_SIZE, (NUM_HEADER_PAGES + pid)*PAGE_SIZE);
-	assert(wc >= 0);
+    if (wc != PAGE_SIZE)
+        perror("BitmapPagedFile::writePage ");
 #ifdef PROFILING
     gettimeofday(&time2, NULL);
     accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
@@ -215,9 +217,13 @@ RC_t BitmapPagedFile::flush()
 	fstat(fd, &s);
 	size_t numTotalPages = NUM_HEADER_PAGES + numContentPages;
     if(numTotalPages > s.st_size/PAGE_SIZE) {
-        pwrite(fd, header, PAGE_SIZE, (numTotalPages-1)*PAGE_SIZE); // write any data
+        int wc = pwrite(fd, header, PAGE_SIZE, (numTotalPages-1)*PAGE_SIZE); // write any data
+        if (wc != PAGE_SIZE)
+            perror("BitmapPagedFile::writePage ");
     }
     // write header
-    pwrite(fd, header, HEADER_SIZE, 0);
+    int wc = pwrite(fd, header, HEADER_SIZE, 0);
+    if (wc != HEADER_SIZE)
+        perror("BitmapPagedFile::writePage ");
     return RC_OK;
 }

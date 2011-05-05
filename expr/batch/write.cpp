@@ -10,6 +10,9 @@
 using namespace std;
 using namespace Btree;
 
+const int batchSize = 10000000;
+Key_t keys[batchSize];
+
 int main(int argc, char **argv)
 {
 	const int required = 4;
@@ -33,8 +36,6 @@ int main(int argc, char **argv)
 	Key_t total = Key_t(size) * size;
     BTree *tree = new BTree(fileName, total, splitterType, 'M', config->useDenseLeaf);
 
-	const int batchSize = 10000000;
-	Key_t keys[batchSize];
 	while (true) {
 		ssize_t c = read(infile, keys, sizeof(keys));
 		int count = c/sizeof(Key_t);

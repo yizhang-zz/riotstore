@@ -1,4 +1,5 @@
 #include <sys/types.h>
+#include <fcntl.h>
 #include <db.h>
 #include <stdio.h>
 #include <time.h>

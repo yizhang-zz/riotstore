@@ -3,6 +3,7 @@
 
 #include "../common/common.h"
 #include "PageReplacer.h"
+#include "PageRec.h"
 
 class LRUPageReplacer: public PageReplacer
 {
@@ -12,14 +13,14 @@ private:
       sorted in increasing last-access time. Head of the list is the
       least recently accessed.
 	*/
-	PageRec *head, *tail;
+	PageRec head;
     size_t count;
 public:
     LRUPageReplacer();
     ~LRUPageReplacer();
     RC_t selectToReplace(PageRec *&bh);
-    int select(int n, PageRec **pages);
     void add(PageRec *bh);
+    void addback(PageRec *bh);
     void remove(PageRec *bh);
     void print();
     size_t size() const { return count; }

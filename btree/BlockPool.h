@@ -20,7 +20,8 @@ namespace Btree
     class BlockPool
     {
     public:
-        BlockPool(int size_);
+        //BlockPool(int size_);
+		BlockPool();
         ~BlockPool();
         // create a new block
         Block *create(Block::Type t, PageHandle ph, Key_t beginsAt, Key_t endsBy);
@@ -30,6 +31,7 @@ namespace Btree
         int size;
         size_t unit;
         char *pool;
+        boost::pool<boost::default_user_allocator_malloc_free> dpool;//(sizeof(DenseLeafBlock));
         /*
         boost::pool<boost::default_user_allocator_malloc_free> dpool;//(sizeof(DenseLeafBlock));
         boost::pool<boost::default_user_allocator_malloc_free> spool;//(sizeof(SparseLeafBlock));

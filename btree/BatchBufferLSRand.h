@@ -91,6 +91,7 @@ namespace Btree
                 EntryPtrSet::iterator end = entries.lower_bound(pid.upper);
                 int ret = tree->put(Iterator(begin), Iterator(end));
                 size -= ret;
+                //cerr<<index<<" "<<ret<<endl;
                 remove(begin, end);
             }
 

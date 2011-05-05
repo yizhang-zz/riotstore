@@ -29,10 +29,10 @@ fi
 # read from $HOME/.riot conf file
 #useDense=`sed -n "s/useDenseLeaf=\([01]\)/\1/p" $HOME/.riot`
 
-useDense=0
+for useDense in 0 1; do
 sed "s/\(useDenseLeaf=\)\(.*\)/\1$useDense/g" $HOME/.riot > /tmp/.riot.tmp
 mv /tmp/.riot.tmp $HOME/.riot
-echo "useDense=$useDense"
+echo "# useDense=$useDense"
 
 for x in NONE #FWF LS LS_RAND LRU LG LG_RAND
 do
@@ -44,7 +44,7 @@ do
     echo
 
 # workload
-for a in R
+for a in S I D 
 do
     # matrix size
 	for b in 20000
@@ -61,8 +61,9 @@ do
 			sort -n -k 6,6 /tmp/writerun.log | sed '/^$/d' | awk '{print $1,$2,$3,$4/1e9,$5/1e9,$6/1e9}' > $1/$output.log
 			rm /tmp/writerun.log
             #cp /riot/mb /riot/$output.bin
-            continue
-            #do not need read results
+
+            continue #do not need read results
+            
             case "$c$useDense" in
                 M0|A1|D1) echo "reading $output"
                     ln -sf /riot/mb /riot/$output.bin
@@ -72,5 +73,6 @@ do
             esac
 		done
 	done
+done
 done
 done

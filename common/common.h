@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <fcntl.h>
 #define __STDC_LIMIT_MACROS
 #include <stdint.h>
 #define __STDC_FORMAT_MACROS
@@ -30,40 +31,7 @@
 #include <boost/shared_ptr.hpp>
 #include <gsl/gsl_rng.h>
 
-
-/* Direct I/O, no caching by the OS */
-#if defined(linux)
-#define RIOT_LINUX
-#include <malloc.h>
-/* Linux supports O_DIRECT in open(2) for direct I/O */
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-#include <fcntl.h>
-/// Open file in direct I/O mode.
-#define open_direct(file, flag) open(file,(flag)|O_DIRECT, 0660)
-
-#elif defined(__FreeBSD__)
-#define RIOT_FREEBSD
-#include <fcntl.h>
-#define open_direct(file, flag) open(file,(flag)|O_DIRECT, 0660)
-
-#elif defined(__APPLE__)
-#define RIOT_APPLE
-/* Mac OS support F_NOCACHE for direct I/O */
-#include <fcntl.h>
-int open_direct(const char *pathname, int flags);
-
-#elif defined(sun)
-#define RIOT_SUN
-#include <stdlib.h>
-/* Solaris has directio(3C) for the same purpose */
-#include <fcntl.h>
-int open_direct(const char *pathname, int flags);
-
-#else
-#error "Platform not supported"
-#endif
+int riot_open(const char *pathname, int flags);
 
 /* Utilities for the NA value. Taken from arithmetic.c from R src. */
 typedef union

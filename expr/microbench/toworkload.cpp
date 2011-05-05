@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fcntl.h>
 #include "common/common.h"
 #include "array/MDCoord.h"
 #include "array/MMParser.h"

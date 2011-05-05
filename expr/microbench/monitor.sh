@@ -1,10 +1,11 @@
 #!/bin/sh
 while [ `pgrep run.sh` ]; do
-    sleep 5
+    sleep 10
     echo "waiting for run.sh to finish"
 done
-./run1.sh Final1_
-# generate S4000X-0-NONE.bin files for read
-./runs.sh temps
-# read test
-./run-read Read1_
+#./run1ad 40k
+
+BUF=51000
+sed "s/\(btreeBufferSize=\)\(.*\)/\1$BUF/g" $HOME/.riot > /tmp/.riot.tmp
+mv /tmp/.riot.tmp $HOME/.riot
+./run.sh 20k.$BUF

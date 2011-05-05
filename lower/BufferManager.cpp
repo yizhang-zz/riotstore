@@ -220,7 +220,7 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
         if ((ret=storage->readPage(rec)) & RC_FAIL) {
             //Debug("Physical storage cannot read pid %d, error %d", rec->pid, ret);
             rec->pid = INVALID_PID;
-            pageReplacer->add(rec);  //recycle
+            pageReplacer->addback(rec);  //recycle
             //TODO: should add to the LRU end instead of the MRU end
             return ret;
         }
@@ -379,6 +379,7 @@ void BufferManager::print() {
 RC_t BufferManager::replacePage(PageRec *&bh)
 {
     RC_t ret;
+    bool dirty = false;
     if ((ret=pageReplacer->selectToReplace(bh)) & RC_FAIL) {
         Error("Out of memory: cannot allocate page in buffer, error %d", ret);
         return ret;
@@ -386,6 +387,7 @@ RC_t BufferManager::replacePage(PageRec *&bh)
     //Debug("relace page %10d ", bh->pid);
     //cerr<<"evicted "<<bh->pid<<((bh->dirty)?"dirty":"")<<endl;
     if (bh->dirty) {
+        dirty = true;
         //if (packer && bh->unpacked)
         //    packer->pack(bh->unpacked, bh->image);
         if ((ret=storage->writePage(bh)) & RC_FAIL) {
@@ -401,45 +403,28 @@ RC_t BufferManager::replacePage(PageRec *&bh)
     //if (packer && bh->unpacked)
     //    packer->destroyUnpacked(bh->unpacked);
     bh->reset();
+    //if (!dirty)
+        return RC_OK;
 
     // write a bunch of pages to achieve better I/O performance?
-    /*
-    int towrite = numSlots/100;
-    PageRec **pages = new PageRec*[towrite];
-    int count = pageReplacer->select(towrite, pages);
-    for (int i=0; i<count; ++i) {
-        if (pages[i]->dirty) {
-            //if (packer && bh->unpacked)
-            //    packer->pack(bh->unpacked, bh->image);
-            if ((ret=storage->writePage(pages[i])) & RC_FAIL) {
-                Error("Physical storage cannot write pid %d, error %d",pages[i]->pid,ret);
+    int towrite = numSlots/50;
+    PageRec **p = new PageRec*[towrite];
+    int i = 0;
+    for (; i<towrite; ++i) {
+        if (RC_OutOfSpace == pageReplacer->selectToReplace(p[i])) {
+            Error("Out of memory: cannot allocate page in buffer, error %d", RC_OutOfSpace);
+            break;
+        }
+        if (p[i]->dirty) {
+            if ((ret=storage->writePage(p[i])) & RC_FAIL) {
+                Error("Physical storage cannot write pid %d, error %d",p[i]->pid,ret);
                 return ret;
             }
-            pages[i]->dirty = false;
-            //Debug("Evicted dirty page %d", bh->pid);
+            p[i]->dirty = false;
         }
     }
-    delete[] pages;
-    */
+    for (--i; i>=0; --i)
+        pageReplacer->addback(p[i]);
+    delete[] p;
     return RC_OK;
 }
-
-/*
-void *BufferManager::getUnpackedPageImage(PageHandle ph)
-{
-#ifdef PROFILING
-    static timeval time1, time2;
-    gettimeofday(&time1, NULL);
-#endif
-    PageRec *rec = (PageRec*) ph;
-    if (!rec->unpacked && packer) {
-        packer->unpack(rec->image, rec->unpacked);
-    }
-#ifdef PROFILING
-    gettimeofday(&time2, NULL);
-    accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
-        / 1000000.0 ;
-#endif
-    return rec->unpacked;
-}
-*/

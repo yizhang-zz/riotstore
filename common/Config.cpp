@@ -52,7 +52,9 @@ Config::Config(const char *path)
 				continue;
 			char *a = strtok(buf, "=");
 			char *b = strtok(NULL, "\n");
-			if (strcmp(a, "denseLeafCapacity") == 0) {
+			if (strcmp(a, "directio") == 0) {
+                directio = atoi(b);
+            } else if (strcmp(a, "denseLeafCapacity") == 0) {
 				denseLeafCapacity = atoi(b);
 			} else if (strcmp(a, "sparseLeafCapacity") == 0) {
 				sparseLeafCapacity = atoi(b);

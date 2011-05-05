@@ -19,6 +19,7 @@ public:
     //const static int sparseLeafHeaderSize = 12;
     //const static int internalHeaderSize = 8;
 
+    int directio;
     u16 denseLeafCapacity;
     u16 sparseLeafCapacity;
     u16 internalCapacity;

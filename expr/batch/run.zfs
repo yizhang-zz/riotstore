@@ -21,15 +21,16 @@ then
 fi
 
 mkdir -p $1
-mkdir -p /riot/$1
 
 # whether to use dense leaf format
 # read from $HOME/.riot conf file
 useDense=`sed -n "s/useDenseLeaf=\([01]\)/\1/p" $HOME/.riot`
-echo "useDense=$useDense is not used (hardcoded in the program)"
+echo "useDense=$useDense"
 echo
 
-for x in NONE #FWF LS LS_RAND LRU LG LG_RAND
+outdir=/rpool/riot/
+
+for x in ALL LP LPP LG LGP
 do
 	sed "s/\(batchMethod=\)\(.*\)/\1$x/g" $HOME/.riot > /tmp/.riot.tmp
 	mv /tmp/.riot.tmp $HOME/.riot
@@ -39,23 +40,23 @@ do
     echo
 
 # workload
-for a in S I D
+for a in S I D R
 do
     # matrix size
-	for b in 10000
+	for b in 4000
 	do
         # splitting strategy
-		for c in D
+		for c in A 
 		do
 			echo "Running with input $a$b , splitting strategy $c"
             output=$a$b$c-$useDense-$x
             echo "output will be named $output"
-			./rw.stp -c "./write1 $a$b $c /riot" > /tmp/writerun.log
+			./rw.d -c "./write $a$b $c $outdir" > /tmp/writerun.log
 			# use awk to calc sec from nanosec and drop the timestamp field
 			# sed removes any blank line
-			sort -n -k 6,6 /tmp/writerun.log | sed '/^$/d' | awk '{print $1,$2,$3,$4/1e9,$5/1e9,$6/1e9}' > $1/$output.log
+			sort -n +5 /tmp/writerun.log | sed '/^$/d' | awk '{print $1,$2,$3,$4/1e9,$5/1e9,$6/1e9}' > $1/$output.log
 			rm /tmp/writerun.log
-            cp /riot/mb /riot/$1/$output.bin
+            #cp /riot/mb /riot/$output.bin
 		done
 	done
 done

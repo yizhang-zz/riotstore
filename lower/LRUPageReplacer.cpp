@@ -5,8 +5,8 @@
 
 LRUPageReplacer::LRUPageReplacer()
 {
-	head = NULL;
-	tail = NULL;
+    head.reset();
+    head.next = head.prev = &head;
     count = 0;
 }
 
@@ -14,55 +14,38 @@ LRUPageReplacer::~LRUPageReplacer()
 {
 }
 
+// Head of the list is least recently used
 RC_t LRUPageReplacer::selectToReplace(PageRec *&bh)
 {
-	if (head == NULL)
+	if (head.next == &head)
 		return RC_OutOfSpace;
-	bh = head;
+	bh = head.next;
 	remove(bh);
 	return RC_OK;
 }
 
-int LRUPageReplacer::select(int n, PageRec **pages)
-{
-    PageRec *p = head;
-    int ret = 0;
-    while (p && ret < n) {
-        pages[ret++] = p;
-        p = p->next;
-    }
-    return ret;
-}
-
 void LRUPageReplacer::add(PageRec *bh)
 {
-	if (tail == NULL) {
-		head = tail = bh;
-		bh->next = bh->prev = NULL;
-	}
-	else {
-		tail->next = bh;
-		bh->prev = tail;
-		bh->next = NULL;
-		tail = bh;
-	}
+    head.prev->next = bh;
+    bh->prev = head.prev;
+    bh->next = &head;
+    head.prev = bh;
     count++;
+}
+
+void LRUPageReplacer::addback(PageRec *bh)
+{
+    bh->next = head.next;
+    head.next->prev = bh;
+    bh->prev = &head;
+    head.next = bh;
 }
 
 void LRUPageReplacer::remove(PageRec *bh)
 {
-	if (bh->prev == NULL) 
-		head = bh->next;
-	else
-		bh->prev->next = bh->next;
-
-	if (bh->next == NULL) 
-		tail = bh->prev;
-	else
-		bh->next->prev = bh->prev;
-
+    bh->prev->next = bh->next;
+    bh->next->prev = bh->prev;
 	bh->prev = bh->next = NULL;
-
     count--;
 }
 
@@ -70,10 +53,10 @@ void LRUPageReplacer::print()
 {
     using namespace std;
     cout<<"free pages: ";
-    PageRec *p = head;
-    while (p) {
+    PageRec *p = head.next;
+    while (p != &head) {
         cout<<*p;
         p = p->next;
-    }
+   }
     cout<<endl;
 }

@@ -17,14 +17,14 @@ public:
 		int index;
 	};
 
-	BufferManager *buffer;
+	//BufferManager *buffer;
 	Level levels[MaxDepth];
     //Block *trace[MaxDepth];
     //int indices[MaxDepth];
     int current; // current position in the trace
 	Key_t key;   // the key searched/inserted using this cursor
 	
-    Cursor(BufferManager *buf):buffer(buf),current(-1)
+    Cursor():current(-1)
 	{
 	}
 
