@@ -10,9 +10,11 @@ debug ?= 1
 ifeq ($(debug), 1)
 	CXXFLAGS += -g -DDEBUG
 	SOFLAG += -g
+	OBJDIR = obj_debug
 else
 	CXXFLAGS += -g -O3 -DNDEBUG
 	SOFLAG += -g -O3
+	OBJDIR = obj
 endif
 
 # check if dtrace is present
@@ -52,9 +54,11 @@ endif
 
 LDFLAGS += $(addprefix $(RPATH_FLAG), $(LD_RUN_PATH))
 
-%.o:%.cpp
+$(OBJDIR)/%.o:%.cpp
+	@mkdir -p `dirname $@`
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-%.dd:%.cpp
-	@$(CXX) $(CXXFLAGS) $(DEPFLAGS) $< | sed -e "s@^\(.*\)\.o[ \t]*:@$(shell dirname $<)/\1.o :@" > /tmp/dd
+$(OBJDIR)/%.dd:%.cpp
+	@mkdir -p `dirname $@`
+	@$(CXX) $(CXXFLAGS) $(DEPFLAGS) $< | sed -e "s@^\(.*\)\.o[ \t]*:@$(OBJDIR)/$(shell dirname $<)/\1.o :@" > /tmp/dd
 	@mv /tmp/dd $@

@@ -124,7 +124,7 @@ BTree::~BTree()
 
 int BTree::search(Key_t key, Cursor &cursor, BlockPool &pool)
 {
-    int &current = cursor.current;
+    int current = cursor.current;
 
     for (; current>=0; --current) {
         Block *&block = cursor[current].block;
@@ -146,6 +146,9 @@ int BTree::search(Key_t key, Cursor &cursor, BlockPool &pool)
         current = 0;
     }
 
+	Key_t l, u;
+	PID_t child;
+	PageHandle ph;
     for (; current < header->depth-1; current++) {
         PIDBlock *pidblock = static_cast<PIDBlock*>(cursor[current].block);
         int &idx = cursor[current].index;
@@ -155,9 +158,6 @@ int BTree::search(Key_t key, Cursor &cursor, BlockPool &pool)
         // decremented.
         if (ret == kNotFound)
             --idx;
-        Key_t l, u;
-        PID_t child;
-        PageHandle ph;
         pidblock->get(idx, l, child);
         RC_t x = buffer->readPage(child, ph);
         //if (x == RC_READ) 
@@ -166,6 +166,7 @@ int BTree::search(Key_t key, Cursor &cursor, BlockPool &pool)
         // load child block
         cursor[current+1].block = pool.get(ph, l, u);
     }
+	cursor.current = current;
 
     // already at the leaf level
     LeafBlock *leafBlock = static_cast<LeafBlock*>(cursor[current].block);

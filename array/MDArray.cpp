@@ -561,12 +561,8 @@ Matrix Matrix::operator*(const Matrix &other)
     // Use this' linearization
 
     // Param 0: blocking factor of left and right operator
-    //Coord blockl(1000,1000);
-    //Coord blockr(1000,1000);
     Coord blockl(config->matmulBlockFactor, config->matmulBlockFactor);
     Coord blockr(config->matmulBlockFactor, config->matmulBlockFactor);
-    //Coord blockl(3,3);
-    //Coord blockr(3,3);
     assert(blockl[1]==blockr[0]);
     Coord block(blockl[0], blockr[1]);
  

@@ -39,7 +39,6 @@ public:
 private:
 	friend class PageRec;
 
-    //typedef std::map<PID_t, PageRec*> PageHashMap;
 	typedef boost::unordered_map<PID_t, PageRec*> PageHashMap;
 
     // The underlying storage.
