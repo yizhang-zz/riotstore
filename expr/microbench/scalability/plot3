@@ -1,0 +1,47 @@
+#!/usr/bin/env gnuplot
+
+set term pdf enhanced monochrome size 2,1.6 fsize 7
+set style data histogram
+set style histogram rowstacked title offset 0,-1
+set boxwidth 0.9
+set style fill pattern border
+set lmargin 7
+set rmargin 1
+set bmargin 1.5
+
+set key off
+set noxtics 
+set output 'time1.pdf'
+set yrange [0:*]
+set ylabel "I/O + CPU = total time (10^2s)" offset 1,0
+set label "aligned" at 0,.35 rotate left
+set label "in-middle" at 1,.45 rotate left
+set label "balanced-ratio" at 2,.35 rotate left
+set label "off-dense" at 3,.45 rotate left
+set log y
+plot \
+newhistogram "25" lt 1,\
+'../5k.1/S0.txt' u ($3)/100 fs pattern 2, '' u ($4-$3)/100 fs pattern 4,\
+newhistogram "100" lt 1,\
+'../10k.1/S0.txt' u ($3)/100 notitle fs pattern 2, '' u ($4-$3)/100 notitle fs pattern 4,\
+newhistogram "400" lt 1,\
+'../20k.1/S0.txt' u ($3)/100 notitle fs pattern 2, '' u ($4-$3)/100 notitle fs pattern 4,\
+newhistogram "1600" lt 1,\
+'../40k.1/S0.txt' u ($3)/100 notitle fs pattern 2, '' u ($4-$3)/100 notitle fs pattern 4
+
+set output 'nleaves1.pdf'
+set yrange [0:*]
+unset label
+set ylabel "# pages allocated (10^5)" offset 1,0
+set label "aligned" at 0,.35 rotate left
+set label "in-middle" at 1,.55 rotate left
+set label "balanced-ratio" at 2,.35 rotate left
+set label "off-dense" at 3,.55 rotate left
+plot \
+newhistogram "seq" lt 1,\
+'S1.txt' u ($5)/1e5 fs pattern 2, \
+newhistogram "str" lt 1,\
+'D1.txt' u ($5)/1e5 fs pattern 2, \
+newhistogram "int" lt 1,\
+'I1.txt' u ($5)/1e5 fs pattern 2
+

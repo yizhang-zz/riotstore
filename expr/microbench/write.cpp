@@ -69,6 +69,7 @@ int main(int argc, char **argv)
     else if (splitterType == 'D') {
         strcat(fileName, "/mb");
         DirectlyMappedArray dma(fileName, total);
+		int count = 0;
         while (true) {
             ssize_t c = read(infile, keys, sizeof(keys));
             if (!c)
@@ -77,12 +78,17 @@ int main(int argc, char **argv)
             for (int i=0; i<count; ++i) {
                 dma.put(keys[i], 1.0);
             }
-            cerr<<count<<" ";
+            cerr<<"*";
+			if (++count == 10) {
+				cerr<<" ";
+				count = 0;
+			}
         }
     }
     else {
         strcat(fileName, "/mb");
         BTree *tree = new BTree(fileName, total, splitterType, 'M', config->useDenseLeaf);
+		int count = 0;
         while (true) {
             ssize_t c = read(infile, keys, sizeof(keys));
             if (!c)
@@ -91,7 +97,11 @@ int main(int argc, char **argv)
             for (int i=0; i<count; ++i) {
                 tree->put(keys[i], 1.0);
             }
-            cerr<<count<<" ";
+            cerr<<"*";
+			if (++count == 10) {
+				cerr<<" ";
+				count = 0;
+			}
         }
         delete tree;
     }

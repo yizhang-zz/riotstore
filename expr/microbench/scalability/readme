@@ -1,0 +1,11 @@
+random seeds 12345
+
+sparse matrix, lab, b, daf:
+scale	5000	10000	20000	40000
+bufpool	5250	10500	21000	41000
+
+
+dense matrix, lab, b, daf:
+scale	5000	10000	20000	40000
+bufpool	10250	20500	41000	82000
+
