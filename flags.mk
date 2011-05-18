@@ -48,7 +48,7 @@ else
 	ifeq ($(OS), Darwin)
 		LDFLAGS += -framework vecLib
 	else
-		LDFLAGS += -lblas -llapack
+		LDFLAGS += /usr/lib64/atlas/libcblas.so
 	endif
 endif
 

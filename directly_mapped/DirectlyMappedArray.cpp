@@ -23,8 +23,8 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, Key_t numElements
    if (numElements > 0)		// new array to be created
    {
       file = new BitmapPagedFile(fileName, BitmapPagedFile::CREATE);
-      buffer = new BufferManager(file, config->dmaBufferSize); 
-	  RC_t rc = buffer->allocatePageWithPID(0, headerPage);
+      buffer = new BufferManager(file, config->dmaBufferSize, sizeof(DMABlock)); 
+      RC_t rc = buffer->allocatePageWithPID(0, headerPage);
       assert(RC_OK & rc);
       // page is already marked dirty
       header = (Header*) headerPage->getImage();
@@ -41,7 +41,7 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, Key_t numElements
       if (access(fileName, F_OK) != 0)
          throw ("File for array does not exist.");
       file = new BitmapPagedFile(fileName, 0);
-      buffer = new BufferManager(file, config->dmaBufferSize); 
+      buffer = new BufferManager(file, config->dmaBufferSize, sizeof(DMABlock)); 
       buffer->readPage(0, headerPage);
       header = (Header*) headerPage->getImage();
       assert(header->storageType == DMA);
@@ -53,7 +53,8 @@ DirectlyMappedArray::DirectlyMappedArray(const char* fileName, Key_t numElements
 
 DirectlyMappedArray::~DirectlyMappedArray() 
 {
-	headerPage.reset();
+	//headerPage.reset();
+	headerPage->unpin();
 	delete buffer;
 	delete file;
 }
@@ -76,8 +77,8 @@ int DirectlyMappedArray::get(const Key_t &key, Datum_t &datum)
 	   datum = DMABlock::DefaultValue;
    else {
 	   datum = dab->get(key);
-	   //buffer->unpinPage(dab->getPageHandle());
-	   delete dab;
+	   dab->getPageHandle()->unpin();
+	   //delete dab;
    }
 #ifdef PROFILING
     gettimeofday(&time2, NULL);
@@ -116,8 +117,8 @@ int DirectlyMappedArray::batchGet(i64 getCount, Entry *gets)
 				}
 				else {
 					dab->batchGet(nGets, gets + i - nGets);
-					//buffer->unpinPage(dab->getPageHandle());
-					delete dab;
+					dab->getPageHandle()->unpin();
+					//delete dab;
 				}
 			}
 
@@ -134,8 +135,8 @@ int DirectlyMappedArray::batchGet(i64 getCount, Entry *gets)
 		}
 		else {
 			dab->batchGet(nGets, gets + getCount - nGets);
-			//buffer->unpinPage(dab->getPageHandle());
-			delete dab;
+			dab->getPageHandle()->unpin();
+			//delete dab;
 		}
 	}
 
@@ -155,8 +156,8 @@ int DirectlyMappedArray::batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entr
 	while ((pid-1)*config->dmaBlockCapacity < endsBy) {
 		if (readBlock(pid, &block) & RC_OK) {
 			block->batchGet(beginsAt, endsBy, v);
-			//buffer->unpinPage(dab->getPageHandle());
-			delete block;
+			block->getPageHandle()->unpin();
+			//delete block;
 		}
 		pid++;
 	}
@@ -182,7 +183,8 @@ int DirectlyMappedArray::batchPut(std::vector<Entry> &v)
             putcount -= 1000;
         }
 #endif
-        delete block;
+		block->getPageHandle()->unpin();
+        //delete block;
     }
     return AC_OK;
 }
@@ -212,8 +214,8 @@ int DirectlyMappedArray::put(const Key_t &key, const Datum_t &datum)
     }
 #endif
 	//buffer->markPageDirty(dab->getPageHandle());
-	//buffer->unpinPage(dab->getPageHandle());
-	delete dab;
+	dab->getPageHandle()->unpin();
+	//delete dab;
 #ifdef PROFILING
 	gettimeofday(&time2, NULL);
 	accessTime += time2.tv_sec - time1.tv_sec + (time2.tv_usec - time1.tv_usec)
@@ -257,8 +259,8 @@ int DirectlyMappedArray::batchPut(i64 putCount, const Entry *puts)
                 }
 #endif
                 //buffer->markPageDirty(dab->getPageHandle());
-                //buffer->unpinPage(dab->getPageHandle());
-                delete dab;
+                dab->getPageHandle()->unpin();
+                //delete dab;
             }
 
             nPuts = 0;
@@ -282,8 +284,8 @@ int DirectlyMappedArray::batchPut(i64 putCount, const Entry *puts)
         }
 #endif
         //buffer->markPageDirty(dab->getPageHandle());
-        //buffer->unpinPage(dab->getPageHandle());
-        delete dab;
+        dab->getPageHandle()->unpin();
+        //delete dab;
     }
 
 #ifdef PROFILING
@@ -318,7 +320,8 @@ RC_t DirectlyMappedArray::readBlock(PID_t pid, DMABlock** block)
    if ((ret=buffer->readPage(pid, ph)) & RC_FAIL)
       return ret;
    Key_t CAPACITY = config->dmaBlockCapacity;
-   *block = new DMABlock(ph, CAPACITY*(pid-1), CAPACITY*pid, false);
+   *block = (DMABlock*) buffer->getBlockObject(ph, CAPACITY*(pid-1), 
+           CAPACITY*pid, false, 0, createDMABlock);
    return RC_OK;
 }
 
@@ -331,9 +334,11 @@ RC_t DirectlyMappedArray::readOrAllocBlock(PID_t pid, DMABlock** block)
       return ret;
    Key_t CAPACITY = config->dmaBlockCapacity;
    if ((ret & RC_READ) == RC_READ)
-       *block = new DMABlock(ph, CAPACITY*(pid-1), CAPACITY*pid, false);
+       *block = (DMABlock*) buffer->getBlockObject(ph, CAPACITY*(pid-1), 
+               CAPACITY*pid, false, 0, createDMABlock);
    else if ((ret & RC_ALLOC) == RC_ALLOC) {
-       *block = new DMABlock(ph, CAPACITY*(pid-1), CAPACITY*pid, true);
+       *block = (DMABlock*) buffer->getBlockObject(ph, CAPACITY*(pid-1), 
+               CAPACITY*pid, true, 0, createDMABlock);
 #ifdef DTRACE_SDT
        RIOT_DMA_NEW_BLOCK();
 #endif
@@ -352,7 +357,8 @@ RC_t DirectlyMappedArray::readNextBlock(PageHandle ph, DMABlock** block)
     if ((ret=buffer->readPage(pid+1, ph)) & RC_FAIL)
         return ret;
    Key_t CAPACITY = config->dmaBlockCapacity;
-   *block = new DMABlock(ph, CAPACITY*(pid), CAPACITY*(pid+1), false);
+   *block = (DMABlock*) buffer->getBlockObject(ph, CAPACITY*(pid), 
+               CAPACITY*(pid+1), false, 0, createDMABlock);
    return RC_OK;
 }
 
@@ -364,7 +370,8 @@ RC_t DirectlyMappedArray::newBlock(PID_t pid, DMABlock** block)
    if ((ret=buffer->allocatePageWithPID(pid, ph)) & RC_FAIL)
       return ret;
    Key_t CAPACITY = config->dmaBlockCapacity;
-   *block = new DMABlock(ph, CAPACITY*(pid-1), CAPACITY*pid, true);
+   *block = (DMABlock*) buffer->getBlockObject(ph, CAPACITY*(pid-1), 
+               CAPACITY*pid, true, 0, createDMABlock);
 #ifdef DTRACE_SDT
    RIOT_DMA_NEW_BLOCK();
 #endif

@@ -15,6 +15,27 @@ using namespace boost;
 
 const Datum_t Block::kDefaultValue = 0.0;
 
+void *createBtreeBlock(void *p, PageHandle ph, Key_t beginsAt, Key_t endsBy,
+        bool create, int param)
+{
+    
+    Block::Type t;
+    if (create)
+        t = (Block::Type) param;
+    else
+        t = (Block::Type) *ph->getImage();
+    switch (t) {
+    case Block::kInternal:
+        return new (p) InternalBlock(ph, beginsAt, endsBy, create);
+    case Block::kDenseLeaf:
+        return new (p) DenseLeafBlock(ph, beginsAt, endsBy, create);
+    case Block::kSparseLeaf:
+        return new (p) SparseLeafBlock(ph, beginsAt, endsBy, create);
+    default:
+        return NULL;
+    }
+}
+
 Block * Block::create(PageHandle ph, Key_t beginsAt, Key_t endsBy)
 {
 	// first byte of the block image contains the type

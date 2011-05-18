@@ -263,7 +263,7 @@ public:
 	}
 
 	Matrix operator*(const Matrix &other);
-
+    Matrix multiply(const Matrix &other, i64 p, i64 q, i64 r);
     using MDArray<2>::batchPut;
     using MDArray<2>::batchGet;
 	SparseMatrix batchGet(const Coord &begin, const Coord &end) const;

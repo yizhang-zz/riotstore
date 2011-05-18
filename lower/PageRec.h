@@ -64,14 +64,6 @@ public:
     {
         return image;
     }
-
-    int getIndex() const
-    {
-        return index;
-    }
-
-private:
-    int index;
 };
 
 /*

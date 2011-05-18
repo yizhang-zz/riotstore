@@ -261,4 +261,7 @@ typedef BlockT<PID_t> PIDBlock;
 typedef BlockT<Datum_t> LeafBlock;
 
 }
+
+void *createBtreeBlock(void *p, PageHandle ph, Key_t begin, Key_t end,
+        bool create, int param);
 #endif

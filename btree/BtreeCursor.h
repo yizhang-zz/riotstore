@@ -2,6 +2,8 @@
 #define BTREE_CURSOR_H
 
 #include "../common/common.h"
+#include "BtreeSparseBlock.h"
+#include "BtreeDenseLeafBlock.h"
 
 namespace Btree
 {
@@ -32,8 +34,11 @@ public:
 	{
         // blocks are all created by placement new operator
         // so should not call delete
-		for (int i=current; i>=0; i--)
-            levels[i].block->~Block();
+		for (int i=current; i>=0; i--) {
+			PageHandle ph = levels[i].block->pageHandle;
+			ph->unpin();
+			assert(ph->pinCount >= 0);
+		}
 	}
 
 	void grow()

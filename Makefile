@@ -6,11 +6,10 @@ CXXFLAGS += -I/usr/local/include
 CXXFLAGS += -Ilib/SuiteSparse/CHOLMOD/Include
 CXXFLAGS += -Ilib/SuiteSparse/UFconfig
 LDFLAGS += -Llib/SuiteSparse/CHOLMOD/Lib -lcholmod
-LDFLAGS += $(shell pkg-config --libs-only-L gsl) -lgsl
 include flags.mk
 include $(patsubst %, %/module.mk,$(DIRS))
 OBJ := $(patsubst %.cpp,$(OBJDIR)/%.o, $(filter %.cpp,$(SRC))) 
-DEPS:= $(patsubst %.cpp,$(OBJDIR)/%.dd,$(filter %.cpp,$(SRC))) 
+DEPS := $(OBJ:.o=.dd)
 DTRACE_SRC := riot.dtrace
 DTRACE_OBJ := riot.o
 SO_OBJ = $(OBJ)

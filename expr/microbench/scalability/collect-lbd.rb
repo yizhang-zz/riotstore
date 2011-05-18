@@ -26,17 +26,18 @@ seq.each do |s|
 		outFile.write "#{a}000 "
 		folder = "../#{a}k.1/"
 
-		file = "#{s}#{a}000A-1-NONE.log"
-		iotime, totaltime = parse(folder+file)
-		outFile.write "#{iotime} #{totaltime} "
-
 		file = "#{s}#{a}000M-0-NONE.log"
 		iotime, totaltime = parse(folder+file)
-		outFile.write "#{iotime} #{totaltime} "
+		base = totaltime.to_f
+		outFile.write "#{iotime} #{totaltime/base} "
+
+		file = "#{s}#{a}000A-1-NONE.log"
+		iotime, totaltime = parse(folder+file)
+		outFile.write "#{iotime} #{totaltime/base} "
 
 		file = "#{s}#{a}000D-1-NONE.log"
 		iotime, totaltime = parse(folder+file)
-		outFile.write "#{iotime} #{totaltime} "
+		outFile.write "#{iotime} #{totaltime/base} "
 
 		outFile.puts
 	end
@@ -46,17 +47,18 @@ seq.each do |s|
 		outFile.write "#{a}000 "
 		folder = "../#{a}k.10/"
 
-		file = "#{s}#{a}000A-1-NONE.log"
-		iotime, totaltime = parse(folder+file)
-		outFile.write "#{iotime} #{totaltime} "
-
 		file = "#{s}#{a}000M-0-NONE.log"
 		iotime, totaltime = parse(folder+file)
-		outFile.write "#{iotime} #{totaltime} "
+		base = totaltime.to_f
+		outFile.write "#{iotime} #{totaltime/base} "
+
+		file = "#{s}#{a}000A-1-NONE.log"
+		iotime, totaltime = parse(folder+file)
+		outFile.write "#{iotime} #{totaltime/base} "
 
 		file = "#{s}#{a}000D-1-NONE.log"
 		iotime, totaltime = parse(folder+file)
-		outFile.write "#{iotime} #{totaltime} "
+		outFile.write "#{iotime} #{totaltime/base} "
 
 		outFile.puts
 	end

@@ -1,5 +1,7 @@
 #include <string.h>
-#include <gsl/gsl_cblas.h>
+extern "C" {
+#include <cblas.h>
+};
 #include <fstream>
 #include "common/Config.h"
 #include "MDArray.h"
@@ -83,6 +85,7 @@ void MDArray<nDim>::setStorage(const StorageParam *sp)
 	dim.serialize(&header);
 	linearization->serialize(&header);
     ph->markDirty();
+	ph->unpin();
 }
 
 // Create an MDArray from existing file by parsing file content
@@ -98,6 +101,7 @@ MDArray<nDim>::MDArray(const char *fileName): fileName(fileName)
     BufferManager *buffer = storage->getBufferManager();
     buffer->readPage(0, ph);
     char *image = ph->getImage();
+	ph->unpin();
     char *header = image + OFFSET;
 	dim = MDCoord<nDim>::parse(&header);
 	linearization = Linearization<nDim>::parse(&header);
@@ -227,6 +231,7 @@ MDArray<nDim>::MDArray(const StorageParam *sp, Linearization<nDim> *lnrztn,
 	dim.serialize(&header);
 	linearization->serialize(&header);
     ph->markDirty();
+	ph->unpin();
 }
 
 
@@ -554,6 +559,13 @@ int Matrix::batchPut(const Coord &begin, const SparseMatrix &sm)
 
 Matrix Matrix::operator*(const Matrix &other)
 {
+    return multiply(other, config->matmulBlockFactor,
+                    config->matmulBlockFactor,
+                    config->matmulBlockFactor);
+}
+
+Matrix Matrix::multiply(const Matrix &other, i64 bf1, i64 bf2, i64 bf3)
+{
     if (dim[1] != other.dim[0])
         throw "Invalid argument";
 
@@ -561,8 +573,8 @@ Matrix Matrix::operator*(const Matrix &other)
     // Use this' linearization
 
     // Param 0: blocking factor of left and right operator
-    Coord blockl(config->matmulBlockFactor, config->matmulBlockFactor);
-    Coord blockr(config->matmulBlockFactor, config->matmulBlockFactor);
+    Coord blockl(bf1, bf2);
+    Coord blockr(bf2, bf3);
     assert(blockl[1]==blockr[0]);
     Coord block(blockl[0], blockr[1]);
  

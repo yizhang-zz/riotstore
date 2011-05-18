@@ -7,6 +7,12 @@
 const Datum_t DMABlock::DefaultValue = 0.0;
 //const size_t DMABlock::CAPACITY = (PAGE_SIZE-sizeof(Header))/sizeof(Datum_t);
 
+void *createDMABlock(void *p,
+        PageHandle ph_, Key_t lower, Key_t upper, bool create, int)
+{
+    return new (p) DMABlock(ph_, lower, upper, create);
+}
+
 DMABlock::DMABlock(PageHandle ph_, Key_t lower, Key_t upper, bool create)
     : ph(ph_), lowerBound(lower), upperBound(upper)
 {
@@ -16,8 +22,6 @@ DMABlock::DMABlock(PageHandle ph_, Key_t lower, Key_t upper, bool create)
     if (create)
         init();
 }
-
-DMABlock::~DMABlock() {}
 
 void DMABlock::init()
 {

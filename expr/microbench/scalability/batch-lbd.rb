@@ -21,7 +21,7 @@ seq.each do |s|
 		file = "#{s}-lbd-sparse"
 		text = File.read("plot-lbd")
 		IO.popen("gnuplot", "w+") { |io|
-			tmp = text.gsub("$DATA$", file).gsub("$SEQ$", h[s]).gsub("$DENSE$", "dense matrix")
+			tmp = text.gsub("$DATA$", file).gsub("$SEQ$", h[s]).gsub("$DENSE$", "sparse matrix, 10% density")
 			io.write tmp
 			io.close_write
 		}

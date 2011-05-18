@@ -89,10 +89,15 @@ public:
 
     // Constructs a BufferManager for a paged storage container with a
     // memory buffer that holds a given number of pages.
-    BufferManager(PagedStorageContainer *s, size_t n, PageReplacer *pr=NULL);
+    BufferManager(PagedStorageContainer *s, size_t n, size_t objsize, PageReplacer *pr=NULL);
 
     // Destructs the BufferManager.  All dirty pages will be flushed.
     ~BufferManager();
+
+    void *getBlockObject(PageHandle &ph, Key_t, Key_t, bool, int,
+            void *(*ctor)(void *, PageHandle, Key_t, Key_t, bool, int));
+    void freeBlockObject(PageHandle &ph);
+
     // Creates a new page in buffer (with unintialized content), pins
     // it, marks it dirty, and returns the handle.
     RC_t allocatePage(PageHandle &ph);
@@ -127,8 +132,10 @@ public:
     void printStat();
 
 private:
-	RC_t replacePage(PageRec *&bh);
+    RC_t replacePage(PageRec *&bh);
     int totalPinCount;
+    void **objpool;
+    bool *objexists;
     // Marks a pinned page as dirty (i.e., modified).
     RC_t markPageDirty(PageRec *p);
 
@@ -140,20 +147,10 @@ private:
     // from the buffer, in which case the handle will become invalid.
     RC_t unpinPage(PageRec *p) ;
 
-	/*
-    PID_t getPID(PageHandle ph)
-	{
-		PageRec *rec = (PageRec*) ph;
-		return rec->pid;
-	}
-
-    char *getPageImage(PageHandle ph)
-	{
-		PageRec *rec = (PageRec*) ph;
-		return rec->image;
-	}
-	*/
-
+    int getIndex(char *p)
+    {
+        return (p - (char*) pool) / PAGE_SIZE;
+    }
 };
 
 #endif

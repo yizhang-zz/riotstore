@@ -3,6 +3,7 @@
 #endif
 #include "BufferManager.h"
 #include <sys/time.h>
+#include <string.h>
 #include "PageReplacer.h"
 #include "PageRec.h"
 #include "LRUPageReplacer.h"
@@ -25,7 +26,7 @@ void BufferManager::printStat()
 
 // Constructs a BufferManager for a paged storage container with a
 // memory buffer that holds a given number of pages.
-BufferManager::BufferManager(PagedStorageContainer *s, size_t n,
+BufferManager::BufferManager(PagedStorageContainer *s, size_t n, size_t objsize,
         PageReplacer *pr)
 : storage(s), numSlots(n){
     totalPinCount = 0;
@@ -47,7 +48,6 @@ BufferManager::BufferManager(PagedStorageContainer *s, size_t n,
     headers = new PageRec[numSlots];
     //freelist = headers;
     for (size_t i=0; i<numSlots; i++) {
-        headers[i].index = i;
         headers[i].buffer = this;
         headers[i].image = (char*)pool+i*PAGE_SIZE;
         pageReplacer->add(headers+i);
@@ -55,6 +55,13 @@ BufferManager::BufferManager(PagedStorageContainer *s, size_t n,
     //freelist[numSlots-1].next = NULL;
 	
     pageHash = new PageHashMap();
+    char *tmp = (char*) malloc(objsize * n);
+    objpool = (void**) malloc(sizeof(void*) * n);
+    unsigned i;
+    for (i=0; i<n; ++i)
+        objpool[i] = tmp + objsize * i;
+    objexists = (bool*) malloc(sizeof(bool) * n);
+    memset(objexists, 0, sizeof(bool) * n);
 }
 
 // Destructs the BufferManager.  All dirty pages will be flushed.
@@ -73,6 +80,26 @@ BufferManager::~BufferManager() {
     delete[] headers;
     delete pageHash;
     delete pageReplacer;
+    free(objpool[0]);  // free tmp in ctor
+    free(objpool);
+    free(objexists);
+}
+
+void *BufferManager::getBlockObject(PageHandle& ph, Key_t b, Key_t e, 
+        bool create, int param, 
+        void*(*ctor)(void *,PageHandle,Key_t,Key_t,bool,int))
+{
+    int i = getIndex(ph->image);
+    if (!objexists[i]) {
+        ctor(objpool[i], ph, b, e, create, param);
+        objexists[i] = true;
+    }
+    return objpool[i];
+}
+
+void BufferManager::freeBlockObject(PageHandle& ph)
+{
+	objexists[getIndex(ph->image)] = false;
 }
 
 // Creates a new page in buffer (with unintialized content), pins
@@ -108,7 +135,8 @@ RC_t BufferManager::allocatePage(PageHandle &ph) {
 	rec->pid = pid;
     rec->dirty = true;
     pinPage(rec);
-    ph = PageHandle(rec, pageDealloc);
+	ph = rec;
+    //ph = PageHandle(rec, pageDealloc);
     pageHash->insert(PageHashMap::value_type(pid, rec));
 #ifdef PROFILE_BUFMAN
 	TIMESTAMP(t2);
@@ -151,7 +179,8 @@ RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
     rec->pid = pid;
     rec->dirty = true;
     pinPage(rec);
-    ph = PageHandle(rec, pageDealloc);
+	ph = rec;
+    //ph = PageHandle(rec, pageDealloc);
     pageHash->insert(PageHashMap::value_type(pid, rec));
 #ifdef PROFILE_BUFMAN
 	TIMESTAMP(t2);
@@ -206,7 +235,8 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
         if (rec->pinCount == 0)
             pageReplacer->remove(rec);
         pinPage(rec);
-        ph = PageHandle(rec, pageDealloc);
+		ph = rec;
+        //ph = PageHandle(rec, pageDealloc);
         return RC_HIT;
     }
     else {
@@ -228,7 +258,8 @@ RC_t BufferManager::readPage(PID_t pid, PageHandle &ph) {
         }
         rec->dirty = false;
         pinPage(rec);
-        ph = PageHandle(rec, pageDealloc);
+		ph = rec;
+        //ph = PageHandle(rec, pageDealloc);
         pageHash->insert(PageHashMap::value_type(pid, rec));
         return RC_READ;
     }
@@ -244,7 +275,8 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
         if (rec->pinCount == 0)
             pageReplacer->remove(rec);
         pinPage(rec);
-        ph = PageHandle(rec, pageDealloc);
+		ph = rec;
+        //ph = PageHandle(rec, pageDealloc);
 #ifdef DTRACE_SDT
         RIOT_BM_READ(pid,0);
 #endif
@@ -280,7 +312,8 @@ RC_t BufferManager::readOrAllocatePage(PID_t pid, PageHandle &ph) {
             ret = RC_READ;
         }
         pinPage(rec);
-        ph = PageHandle(rec, pageDealloc);
+		ph = rec;
+        //ph = PageHandle(rec, pageDealloc);
         pageHash->insert(PageHashMap::value_type(pid, rec));
         return ret;
     }
@@ -399,6 +432,8 @@ RC_t BufferManager::replacePage(PageRec *&bh)
         bh->dirty = false;
         //Debug("Evicted dirty page %d", bh->pid);
     }
+    objexists[getIndex(bh->image)] = false;
+
     // remove old mapping in hash table
     pageHash->erase(bh->pid);
     // clear unpacked image

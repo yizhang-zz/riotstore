@@ -38,7 +38,6 @@ public:
     /// know the exact index range that this page is responsible for.
     /// The default data value will also be supplied by the caller.
     DMABlock(PageHandle ph, Key_t lower, Key_t upper, bool create);
-    ~DMABlock();
 
     // Clears all values to zero
     void init();
@@ -54,7 +53,7 @@ public:
     int batchPut(std::vector<Entry>::const_iterator &begin,
             std::vector<Entry>::const_iterator end);
 
-    const PageHandle & getPageHandle() const { return ph; }
+    const PageHandle getPageHandle() const { return ph; }
     Key_t getUpperBound() const { return upperBound; }
     Key_t getLowerBound() const { return lowerBound; }
     /// assume beginsAt and endsBy are within upperBound and lowerBound
@@ -62,4 +61,6 @@ public:
     ArrayInternalIterator* getIterator();
 };
 
+void *createDMABlock(void *p,
+        PageHandle ph_, Key_t lower, Key_t upper, bool create, int param);
 #endif

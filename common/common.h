@@ -191,7 +191,8 @@ void freePageImage(PageImage p);
 
 //typedef void *PageHandle;
 struct PageRec;
-typedef boost::shared_ptr<PageRec> PageHandle;
+typedef PageRec *PageHandle;
+//typedef boost::shared_ptr<PageRec> PageHandle;
 
 /* Coding style: inline small functions (<= 10 lines of code) */
 

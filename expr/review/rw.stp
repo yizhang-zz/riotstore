@@ -1,0 +1,57 @@
+#!/usr/bin/env stap
+
+global rcount;
+global rtime;
+global wcount;
+global wtime;
+global begintime;
+global nodecount;
+global ts;
+
+probe begin
+{
+	begintime = gettimeofday_ns();
+}
+
+probe process("../../libriot_store.so").mark("dma-put"),
+process("../../libriot_store.so").mark("btree-put")
+{
+    printf("%d %d %d %d %d %d\n", nodecount, rcount, wcount, rtime, wtime, gettimeofday_ns()-begintime);
+}
+
+probe process("../../libriot_store.so").mark("btree-split-leaf"),
+process("../../libriot_store.so").mark("btree-new-internal"),
+process("../../libriot_store.so").mark("dma-new-block")
+{
+    nodecount++;
+}
+
+probe syscall.pread*, syscall.pwrite*
+{
+    if (pid() == target())
+        ts = gettimeofday_ns();
+}
+
+probe syscall.pread*.return
+{
+    if (ts) {
+        rcount++;
+        rtime += gettimeofday_ns() - ts;
+        ts = 0;
+    }
+}
+
+probe syscall.pwrite*.return
+{
+    if (ts) {
+        wcount++;
+        wtime += gettimeofday_ns() - ts;
+        ts = 0;
+    }
+}
+
+probe end
+{
+	printf("%d %d %d %d %d %d\n", nodecount, rcount, wcount, rtime, wtime, gettimeofday_ns()-begintime);
+}
+
