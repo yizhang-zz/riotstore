@@ -1,0 +1,15 @@
+directio=1
+denseLeafCapacity=1000
+sparseLeafCapacity=500
+#internalCapacity=500
+dmaBlockCapacity=1000
+useDenseLeaf=1
+internalSplitter=M
+leafSplitter=A
+matmulBlockFactor=3000
+TSplitterThreshold=.7
+btreeBufferSize=4200
+dmaBufferSize=4200
+batchMethod=LPP
+batchBufferSize=200000
+batchKeepPidCount=8000
