@@ -6,7 +6,7 @@ vpath %.h lib/SuiteSparse/CHOLMOD/Include
 
 OS = $(shell uname -s)
 
-debug ?= 1
+debug ?= 0
 ifeq ($(debug), 1)
 	CXXFLAGS += -g -DDEBUG
 	SOFLAG += -g
@@ -48,7 +48,7 @@ else
 	ifeq ($(OS), Darwin)
 		LDFLAGS += -framework vecLib
 	else
-		LDFLAGS += /usr/lib64/atlas/libcblas.so
+		LDFLAGS += -lgsl
 	endif
 endif
 

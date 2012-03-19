@@ -172,6 +172,7 @@ typedef int RC_t;
 #define RC_READ             0x8001
 #define RC_ALLOC            0x8002
 #define RC_HIT              0x8003
+#define RC_ALLOC_OVERWRITE  0x8004
 #define RC_FAIL             0x4000
 #define RC_OutOfSpace       0x4001   
 #define RC_NotAllocated     0x4002

@@ -45,19 +45,34 @@ void DMABlock::batchGet(i64 getCount, Entry *gets)
     }
 }
 
-void DMABlock::batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &v)
+int DMABlock::batchGet(Key_t beginsAt, Key_t endsBy, Datum_t *p)
 {
-	int b = std::max(beginsAt, this->lowerBound) - this->lowerBound;
-	int e = std::min(endsBy, this->upperBound) - this->lowerBound;
-	for (int k = b; k < e; ++k)
-		if (data[k] != DefaultValue)
+    //TODO: should return the number of non-zeros
+	Key_t b = std::max(beginsAt, this->lowerBound) - this->lowerBound;
+	Key_t e = std::min(endsBy, this->upperBound) - this->lowerBound;
+    int count = int(e - b);
+	for (int i = 0; i < count; ++i)
+        p[i] = data[b+i];
+    return count;
+}
+
+int DMABlock::batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &v)
+{
+	Key_t b = std::max(beginsAt, this->lowerBound) - this->lowerBound;
+	Key_t e = std::min(endsBy, this->upperBound) - this->lowerBound;
+    int count = 0;
+	for (Key_t k = b; k < e; ++k)
+		if (data[k] != DefaultValue) {
+            count++;
 			v.push_back(Entry(k+this->lowerBound, data[k]));
+        }
+    return count;
 }
 
 /// assume key is within range
 int DMABlock::put(Key_t key, Datum_t datum)  
 {
-    int index = key-lowerBound;
+    int index = int(key-lowerBound);
     if (datum == data[index])
         return 0;
     int ret = 0;
@@ -97,7 +112,7 @@ int DMABlock::batchPut(std::vector<Entry>::const_iterator &begin,
     int nPut = 0;
     int index;
     for (; begin != end && begin->key < upperBound; ++begin) {
-        index = begin->key - lowerBound;
+        index = int(begin->key - lowerBound);
         if (begin->datum == data[index])
             continue;
         if (begin->datum == DefaultValue && data[index] != DefaultValue)
@@ -109,6 +124,17 @@ int DMABlock::batchPut(std::vector<Entry>::const_iterator &begin,
     header->nnz += nPut;
     ph->markDirty();
     return nPut;
+}
+
+int DMABlock::batchPut(Key_t beginsAt, Key_t endsBy, Datum_t *p)
+{
+    //TODO: should return the number of non-zeros
+	Key_t b = std::max(beginsAt, this->lowerBound) - this->lowerBound;
+	Key_t e = std::min(endsBy, this->upperBound) - this->lowerBound;
+    int count = int(e - b);
+	for (int i = 0; i < count; ++i)
+        data[b+i] = p[i];
+    return count;
 }
 
 /// assume beginsAt and endsBy are within upperBound and lowerBound

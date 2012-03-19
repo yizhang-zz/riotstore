@@ -20,10 +20,10 @@ public:
     //const static int internalHeaderSize = 8;
 
     int directio;
-    u16 denseLeafCapacity;
-    u16 sparseLeafCapacity;
-    u16 internalCapacity;
-    u16 dmaBlockCapacity;
+    size_t denseLeafCapacity;
+    size_t sparseLeafCapacity;
+    size_t internalCapacity;
+    size_t dmaBlockCapacity;
 
     int useDenseLeaf;
     //int BSplitterBoundary; // boundary for the B splitter
@@ -31,8 +31,8 @@ public:
     char internalSplitter;
     char leafSplitter;
 
-    int btreeBufferSize;
-    int dmaBufferSize;
+    size_t btreeBufferSize;
+    size_t dmaBufferSize;
 
     Btree::BatchMethod batchMethod;
     u32 batchBufferSize;

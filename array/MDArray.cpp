@@ -322,6 +322,21 @@ int MDArray<nDim>::put(const Key_t &key, const Datum_t &datum)
 template<int nDim>
 int MDArray<nDim>::batchPut(const Coord &start, const Coord &end, Datum_t *data)
 {
+    using namespace std;
+    Datum_t *p = data;
+    vector<Segment> *segments = linearization->getOverlap(begin, end);
+    for (vector<Segment>::iterator it = segments->begin();
+         it != segments->end();
+         ++it) {
+        // segment is inclusive: [it->begin, it->end]
+        // but storage->batchGet is exclusive
+        Key_t len = it->end - it->begin + 1;
+        storage->batchPut(it->begin, it->end+1, p);
+        p += len;
+    }
+    delete segments;
+    return AC_OK;
+#if 0
     // start should be within the array's bound,
     // but end could be out, either beyond the right bound or lower bound.
     for (int i=0; i<nDim; ++i)
@@ -361,6 +376,7 @@ int MDArray<nDim>::batchPut(const Coord &start, const Coord &end, Datum_t *data)
     if (ac == AC_OK)
         return AC_OK;
     return AC_OutOfRange;
+#endif
 }
 
 template<int nDim>
@@ -379,8 +395,24 @@ int MDArray<nDim>::batchPut(std::vector<MDArrayElement<nDim> > &elements)
 }
 
 template<int nDim>
-int MDArray<nDim>::batchGet(const Coord &start, const Coord &end, Datum_t *data) const
+int MDArray<nDim>::batchGet(const Coord &begin, const Coord &end,
+                            Datum_t *data) const
 {
+    using namespace std;
+    Datum_t *p = data;
+    vector<Segment> *segments = linearization->getOverlap(begin, end);
+    for (vector<Segment>::iterator it = segments->begin();
+         it != segments->end();
+         ++it) {
+        // segment is inclusive: [it->begin, it->end]
+        // but storage->batchGet is exclusive
+        Key_t len = it->end - it->begin + 1;
+        storage->batchGet(it->begin, it->end+1, p);
+        p += len;
+    }
+    delete segments;
+    return AC_OK;
+    /*
     // start should be within the array's bound,
     // but end could be out, either beyond the right bound or lower bound.
     for (int i=0; i<nDim; ++i)
@@ -420,10 +452,12 @@ int MDArray<nDim>::batchGet(const Coord &start, const Coord &end, Datum_t *data)
     if (ac == AC_OK)
         return AC_OK;
     return AC_OutOfRange;
+    */
 }
 
 template<int nDim>
-int MDArray<nDim>::batchGet(const Coord &begin, const Coord &end, std::vector<MDArrayElement<nDim> > &v) const
+int MDArray<nDim>::batchGet(const Coord &begin, const Coord &end,
+                            std::vector<MDArrayElement<nDim> > &v) const
 {
 	using namespace std;
 	vector<Segment> *segments = linearization->getOverlap(begin, end);

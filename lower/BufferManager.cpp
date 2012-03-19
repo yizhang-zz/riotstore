@@ -10,10 +10,6 @@
 #include <iostream>
 using namespace std;
 
-#ifdef PROFILE_BUFMAN
-double BufferManager::accessTime = 0.0;
-#endif
-
 static PageDealloc pageDealloc;
 
 void BufferManager::printStat()
@@ -104,27 +100,17 @@ void BufferManager::freeBlockObject(PageHandle& ph)
 
 // Creates a new page in buffer (with unintialized content), pins
 // it, marks it dirty, and returns the handle.
-RC_t BufferManager::allocatePage(PageHandle &ph) {
-#ifdef PROFILE_BUFMAN
-	TIMESTAMP(t1);
-#endif
+RC_t BufferManager::allocatePage(PageHandle &ph)
+{
     RC_t ret;
     PID_t pid;
     PageRec *rec;
 	if ((ret=storage->allocatePage(pid)) & RC_FAIL) {
 		Error("Physical storage cannot allocate page; error %d", ret);
-#ifdef PROFILE_BUFMAN
-		TIMESTAMP(t2);
-		accessTime += t2-t1;
-#endif
 		return ret;
 	}
 
 	if ((ret=replacePage(rec)) & RC_FAIL) {
-#ifdef PROFILE_BUFMAN
-		TIMESTAMP(t2);
-		accessTime += t2-t1;
-#endif
 		return ret;
 	}
     //Debug("with page %10d\n", pid);
@@ -138,10 +124,6 @@ RC_t BufferManager::allocatePage(PageHandle &ph) {
 	ph = rec;
     //ph = PageHandle(rec, pageDealloc);
     pageHash->insert(PageHashMap::value_type(pid, rec));
-#ifdef PROFILE_BUFMAN
-	TIMESTAMP(t2);
-	accessTime += t2-t1;
-#endif
     return RC_ALLOC;
 }
 
@@ -149,61 +131,55 @@ RC_t BufferManager::allocatePage(PageHandle &ph) {
 // content), pins it, marks it dirty, and returns the handle.  This
 // method only works if the implementation of PagedStorageContainer
 // supports allocatePageWithPID.
-RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph) {
-#ifdef PROFILE_BUFMAN
-	TIMESTAMP(t1);
-#endif
-    RC_t ret = storage->allocatePageWithPID(pid);
+/* Tries to allocate a new page with the given pid. If pid has been allocated
+ * previously, allocate it anyway as if it is first discarded and then
+ * allocated again.  The page is only allocated in memory and not written until
+ * being replaced from
+ */
+RC_t BufferManager::allocatePageWithPID(PID_t pid, PageHandle &ph)
+{
     PageRec *rec;
-    if (ret & RC_FAIL) {
-        Error("Physical storage cannot allocate pid %d, error %d",pid,ret);
-#ifdef PROFILE_BUFMAN
-	TIMESTAMP(t2);
-	accessTime += t2-t1;
-#endif
-        return ret;
+    RC_t ret;
+    PageHashMap::iterator it = pageHash->find(pid);
+    if (it != pageHash->end()) {
+        rec = it->second;
+        if (rec->pinCount == 0)
+            pageReplacer->remove(rec);
+        pinPage(rec);
+		ph = rec;
+        return RC_HIT;
     }
-
     if ((ret=replacePage(rec)) & RC_FAIL) {
-#ifdef PROFILE_BUFMAN
-	TIMESTAMP(t2);
-	accessTime += t2-t1;
-#endif
         return ret;
     }
-    //Debug("with page %10d\n", pid);
-    
+    ret = storage->allocatePageWithPID(pid);
+    if (ret & RC_FAIL) {
+        // Error("Physical storage cannot allocate pid %d, error %d",pid,ret);
+        // The caller intends to overwrite this existing page
+        ret = RC_ALLOC_OVERWRITE;
+    }
+    else {
+        ret = RC_ALLOC;
 #ifdef DTRACE_SDT
-    RIOT_BM_ALLOC(pid);
+        RIOT_BM_ALLOC(pid); // real allocation
 #endif
+    }
     rec->pid = pid;
     rec->dirty = true;
     pinPage(rec);
 	ph = rec;
-    //ph = PageHandle(rec, pageDealloc);
     pageHash->insert(PageHashMap::value_type(pid, rec));
-#ifdef PROFILE_BUFMAN
-	TIMESTAMP(t2);
-	accessTime += t2-t1;
-#endif
-    return RC_ALLOC;
+    return ret;
 }
 
 // Disposes a buffered page. It should be unpinned already. It will be
 // removed from both the buffer and the disk storage.  Dirty bit is
 // ignored.
 RC_t BufferManager::disposePage(PageRec *rec) {
-#ifdef PROFILE_BUFMAN
-	TIMESTAMP(t1);
-#endif
     RC_t ret;
     //PageRec *rec = (PageRec*) ph;
     if ((ret=storage->disposePage(rec->pid)) & RC_FAIL) {
         Error("Physical storage cannot dispose pid %d, error %d.\n", rec->pid, ret);
-#ifdef PROFILE_BUFMAN
-	TIMESTAMP(t2);
-	accessTime += t2-t1;
-#endif
         return ret;
     }
     PageHashMap::iterator it = pageHash->find(rec->pid);
@@ -213,10 +189,6 @@ RC_t BufferManager::disposePage(PageRec *rec) {
     pageHash->erase(it);
     rec->reset();
     pageReplacer->add(rec);
-#ifdef PROFILE_BUFMAN
-	TIMESTAMP(t2);
-	accessTime += t2-t1;
-#endif
     return RC_OK;
 }
 

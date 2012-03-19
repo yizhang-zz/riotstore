@@ -25,9 +25,11 @@ public:
 
     virtual int get(const Key_t &key, Datum_t &datum);
     virtual int batchGet(i64 getCount, Entry *gets);
+    virtual int batchGet(Key_t beginsAt, Key_t endsBy, Datum_t*);
     virtual int batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &);
     virtual int put(const Key_t &key, const Datum_t &datum);
     virtual int batchPut(i64 putCount, const Entry *puts);
+    virtual int batchPut(Key_t beginsAt, Key_t endsBy, Datum_t*);
     virtual int batchPut(std::vector<Entry> &);
     virtual void flush();
     virtual StorageType type() const { return DMA; }

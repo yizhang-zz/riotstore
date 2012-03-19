@@ -70,6 +70,9 @@ public:
      * entry.pdatum.
      */
     virtual int batchGet(i64 getCount, Entry *gets) = 0;
+    virtual int batchGet(Key_t beginsAt, Key_t endsBy, Datum_t*) {
+        return 0;
+    }
 
     /**
      * Gets nonzero key-value pairs in range [beginsAt, endsBy).
@@ -89,6 +92,9 @@ public:
      * For each entry.key, put the value entry.datum.
      */
     virtual int batchPut(i64 putCount, const Entry *puts) = 0;
+    virtual int batchPut(Key_t beginsAt, Key_t endsBy, Datum_t*) {
+        throw;
+    }
 
     /**
      * Puts nonzero key-value pairs in range [beginsAt, endsBy).

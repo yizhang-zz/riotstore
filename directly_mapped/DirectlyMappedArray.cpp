@@ -149,11 +149,34 @@ int DirectlyMappedArray::batchGet(i64 getCount, Entry *gets)
     return AC_OK;
 }
 
+int DirectlyMappedArray::batchGet(Key_t beginsAt, Key_t endsBy, Datum_t *p)
+{
+	DMABlock *block = NULL;
+    Key_t blk_cap = config->dmaBlockCapacity;
+	PID_t pid = findPage(beginsAt);
+    Key_t blk_begin = (pid-1) * blk_cap;
+    for (; blk_begin<endsBy; blk_begin+=blk_cap, pid++) {
+		if (readBlock(pid, &block) & RC_OK) {
+			size_t len = block->batchGet(beginsAt, endsBy, p);
+			block->getPageHandle()->unpin();
+            p += len;
+		}
+        else {
+            size_t len = std::min(blk_cap, endsBy - blk_begin);
+            for (size_t i=0; i<blk_cap; ++i)
+                p[i] = 0.0;
+            p += len;
+        }
+	}
+	return AC_OK;
+}
+
 int DirectlyMappedArray::batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &v)
 {
 	PID_t pid = findPage(beginsAt);
 	DMABlock *block = NULL;
-	while ((pid-1)*config->dmaBlockCapacity < endsBy) {
+    Key_t blk_cap = config->dmaBlockCapacity;
+	while ((pid-1)*blk_cap < endsBy) {
 		if (readBlock(pid, &block) & RC_OK) {
 			block->batchGet(beginsAt, endsBy, v);
 			block->getPageHandle()->unpin();
@@ -297,6 +320,29 @@ int DirectlyMappedArray::batchPut(i64 putCount, const Entry *puts)
     return AC_OK;
 }
 
+/* Batch put a dense sub-array.  Blocks are not read into memory since they are
+ * overwritten anyway. */
+int DirectlyMappedArray::batchPut(Key_t beginsAt, Key_t endsBy, Datum_t *p)
+{
+    //TODO: non-zero statistics doesn't work now
+	PID_t pid = findPage(beginsAt);
+	DMABlock *block = NULL;
+    Key_t blk_cap = config->dmaBlockCapacity;
+	while ((pid-1)*blk_cap < endsBy) {
+		if (newBlock(pid, &block) & RC_OK) {
+            //TODO: the return value below is supposed to be #non-zeros
+			int len = block->batchPut(beginsAt, endsBy, p);
+			block->getPageHandle()->unpin();
+            p += len;
+		}
+        else {
+            throw;
+        }
+		pid++;
+	}
+	return AC_OK;
+}
+
 void DirectlyMappedArray::flush()
 {
     buffer->flushAllPages();
@@ -351,12 +397,12 @@ RC_t DirectlyMappedArray::readNextBlock(PageHandle ph, DMABlock** block)
     //PID_t pid = buffer->getPID(ph);
     *block = NULL;
 	PID_t pid = ph->getPid();
-    if (config->dmaBlockCapacity*pid >= header->endsBy)
+    Key_t CAPACITY = config->dmaBlockCapacity;
+    if (CAPACITY*pid >= header->endsBy)
         return RC_OutOfRange;
     RC_t ret;
     if ((ret=buffer->readPage(pid+1, ph)) & RC_FAIL)
         return ret;
-   Key_t CAPACITY = config->dmaBlockCapacity;
    *block = (DMABlock*) buffer->getBlockObject(ph, CAPACITY*(pid), 
                CAPACITY*(pid+1), false, 0, createDMABlock);
    return RC_OK;
@@ -372,20 +418,22 @@ RC_t DirectlyMappedArray::newBlock(PID_t pid, DMABlock** block)
    Key_t CAPACITY = config->dmaBlockCapacity;
    *block = (DMABlock*) buffer->getBlockObject(ph, CAPACITY*(pid-1), 
                CAPACITY*pid, true, 0, createDMABlock);
+   if (ret == RC_ALLOC) {
 #ifdef DTRACE_SDT
-   RIOT_DMA_NEW_BLOCK();
+       RIOT_DMA_NEW_BLOCK();
 #endif
+   }
    return RC_OK;
 }
 
 Key_t DirectlyMappedArray::getPageLowerBound(PID_t pid) 
 {
-    return config->dmaBlockCapacity*(pid-1);
+    return Key_t(config->dmaBlockCapacity)*(pid-1);
 }
 
 Key_t DirectlyMappedArray::getPageUpperBound(PID_t pid) 
 {
-    return config->dmaBlockCapacity*(pid);
+    return Key_t(config->dmaBlockCapacity)*(pid);
 }
 
 /*

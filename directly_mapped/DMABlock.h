@@ -45,11 +45,13 @@ public:
     /// assume key is within range
     Datum_t get(Key_t key) const;
     void batchGet(i64 getCount, Entry *gets);
-    void batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &v);
+    int batchGet(Key_t beginsAt, Key_t endsBy, Datum_t *);
+    int batchGet(Key_t beginsAt, Key_t endsBy, std::vector<Entry> &v);
 
     /// assume key is within range
     int put(Key_t key, Datum_t datum);
     int batchPut(i64 putCount, const Entry *puts);
+    int batchPut(Key_t beginsAt, Key_t endsBy, Datum_t *);
     int batchPut(std::vector<Entry>::const_iterator &begin,
             std::vector<Entry>::const_iterator end);
 
